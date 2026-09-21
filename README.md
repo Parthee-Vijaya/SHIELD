@@ -125,7 +125,7 @@ Den almindelige AI-funktion bruger **`openai/gpt-5.5` via Vercel AI Gateway**. M
 
 Modellen skal referere til det medsendte materiale. Materialeanalyse kontrollerer blandt andet, at angivne citater faktisk findes i de relevante tekstuddrag. Leverandørmateriale behandles som data og må ikke overtage analysens instruktioner.
 
-Der findes desuden en **manuel lokal Codex-arbejdsgang**, hvor et faktisk udkast fra eksempelvis `gpt-5.6-sol` eller `gpt-6-astra` kan importeres med kørselsoplysninger og efterfølgende JEV-kontrol. Den almindelige knap i SHIELD skifter ikke automatisk til Codex. Importen er en særskilt udviklerstyret vej, og den angivne model skal have udført arbejdet. Se [AI-dokumentationen](docs/AI_GATEWAY.md).
+Der findes desuden **manuel modelimport**, hvor et faktisk udkast fra eksempelvis GPT-5.6 Sol eller GPT-6 Astra kan importeres med kørselsoplysninger og efterfølgende JEV-kontrol. Importen er en særskilt operatørstyret vej; den registrerede model skal have udført arbejdet. Den enkelte rapport viser modelnavnet, mens det tekniske revisionsspor bevares. Se [AI-dokumentationen](docs/AI_GATEWAY.md).
 
 ### JEV markerer udsagn, som kræver gennemgang
 
@@ -400,7 +400,8 @@ Repositoryet indeholder også ældre research-, vidensbase- og juridiske screeni
 - [Verifikationsnotat for v0.7.3](docs/VERIFICATION.md)
 
 - [AI-løsninger fra materiale til vurderingsgrundlag](docs/PROCUREMENT_WORKFLOW.md)
-- [AI Gateway, GPT, JEV og lokal Codex-arbejdsgang](docs/AI_GATEWAY.md)
+- [Læsevenlig udgave til ledelse og faglig dialog](docs/READABLE_ASSESSMENTS.md)
+- [AI Gateway, GPT, JEV og lokal modelimport](docs/AI_GATEWAY.md)
 - [Dokumentarbejde, afklaringslister og rapportrevision](docs/AILEX_FUNCTIONAL_IMPROVEMENTS.md)
 - [Microsoft Entra ID og roller](docs/ENTRA_ID_SETUP.md)
 - [Retningslinjer for arbejdet i repositoryet](AGENTS.md)

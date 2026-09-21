@@ -47,6 +47,7 @@ from src.services.dpia_assessment import (  # noqa: E402
     RISK_DEFINITIONS,
     SECTION_TITLES,
 )
+from src.services.ai_presentation import model_label  # noqa: E402
 from src.services.analysis_limits import (  # noqa: E402
     ANALYSIS_TIMEOUT_SECONDS,
     MAX_RAW_INPUT_CHARS,
@@ -368,7 +369,7 @@ def import_draft(
             "usage": {
                 "drafting": None,
                 "evaluation": review.get("usage", []),
-                "drafting_usage_note": "Codex-forbrug er ikke tilgængeligt i denne import.",
+                "drafting_usage_note": "Modellens tokenforbrug er ikke tilgængeligt i denne import.",
             },
         },
         pack["sources"],
@@ -378,14 +379,14 @@ def import_draft(
         limitations=[
             *pack["limitations"],
             (
-                f"Udkast udarbejdet i Codex med {model}; JEV-kontrol via AI Gateway."
+                f"Udkast udarbejdet med {model_label(model)}; kvalitetstjek ved JEV."
                 if planned_scenario
-                else f"Testudkast udarbejdet i Codex med {model}; JEV-kontrol via AI Gateway."
+                else f"Testudkast udarbejdet med {model_label(model)}; kvalitetstjek ved JEV."
             ),
             (
-                "Model og kørsels-ID er angivet af den lokale operatør; denne import starter ikke Codex."
+                "Modeloplysningen er registreret ved import af udkastet."
                 if planned_scenario
-                else "Model og testkørsels-ID er angivet af den lokale testoperatør; denne import starter ikke Codex."
+                else "Modeloplysningen er registreret ved import af testudkastet."
             ),
         ],
     )

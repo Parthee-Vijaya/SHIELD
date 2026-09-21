@@ -5,7 +5,7 @@ Fanen **Teknisk kørsel** i sagens arbejdsrum viser, hvad der er registreret om 
 ## Det kan læseren undersøge
 
 - Hvilken gemt kørsel eller rapportversion der vises, tidspunktet og den angivne model.
-- Om teksten blev udarbejdet via AI Gateway, importeret fra en lokal Codex-kørsel, genereret af regler eller redigeret af et menneske.
+- Om teksten er et AI-udkast, en regelbaseret vurdering eller redigeret af et menneske.
 - Kommunens gemte input, leverandørens kildeuddrag og de kontrolsummer, der foreligger.
 - De gemte tekstafsnit, risici, anbefalinger eller udtrukne oplysninger og deres kildehenvisninger.
 - JEVs kontrolpunkter, markeringer, grænseværdi og versionsnummer for kontrolkriterierne.
@@ -39,7 +39,7 @@ Manglende model-, forbrugs- eller kørselsoplysninger vises som ikke registreret
 
 Ved en manuel rapportrevision er den redigerede tekst ikke en ny AI-kørsel. Arvede JEV-resultater kan være forældede for de ændrede afsnit og anbefalinger. Den oprindelige vurderingsversion og revisionens metadata bevares, og fanen skal gøre forskellen synlig.
 
-Ved lokal Codex-import er model og kørsels-ID angivet af den lokale operatør. Importen starter ikke i sig selv modellen; oplysningerne skal læses med denne oprindelse.
+Ved import af et udkast er modeloplysningen angivet af operatøren. Importen starter ikke i sig selv modellen; oplysningerne skal læses med denne oprindelse. Brugerfladen viser den gemte GPT-model uden udviklingsplatformens navn. Platformspecifikke kørsels- og prompt-id'er bliver i revisionssporet; de vises ikke som manglende, når de er registreret.
 
 ## Teknisk afgrænsning
 

@@ -17,14 +17,20 @@ from tests.test_dpia_docx import text_content
 
 
 @pytest.mark.parametrize("provider", ["codex-local", "codex-local-test"])
-def test_exports_show_actual_codex_origin_and_preserve_test_label_only_for_test_provider(
+def test_exports_show_recorded_model_without_platform_metadata(
     provider,
 ):
     request, result = make_assessment()
     result.ai_generation = {
         "provider": provider,
         "model": "gpt-6-astra",
-        "run_id": "municipal-scenario-2026-09-21",
+        "run_id": "codex-municipal-scenario-2026-09-21",
+        "prompt_version": "codex-local-dpia-planned-scenario-2026-09-21-v1",
+        "limitations": [
+            "Udkast udarbejdet i Codex med gpt-6-astra; JEV-kontrol via AI Gateway.",
+            "Model og kørsels-ID er angivet af den lokale operatør; denne import starter ikke Codex.",
+            "Den konkrete slettefrist er endnu ikke dokumenteret.",
+        ],
         "model_run_provenance": "operator_reported",
         "review": {"model": "typesafe-ai/jev", "checks": []},
     }
@@ -39,23 +45,48 @@ def test_exports_show_actual_codex_origin_and_preserve_test_label_only_for_test_
             )
         )
     for text in texts:
-        assert "gpt-6-astra" in text
+        assert "GPT-6 Astra" in text
+        assert "GPT-5.6 Astra" not in text
         assert "typesafe-ai/jev" in text
-        assert "municipal-scenario-2026-09-21" in text
-        assert (
-            "Model og kørsels-ID er oplyst af den lokale operatør ved importen." in text
-        )
-        assert "openai/gpt-5.5" not in text
-        assert "Udarbejdet i AI Gateway" not in text
-        if provider == "codex-local":
-            assert "Codex – lokal kørsel" in text
-            assert "Kørsels-ID" in text
-            assert "Codex – lokal testkørsel" not in text
-            assert "Testkørsel" not in text
-        else:
-            assert "Codex – lokal testkørsel" in text
-            assert "Testkørsel" in text
+        assert "Modeloplysningen er registreret ved import af udkastet." in text
+        assert "Den konkrete slettefrist er endnu ikke dokumenteret." in text
+        assert "codex" not in text.lower()
+        assert "Udarbejdet i" not in text
+        assert "municipal-scenario-2026-09-21" not in text
     assert result.model_dump(mode="json") == before
+
+
+def test_exports_preserve_a_platform_name_when_it_is_part_of_source_evidence():
+    request, result = make_assessment()
+    result.sections[0] = result.sections[0].model_copy(
+        update={
+            "text": "Kontrakten omfatter adgang til Codex som produkt.",
+            "source_ids": ["contract:1"],
+        }
+    )
+    result.ai_generation = {
+        "model": "gpt-5.6-sol",
+        "sources": [
+            {
+                "id": "contract:1",
+                "title": "Kundeaftale",
+                "text": "Kontrakten omfatter adgang til Codex som produkt.",
+            }
+        ],
+        "limitations": ["Leverandørens aftale om Codex kræver juridisk gennemgang."],
+    }
+    texts = [text_content(Document(BytesIO(export_dpia_docx(request, result))))]
+    with ZipFile(BytesIO(export_dpia_xlsx(request, result))) as archive:
+        texts.append(
+            " ".join(
+                ET.fromstring(
+                    archive.read("xl/worksheets/ai-provenance.xml")
+                ).itertext()
+            )
+        )
+    for text in texts:
+        assert "Kontrakten omfatter adgang til Codex som produkt." in text
+        assert "Leverandørens aftale om Codex kræver juridisk gennemgang." in text
 
 
 def test_exports_separate_saved_recommendations_without_changing_assessment():

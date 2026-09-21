@@ -33,7 +33,7 @@ beforeEach(() => jest.clearAllMocks());
 
 test('viser faktisk model, problemsignal og foldet kontrolgrundlag uden nye modelkald', async () => {
   mount();
-  expect(await screen.findByText('gpt-5.6-sol')).toBeInTheDocument();
+  expect(await screen.findByText('GPT-5.6 Sol')).toBeInTheDocument();
   expect(screen.getByLabelText('Vis kontrolpunkter')).toHaveValue('attention');
   expect(screen.queryByText('Risiko 4.7')).not.toBeInTheDocument();
   const check = await expand('Resuméets kildeunderstøttelse');
@@ -79,7 +79,7 @@ test('en enkelt behandling beskrives ikke som flere delanalyser', async () => {
 
 test('viser ikke manglende Codex-forbrug som nul og summerer JEV-poster kun én gang', async () => {
   mount();
-  await screen.findByText('gpt-5.6-sol');
+  await screen.findByText('GPT-5.6 Sol');
   const usage = await expand('Registreret forbrug');
   expect(await usage.findByText('321')).toBeInTheDocument();
   expect(usage.getAllByText('321')).toHaveLength(1);
@@ -91,7 +91,7 @@ test('viser ikke manglende Codex-forbrug som nul og summerer JEV-poster kun én 
 
 test('håndterer Gateway-forbrug i flere drafting-poster uden at medregne evaluation igen', async () => {
   mount([{ ...run, usage: { drafting: [{ inputTokens: 100, outputTokens: 10 }, { inputTokens: 20, outputTokens: 5 }], evaluation: [{ inputTokens: 999 }] } }]);
-  await screen.findByText('gpt-5.6-sol');
+  await screen.findByText('GPT-5.6 Sol');
   const usage = await expand('Registreret forbrug');
   expect(await usage.findByText('120')).toBeInTheDocument();
   expect(usage.getByText('15')).toBeInTheDocument();
@@ -105,13 +105,13 @@ test('vælger præcis historisk version fra link og bevarer sagens øvrige param
   expect(screen.getByLabelText('Vælg kørsel eller rapportversion')).toHaveValue('dpia:a1');
   fireEvent.change(screen.getByLabelText('Vælg kørsel eller rapportversion'), { target: { value: 'dpia:a2' } });
   expect(screen.getByLabelText('Adresse')).toHaveTextContent('assessment_id=a2&guide_case=c1&run_id=dpia%3Aa2');
-  expect(screen.getByText('gpt-5.6-sol')).toBeInTheDocument();
+  expect(screen.getByText('GPT-5.6 Sol')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Åbn denne rapportversion/ })).toHaveAttribute('href', '/vurdering?assessment_id=a2&case=c1');
 });
 
 test('vælger seneste rapport ved normal indgang, selv om sagen også har en materialeanalyse', async () => {
   mount([run, { ...run, id: 'material:m1', assessment_id: null, version: null, kind: 'material_analysis', model: 'material-model' }]);
-  expect(await screen.findByText('gpt-5.6-sol')).toBeInTheDocument();
+  expect(await screen.findByText('GPT-5.6 Sol')).toBeInTheDocument();
   expect(screen.getByLabelText('Vælg kørsel eller rapportversion')).toHaveValue('dpia:a2');
   expect(screen.queryByText('material-model')).not.toBeInTheDocument();
 });
@@ -144,7 +144,7 @@ test('søger og paginerer kontrolpunkter og nulstiller side ved filtrering', asy
 
 test('gengiver kildetekst som tekst og opretter ikke usikre kildelinks', async () => {
   mount([{ ...run, sources: [{ ...source, title: 'Ugyldig kilde', source_url: 'javascript:alert(1)', text: '<img src=x onerror=alert(1)>' }] }]);
-  await screen.findByText('gpt-5.6-sol');
+  await screen.findByText('GPT-5.6 Sol');
   const document = await expand('Ugyldig kilde');
   expect(await document.findByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
   expect(document.queryByRole('link')).not.toBeInTheDocument();

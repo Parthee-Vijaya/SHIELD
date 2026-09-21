@@ -1,3 +1,4 @@
+import { modelLabel, modelNotes, modelNote } from '../../utils/modelPresentation';
 import React, { useId, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useQuery } from 'react-query';
@@ -151,7 +152,7 @@ function Review({ review, items, sources }) {
   if (!review) return <StatePanel><strong>Ingen JEV-kontrol registreret</strong><p>Der er ikke gemt en JEV-kontrol for denne version. En regelbaseret vurdering eller materialeanalyse er ikke i sig selv kontrolleret af JEV.</p></StatePanel>;
   return <>
     <Metadata>
-      <div><dt>Kontrolmodel</dt><dd>{text(review.model) || NOT_RECORDED}</dd></div>
+      <div><dt>Kontrolmodel</dt><dd>{modelLabel(review.model)}</dd></div>
       <div><dt>Kontrolrubrik</dt><dd>{text(review.rubric_version) || NOT_RECORDED}</dd></div>
       <div><dt>Grænse for opfølgning</dt><dd>{score(review.threshold)}</dd></div>
     </Metadata>
@@ -216,12 +217,12 @@ function BatchSummary({ batching }) {
 function RunDetails({ run, caseId }) {
   const sources = array(run.sources);
   const items = array(run.output_items);
-  const notes = [...strings(run.limitations), ...strings(run.recording_notes)];
+  const notes = modelNotes([...strings(run.limitations), ...strings(run.recording_notes)], run.model);
   const stages = array(run.stages);
   const provenance = run.provenance || {};
   return <>
-    <Metadata><div><dt>Rapportversion</dt><dd>{run.version == null ? NOT_RECORDED : `Version ${run.version}`}</dd></div><div><dt>Version gemt</dt><dd>{date(run.created_at)}</dd></div><div><dt>Type</dt><dd>{kindLabel(run.kind)}</dd></div><div><dt>Udarbejdende model</dt><dd>{text(run.model) || NOT_RECORDED}</dd></div><div><dt>Udbyder / kørselsmiljø</dt><dd>{text(run.provider) || NOT_RECORDED}</dd></div><div><dt>Promptversion</dt><dd>{text(run.prompt_version) || NOT_RECORDED}</dd></div><div><dt>AI-udkast udarbejdet</dt><dd>{date(run.generation_created_at)}</dd></div></Metadata>
-    {provenance.provider_note && <p>{text(provenance.provider_note)}</p>}
+    <Metadata><div><dt>Rapportversion</dt><dd>{run.version == null ? NOT_RECORDED : `Version ${run.version}`}</dd></div><div><dt>Version gemt</dt><dd>{date(run.created_at)}</dd></div><div><dt>Type</dt><dd>{kindLabel(run.kind)}</dd></div><div><dt>Udarbejdende model</dt><dd>{modelLabel(run.model)}</dd></div><div><dt>Promptversion</dt><dd>{text(run.prompt_version) || (run.prompt_version_recorded ? 'Gemt i revisionssporet' : NOT_RECORDED)}</dd></div><div><dt>AI-udkast udarbejdet</dt><dd>{date(run.generation_created_at)}</dd></div></Metadata>
+    {provenance.provider_note && <p>{modelNote(provenance.provider_note, run.model)}</p>}
     {run.assessment_id && <TextLink href={`/vurdering?assessment_id=${encodeURIComponent(run.assessment_id)}&case=${encodeURIComponent(caseId)}`}>Åbn denne rapportversion →</TextLink>}
     {run.editorial_revision && <Inset><strong>Fagligt redigeret version – ingen ny AI-kørsel</strong><p>{text(run.editorial_revision.note) || 'Rapportteksten er ændret efter den oprindelige kørsel.'} Modeloplysninger og tidligere kontrolresultater stammer fra den oprindelige AI-version. Ændrede kontrolpunkter kræver ny kontrol.</p></Inset>}
     {stages.length > 0 && <Steps aria-label="Kørslens procestrin">{stages.map((stage, index) => <li key={stage.id || index}><strong>{index + 1}. {text(stage.title)}</strong><p>{text(stage.description)}</p></li>)}</Steps>}
@@ -231,7 +232,7 @@ function RunDetails({ run, caseId }) {
     <Section><SectionHeader><div><h2>Kildegrundlag</h2><p>De gemte kildetekster fra kørslen. Et link kan siden være ændret; uddraget her viser det registrerede grundlag.</p></div></SectionHeader><SourceList sources={sources} /></Section>
     <Section><SectionHeader><div><h2>Kørselsoplysninger og afgrænsning</h2><p>Registrerede metadata og begrænsninger. Manglende oplysninger vises som »Ikke registreret«.</p></div></SectionHeader>
       {notes.length > 0 && <Notes>{notes.map((note, index) => <li key={index}>{note}</li>)}</Notes>}
-      <Fold label="Modeloplysninger og kørsels-ID"><Fields><div><dt>Kørsels-ID</dt><dd>{text(provenance.run_id) || NOT_RECORDED}</dd></div><div><dt>Oplysning om modellens proveniens</dt><dd>{provenance.model_attestation === 'operator_reported' ? 'Model og kørsels-ID er oplyst af operatøren ved import; de er ikke automatisk verificeret.' : text(provenance.model_attestation) || NOT_RECORDED}</dd></div><div><dt>Grundlagets vurderings-ID</dt><dd>{text(provenance.parent_assessment_id) || NOT_RECORDED}</dd></div><div><dt>JEV-kontrollens vurderings-ID</dt><dd>{text(run.review?.reviewed_assessment_id) || NOT_RECORDED}</dd></div></Fields></Fold>
+      <Fold label="Modeloplysninger og kørsels-ID"><Fields><div><dt>Kørsels-ID</dt><dd>{text(provenance.run_id) || (provenance.run_id_recorded ? 'Gemt i revisionssporet' : NOT_RECORDED)}</dd></div><div><dt>Oplysning om modellens proveniens</dt><dd>{provenance.model_attestation === 'operator_reported' ? 'Model og kørsels-ID er oplyst af operatøren ved import; de er ikke automatisk verificeret.' : text(provenance.model_attestation) || NOT_RECORDED}</dd></div><div><dt>Grundlagets vurderings-ID</dt><dd>{text(provenance.parent_assessment_id) || NOT_RECORDED}</dd></div><div><dt>JEV-kontrollens vurderings-ID</dt><dd>{text(run.review?.reviewed_assessment_id) || NOT_RECORDED}</dd></div></Fields></Fold>
       <Fold label="Gemt sagsgrundlag"><Fields>{Object.keys(run.input_snapshot || {}).length ? Object.entries(run.input_snapshot).map(([key, value]) => <div key={key}><dt>{INPUT_SOURCE_LABELS[key] || key}</dt><dd>{fieldValue(value)}</dd></div>) : <p>{NOT_RECORDED}</p>}</Fields></Fold>
       <Fold label="Registreret forbrug"><h3>Udarbejdelse</h3><Usage value={run.usage && Object.prototype.hasOwnProperty.call(run.usage, 'drafting') ? run.usage.drafting : run.usage} /><h3>JEV-kontrol</h3><Usage value={run.review?.usage} /></Fold>
     </Section>

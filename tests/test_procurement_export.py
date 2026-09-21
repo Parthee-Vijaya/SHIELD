@@ -73,7 +73,7 @@ def test_word_has_exact_review_facts_citations_jev_and_provenance(setup):
         "JEV",
         "fact:hosting",
         "summary",
-        "gpt-5.6-sol",
+        "GPT-5.6 Sol",
         "typesafe-ai/jev",
         analysis["id"],
         review["id"],
@@ -82,6 +82,8 @@ def test_word_has_exact_review_facts_citations_jev_and_provenance(setup):
         "underskrevet databehandleraftale",
     ]:
         assert required in content
+    assert "codex" not in content.lower()
+    assert "Kørsel:" not in content
 
 
 def test_historical_export_retains_snapshot_and_marks_changed_basis(setup):

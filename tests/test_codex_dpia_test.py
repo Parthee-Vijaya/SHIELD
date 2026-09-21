@@ -341,8 +341,8 @@ def test_planned_import_uses_same_jev_boundary_and_honest_non_test_provenance(
     assert generation["model"] == "gpt-5.6-sol"
     assert generation["source_pack_sha256"] == pack["source_pack_sha256"]
     assert generation["limitations"][-2:] == [
-        "Udkast udarbejdet i Codex med gpt-5.6-sol; JEV-kontrol via AI Gateway.",
-        "Model og kørsels-ID er angivet af den lokale operatør; denne import starter ikke Codex.",
+        "Udkast udarbejdet med GPT-5.6 Sol; kvalitetstjek ved JEV.",
+        "Modeloplysningen er registreret ved import af udkastet.",
     ]
     assert process.call_count == 1
     assert process.call_args.args[0][-1] == "ai-gateway/review-draft.mts"

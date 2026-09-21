@@ -20,6 +20,9 @@ test('sagens DPIA-versioner har hver sit link til læsning og dokumenter', () =>
   const links = screen.getAllByRole('link', { name: /Læs analyse og hent Word \/ Excel/ });
   expect(links[0]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-1&case=case-1');
   expect(links[1]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-2&case=case-1');
+  const readableLinks = screen.getAllByRole('link', { name: 'Læsevenlig udgave →' });
+  expect(readableLinks[0]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-1&case=case-1&view=readable');
+  expect(readableLinks[1]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-2&case=case-1&view=readable');
   expect(screen.getByText('Version 1 · Konsekvensanalyse og risikovurdering')).toBeInTheDocument();
   expect(screen.getByText('Version 2 · Konsekvensanalyse og risikovurdering')).toBeInTheDocument();
 });

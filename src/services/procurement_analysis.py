@@ -431,7 +431,7 @@ def save_analysis(
         "draft_sha256": digest(draft),
         "run_id": run_id,
         "provenance_note": (
-            "Model og kørsels-ID er angivet af den lokale Codex-operatør; importen starter ikke Codex."
+            "Modeloplysningen er registreret ved import af udkastet."
             if provider == "codex-local-test"
             else "Udarbejdet via AI Gateway og kontrolleret af JEV."
         ),
@@ -532,7 +532,7 @@ def import_codex_analysis(
         r"[A-Za-z0-9_./:-]{1,200}", run_id
     ):
         raise MaterialAnalysisError(
-            "Angiv den faktiske Codex-model og et entydigt kørsels-ID."
+            "Angiv den faktiske GPT-model og et entydigt kørsels-ID."
         )
     check_pack(db, pack)
     draft = validate_draft(pack, raw_draft)

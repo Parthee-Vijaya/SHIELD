@@ -16,6 +16,12 @@ from src.database.cases import Case
 from src.database.dpia import DPIAAssessmentRecord
 from src.database.procurement import ProcurementAnalysis
 from src.services.dpia_assessment import DPIAAssessmentRequest
+from src.services.ai_presentation import (
+    limitation_notes,
+    metadata_identifier,
+    metadata_note,
+    model_label,
+)
 
 SOURCE_KEYS = (
     "id",
@@ -132,7 +138,7 @@ def _usage(value: Any) -> Any:
     if isinstance(value, dict):
         return {
             key: (
-                item
+                metadata_note(item)
                 if key == "drafting_usage_note" and isinstance(item, str)
                 else _usage(item)
             )
@@ -504,7 +510,8 @@ def _dpia_run(record: DPIAAssessmentRecord, records: dict) -> dict:
     attestation = generation.get("model_run_provenance")
     if provider in {"codex-local", "codex-local-test"}:
         attestation = attestation or "operator_reported"
-        provider_note = "Model og kørsels-ID er oplyst ved den lokale import. Importen dokumenterer ikke i sig selv afviklingen af Codex."
+        provider_note = "Modeloplysningen er registreret ved import af udkastet. Importen dokumenterer ikke i sig selv modelkørslens afvikling."
+        provider = "local-model"
     elif generation and not provider:
         provider_note = "Kørselsudbyder og kørsels-ID er ikke særskilt registreret i denne historiske version."
     else:
@@ -570,9 +577,12 @@ def _dpia_run(record: DPIAAssessmentRecord, records: dict) -> dict:
         "generation_created_at": generation.get("generated_at"),
         "provider": provider,
         "model": generation.get("model"),
-        "prompt_version": generation.get("prompt_version"),
+        "model_label": model_label(generation.get("model")),
+        "prompt_version": metadata_identifier(generation.get("prompt_version")),
+        "prompt_version_recorded": bool(generation.get("prompt_version")),
         "provenance": {
-            "run_id": generation.get("run_id"),
+            "run_id": metadata_identifier(generation.get("run_id")),
+            "run_id_recorded": bool(generation.get("run_id")),
             "model_attestation": attestation,
             "provider_note": provider_note,
             "parent_assessment_id": result.get("parent_assessment_id"),
@@ -599,7 +609,7 @@ def _dpia_run(record: DPIAAssessmentRecord, records: dict) -> dict:
         ),
         "usage": None if revision else _usage(generation.get("usage")),
         "batching": _batching(generation.get("batching")),
-        "limitations": _strings(generation.get("limitations")),
+        "limitations": limitation_notes(generation.get("limitations")),
         "recording_notes": notes,
         "editorial_revision": (
             _pick(
@@ -640,17 +650,24 @@ def _material_run(record: ProcurementAnalysis) -> dict:
         "created_at": _iso(record.created_at),
         "assessment_id": None,
         "generation_created_at": _iso(record.created_at),
-        "provider": record.generation_provider,
+        "provider": (
+            "local-model"
+            if record.generation_provider in {"codex-local", "codex-local-test"}
+            else record.generation_provider
+        ),
         "model": record.model,
-        "prompt_version": generation.get("prompt_version"),
+        "model_label": model_label(record.model),
+        "prompt_version": metadata_identifier(generation.get("prompt_version")),
+        "prompt_version_recorded": bool(generation.get("prompt_version")),
         "provenance": {
-            "run_id": generation.get("run_id"),
+            "run_id": metadata_identifier(generation.get("run_id")),
+            "run_id_recorded": bool(generation.get("run_id")),
             "model_attestation": (
                 "operator_reported"
                 if record.generation_provider in {"codex-local", "codex-local-test"}
                 else None
             ),
-            "provider_note": generation.get("provenance_note"),
+            "provider_note": metadata_note(generation.get("provenance_note")),
             "parent_assessment_id": None,
             **_pick(generation, ("source_pack_sha256", "draft_sha256")),
             "profile_fingerprint": record.profile_fingerprint,
@@ -684,7 +701,7 @@ def _material_run(record: ProcurementAnalysis) -> dict:
         ),
         "usage": _usage(generation.get("usage")),
         "batching": _batching(generation.get("batching")),
-        "limitations": _strings(generation.get("limitations")),
+        "limitations": limitation_notes(generation.get("limitations")),
         "recording_notes": notes,
         "editorial_revision": None,
     }

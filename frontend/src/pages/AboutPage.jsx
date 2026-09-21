@@ -251,7 +251,7 @@ export default function AboutPage() {
         </Details>
         <Details>
           <summary>Hvilken model er brugt i den enkelte analyse?</summary>
-          <div><p>Den almindelige AI-arbejdsgang bruger GPT-5.5 til udkast og JEV til kontrol. Den gemte analyse indeholder oplysninger om den faktisk anvendte model, kilderne og kontrollen. En konfigureret forbindelse er ikke i sig selv dokumentation for en vellykket kørsel.</p><p>Ved særskilte, manuelle afprøvninger kan udkast være udarbejdet gennem Codex med Sol eller Astra og derefter kontrolleret af JEV. Det registreres som en testkørsel med den angivne model. Knapperne i løsningen skifter ikke automatisk til Codex.</p></div>
+          <div><p>Den almindelige AI-arbejdsgang bruger GPT-5.5 til udkast og JEV til kontrol. Den gemte analyse indeholder oplysninger om den faktisk anvendte model, kilderne og kontrollen. En konfigureret forbindelse er ikke i sig selv dokumentation for en vellykket kørsel.</p><p>Den anvendte GPT-model fremgår af den enkelte rapportversion, fx GPT-5.5, GPT-5.6 Sol eller GPT-6 Astra. JEV kontrollerer tekstens støtte i kilderne. Kommunens fagpersoner vurderer oplysninger, risici og anbefalinger og træffer den endelige beslutning.</p></div>
         </Details>
         <Details>
           <summary>Hvilket skabelongrundlag bruger rapporterne?</summary>

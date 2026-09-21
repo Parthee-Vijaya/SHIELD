@@ -39,6 +39,12 @@ from .dpia_export import (
     _editorial_target_label,
 )
 from .dpia_reading_guide import reading_guide
+from .ai_presentation import (
+    IMPORT_NOTE,
+    limitation_notes,
+    metadata_identifier,
+    model_label,
+)
 
 RISK_COLORS = {
     "low": "C6EFCE",
@@ -453,12 +459,18 @@ def _stakeholders(
     _heading(doc, "Databeskyttelsesrådgiverens synspunkter", 2)
     _paragraph(
         doc,
-        ("DPO/databeskyttelsesrådgiverens inddragelse er ikke dokumenteret og skal afklares. " + request.dpo_advice)
-        if request.dpo_involved is None else request.dpo_advice
-        or (
-            "DPO er oplyst som inddraget, men konkrete synspunkter er ikke dokumenteret i vurderingen."
-            if request.dpo_involved
-            else "DPO er ikke oplyst som inddraget. Rådgivning skal dokumenteres."
+        (
+            (
+                "DPO/databeskyttelsesrådgiverens inddragelse er ikke dokumenteret og skal afklares. "
+                + request.dpo_advice
+            )
+            if request.dpo_involved is None
+            else request.dpo_advice
+            or (
+                "DPO er oplyst som inddraget, men konkrete synspunkter er ikke dokumenteret i vurderingen."
+                if request.dpo_involved
+                else "DPO er ikke oplyst som inddraget. Rådgivning skal dokumenteres."
+            )
         ),
     )
     _heading(doc, "Registrerede eller deres repræsentanter", 2)
@@ -571,26 +583,11 @@ def _provenance(doc: DocumentType, result: DPIAAssessmentResponse) -> None:
             )
             _paragraph(doc, change.get("after", {}).get("text", ""), label="Ny tekst")
     if ai:
-        _paragraph(doc, ai.get("model", "Ikke registreret"), label="Anvendt model")
-        if ai.get("provider") in {"codex-local-test", "codex-local"}:
-            is_test = ai.get("provider") == "codex-local-test"
-            _paragraph(
-                doc,
-                "Codex – lokal testkørsel" if is_test else "Codex – lokal kørsel",
-                label="Udarbejdet i",
-            )
-            if ai.get("run_id"):
-                _paragraph(
-                    doc, ai["run_id"], label="Testkørsel" if is_test else "Kørsels-ID"
-                )
-            if ai.get("model_run_provenance") == "operator_reported":
-                _paragraph(
-                    doc,
-                    "Model og kørsels-ID er oplyst af den lokale operatør ved importen.",
-                    label="Oplysning om model og kørsel",
-                )
-        if ai.get("prompt_version"):
-            _paragraph(doc, ai["prompt_version"], label="Instruktionsversion")
+        _paragraph(doc, model_label(ai.get("model")), label="Anvendt model")
+        if ai.get("model_run_provenance") == "operator_reported":
+            _paragraph(doc, IMPORT_NOTE, label="Oplysning om model")
+        if prompt_version := metadata_identifier(ai.get("prompt_version")):
+            _paragraph(doc, prompt_version, label="Instruktionsversion")
         review = ai.get("review") or ai.get("evaluation")
         if isinstance(review, Mapping):
             for key, label in (
@@ -680,10 +677,8 @@ def _provenance(doc: DocumentType, result: DPIAAssessmentResponse) -> None:
                 ):
                     if source.get(key) is not None:
                         _paragraph(doc, source[key], label=label)
-        limits = ai.get("limitations", [])
-        if isinstance(limits, str):
-            limits = [limits]
-        if isinstance(limits, list) and limits:
+        limits = limitation_notes(ai.get("limitations"))
+        if limits:
             _heading(doc, "Begrænsninger ved AI-udkastet", 2)
             for item in limits:
                 _paragraph(doc, item)
@@ -819,7 +814,11 @@ def export_dpia_docx(
     for criterion in result.screening_criteria:
         _paragraph(
             doc,
-            criterion.explanation if criterion.matched is None else f"{'Ja' if criterion.matched else 'Nej'}. {criterion.explanation}",
+            (
+                criterion.explanation
+                if criterion.matched is None
+                else f"{'Ja' if criterion.matched else 'Nej'}. {criterion.explanation}"
+            ),
             label=criterion.label,
         )
     sections = {section.id: section for section in result.sections}

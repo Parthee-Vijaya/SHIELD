@@ -242,6 +242,39 @@ def test_ai_evidence_signal_provenance_and_no_secret_metadata(setup):
         assert db.get(DPIAAssessmentRecord, id).result_payload == payload
 
 
+def test_historical_platform_metadata_is_neutral_but_evidence_and_record_stay_exact(
+    setup,
+):
+    payload = ai_payload()
+    generation = payload["ai_generation"]
+    generation["run_id"] = "codex-local-run-123"
+    generation["limitations"] = [
+        "Udkast udarbejdet i Codex med gpt-5.6-sol; JEV-kontrol via AI Gateway.",
+        "Model og kørsels-ID er angivet af den lokale operatør; denne import starter ikke Codex.",
+        "Den konkrete slettefrist mangler dokumentation.",
+    ]
+    generation["usage"][
+        "drafting_usage_note"
+    ] = "Codex-forbrug er ikke tilgængeligt i denne import."
+    generation["sources"][0][
+        "text"
+    ] = "Kontrakten omfatter adgang til Codex som produkt."
+    assessment_id = save_dpia(setup, payload)
+    run = get_runs(setup)[0]
+    assert run["model_label"] == "GPT-5.6 Sol"
+    assert run["provider"] == "local-model"
+    assert run["prompt_version"] is None
+    assert run["prompt_version_recorded"] is True
+    assert run["provenance"]["run_id"] is None
+    assert run["provenance"]["run_id_recorded"] is True
+    assert run["limitations"][-1] == "Den konkrete slettefrist mangler dokumentation."
+    assert run["sources"][0]["text"] == generation["sources"][0]["text"]
+    metadata = {key: run[key] for key in ("limitations", "provenance", "usage")}
+    assert "codex" not in json.dumps(metadata).lower()
+    with setup["factory"]() as db:
+        assert db.get(DPIAAssessmentRecord, assessment_id).result_payload == payload
+
+
 def test_generated_by_is_actor_not_inferred_provider_and_unknown_legacy_rubric(setup):
     payload = ai_payload()
     generation = payload["ai_generation"]
@@ -316,7 +349,10 @@ def test_cross_case_parent_is_not_disclosed_and_unknown_parent_is_honest(setup):
     assert "Other case private text" not in json.dumps(run)
 
 
-def test_material_snapshot_with_flat_stored_draft_and_unknown_drafting_usage(setup):
+@pytest.mark.parametrize("provider", ["vercel-ai-gateway", "codex-local-test"])
+def test_material_snapshot_with_flat_stored_draft_and_unknown_drafting_usage(
+    setup, provider
+):
     payload = ai_payload()["ai_generation"]
     payload.update(
         {
@@ -351,6 +387,13 @@ def test_material_snapshot_with_flat_stored_draft_and_unknown_drafting_usage(set
         }
     )
     payload.pop("usage")
+    payload["provenance_note"] = (
+        "Model og kørsels-ID er angivet af den lokale Codex-operatør; importen starter ikke Codex."
+    )
+    payload["run_id"] = "codex-local-run-789"
+    payload["limitations"] = [
+        "Udkast udarbejdet i Codex med gpt-5.5; JEV-kontrol via AI Gateway."
+    ]
     with setup["factory"]() as db:
         db.add(
             ProcurementAnalysis(
@@ -361,7 +404,7 @@ def test_material_snapshot_with_flat_stored_draft_and_unknown_drafting_usage(set
                 source_fingerprint="sourcehash",
                 generation_payload=payload,
                 model="openai/gpt-5.5",
-                generation_provider="vercel-ai-gateway",
+                generation_provider=provider,
                 status="requires_human_review",
             )
         )
@@ -372,6 +415,11 @@ def test_material_snapshot_with_flat_stored_draft_and_unknown_drafting_usage(set
     assert run["output_items"][0]["source_ids"] == ["supplier:1"]
     assert run["input_snapshot"]["organisation"] == "Kalundborg Kommune"
     assert run["usage"] is None
+    assert run["model_label"] == "GPT-5.5"
+    assert run["provider"] == (
+        "local-model" if provider == "codex-local-test" else provider
+    )
+    assert "codex" not in json.dumps(run).lower()
     assert "should-not-leak" not in json.dumps(run)
 
 

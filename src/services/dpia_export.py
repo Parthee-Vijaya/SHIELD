@@ -26,6 +26,12 @@ from .dpia_assessment import (
     risk_matrix,
 )
 from .dpia_reading_guide import reading_guide
+from .ai_presentation import (
+    IMPORT_NOTE,
+    limitation_notes,
+    metadata_identifier,
+    model_label,
+)
 
 
 TEMPLATE_PATH = (
@@ -675,10 +681,18 @@ def _worksheet_updates(
                 # P is left untouched until an actual due date is assigned.
             }
         )
-    dpo_text = ("DPO/databeskyttelsesrådgiverens inddragelse er ikke dokumenteret og skal afklares. " + request.dpo_advice) if request.dpo_involved is None else request.dpo_advice or (
-        "DPO er oplyst som inddraget. DPO's konkrete synspunkter og eventuelle forbehold skal indsættes og godkendes manuelt."
-        if request.dpo_involved
-        else "Mangler oplysninger: DPO er ikke oplyst som inddraget; synspunkter skal indhentes og dokumenteres."
+    dpo_text = (
+        (
+            "DPO/databeskyttelsesrådgiverens inddragelse er ikke dokumenteret og skal afklares. "
+            + request.dpo_advice
+        )
+        if request.dpo_involved is None
+        else request.dpo_advice
+        or (
+            "DPO er oplyst som inddraget. DPO's konkrete synspunkter og eventuelle forbehold skal indsættes og godkendes manuelt."
+            if request.dpo_involved
+            else "Mangler oplysninger: DPO er ikke oplyst som inddraget; synspunkter skal indhentes og dokumenteres."
+        )
     )
     stakeholder_values: dict[str, object] = {
         "I2": dpo_text,
@@ -792,8 +806,8 @@ def _ai_supplement(
         ("Version", getattr(result, "version", 1)),
         ("Oprettet", result.created_at.isoformat()),
         ("Skabelon", result.template_version),
-        ("Skrivemodel", ai.get("model", "")),
-        ("Promptversion", ai.get("prompt_version", "")),
+        ("Skrivemodel", model_label(ai.get("model"))),
+        ("Promptversion", metadata_identifier(ai.get("prompt_version")) or ""),
         ("Evalueringsmodel", ai.get("review", {}).get("model", "")),
         ("Evalueringskriterier", ai.get("review", {}).get("rubric_version", "")),
         (
@@ -838,28 +852,12 @@ def _ai_supplement(
                     ),
                 ]
             )
-    if ai.get("provider") in {"codex-local-test", "codex-local"}:
-        is_test = ai.get("provider") == "codex-local-test"
-        rows.append(
-            (
-                "Udarbejdet i",
-                "Codex – lokal testkørsel" if is_test else "Codex – lokal kørsel",
-            )
-        )
-        if ai.get("run_id"):
-            rows.append(("Testkørsel" if is_test else "Kørsels-ID", ai["run_id"]))
-        if ai.get("model_run_provenance") == "operator_reported":
-            rows.append(
-                (
-                    "Oplysning om model og kørsel",
-                    "Model og kørsels-ID er oplyst af den lokale operatør ved importen.",
-                )
-            )
-    limitations = ai.get("limitations", [])
-    if isinstance(limitations, str):
-        limitations = [limitations]
-    if isinstance(limitations, list):
-        rows.extend(("Begrænsning ved AI-udkastet", value) for value in limitations)
+    if ai.get("model_run_provenance") == "operator_reported":
+        rows.append(("Oplysning om model", IMPORT_NOTE))
+    rows.extend(
+        ("Begrænsning ved AI-udkastet", value)
+        for value in limitation_notes(ai.get("limitations"))
+    )
     for check in ai.get("review", {}).get("checks", []):
         rows.append(
             (

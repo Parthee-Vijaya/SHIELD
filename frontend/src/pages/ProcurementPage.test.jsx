@@ -253,9 +253,9 @@ test('summary and conflict flags are visible alongside actual generation provena
   expect(screen.getByText(/JEV har markeret sammenfatningen/)).toBeInTheDocument();
   expect(screen.getByText(/JEV har markeret denne beskrivelse af modstridende oplysninger/)).toBeInTheDocument();
   fireEvent.click(screen.getByText('Om analysen og kildekontrollen'));
-  expect(screen.getByText('gpt-5.6-sol')).toBeVisible();
-  expect(screen.getByText('Codex · lokal kørsel')).toBeVisible();
-  expect(screen.getByText(/typesafe-ai\/jev · 3 kontrolpunkter, heraf 2 markeret/)).toBeVisible();
+  expect(screen.getByText('GPT-5.6 Sol')).toBeVisible();
+  expect(document.body).not.toHaveTextContent(/Codex/i);
+  expect(screen.getByText(/JEV · 3 kontrolpunkter, heraf 2 markeret/)).toBeVisible();
   expect(screen.getByText(/Det er ikke en juridisk godkendelse eller en garanti/)).toBeVisible();
   expect(screen.queryByText('codex-local-test')).not.toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Gem gennemgang og fortsæt →'})).toBeEnabled();

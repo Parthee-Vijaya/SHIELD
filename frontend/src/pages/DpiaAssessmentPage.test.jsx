@@ -263,87 +263,82 @@ test('en lang AI-kørsel afbrydes og dens timer ryddes når siden forlades', asy
   }
 });
 
-test.each(['gpt-5.6-sol', 'gpt-6-astra'])('viser en gemt Codex-test med %s uden automatisk modelkald', async model => {
-  const codexResult = {
-    ...generated,
-    ai_generation: { ...generated.ai_generation, provider: 'codex-local-test', model, run_id: 'codex-test-1' },
-  };
+test.each([
+  ['codex-local-test', 'gpt-5.6-sol', 'GPT-5.6 Sol'],
+  ['codex-local-test', 'gpt-6-astra', 'GPT-6 Astra'],
+  ['codex-local', 'gpt-5.6-sol', 'GPT-5.6 Sol'],
+  ['codex-local', 'gpt-6-astra', 'GPT-6 Astra'],
+])('viser kun modelnavnet for historisk import %s med %s uden automatisk modelkald', async (provider, model, label) => {
+  const imported = { ...generated, ai_generation: { ...generated.ai_generation, provider, model,
+    run_id: 'codex-test-1', model_run_provenance: 'operator_reported',
+    limitations: [`Udkast udarbejdet i Codex med ${model}; JEV-kontrol via AI Gateway.`,
+      'Model og kørsels-ID er angivet af den lokale operatør; denne import starter ikke Codex.',
+      'Sletning efter kontraktophør skal dokumenteres.'],
+  }};
   const baseFetch = authFetch.getMockImplementation();
   authFetch.mockImplementation((url, options) => url === '/api/dpia/assessments/assessment-2'
-    ? response(codexResult)
-    : url.endsWith('/generate')
-      ? response({ detail: 'AI Gateway er midlertidigt utilgængelig.' }, false, 503)
-      : baseFetch(url, options));
+    ? response(imported) : url.endsWith('/generate')
+      ? response({ detail: 'AI Gateway er midlertidigt utilgængelig.' }, false, 503) : baseFetch(url, options));
   mount('/vurdering?assessment_id=assessment-2&case=case-1');
-  expect(await screen.findByText('Codex-test')).toBeInTheDocument();
-  expect(screen.getByText(`Udarbejdet som test i Codex med ${model}. Kontrolleret med typesafe-ai/jev.`)).toBeInTheDocument();
-  expect(screen.getByText('Codex-tests startes i Codex og gemmes på sagen. Knappen ovenfor opretter en ny version via AI Gateway.')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Opret ny AI-version' })).not.toBeInTheDocument();
+  expect(await screen.findByText(`Model: ${label}`)).toBeInTheDocument();
+  expect(screen.getAllByText(`Udarbejdet med ${label}. Kontrolleret med JEV.`).length).toBeGreaterThan(0);
+  expect(document.body).not.toHaveTextContent(/Codex/i);
+  expect(document.body).toHaveTextContent('Sletning efter kontraktophør skal dokumenteres.');
   expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
-
-  const button = screen.getByRole('button', { name: 'Opret via AI Gateway' });
+  const button = screen.getByRole('button', { name: 'Opret ny AI-version' });
   await waitFor(() => expect(button).toBeEnabled());
   fireEvent.click(button);
   expect(await screen.findByRole('alert')).toHaveTextContent('AI Gateway er midlertidigt utilgængelig.');
   expect(authFetch).toHaveBeenCalledWith('/api/dpia/assessments/assessment-2/generate', expect.objectContaining({ method: 'POST' }));
   expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1);
-  expect(screen.getByText(codexResult.executive_summary)).toBeInTheDocument();
-  expect(screen.getByText('Codex-test')).toBeInTheDocument();
+  expect(screen.getByText(imported.executive_summary)).toBeInTheDocument();
+  expect(document.body).not.toHaveTextContent(/Codex/i);
 });
 
-test('en gemt Codex-test aktiverer ikke Gateway-knappen når Gateway mangler', async () => {
+test.each(['codex-local-test', 'codex-local'])('en gemt lokal import %s aktiverer ikke AI-knappen når forbindelsen mangler', async provider => {
   const baseFetch = authFetch.getMockImplementation();
   authFetch.mockImplementation((url, options) => url === '/api/dpia/ai/status'
-    ? response({ configured: false })
-    : url === '/api/dpia/assessments/assessment-2'
-      ? response({ ...generated, ai_generation: { ...generated.ai_generation, provider: 'codex-local-test', model: 'gpt-5.6-sol' } })
-      : baseFetch(url, options));
+    ? response({ configured: false }) : url === '/api/dpia/assessments/assessment-2'
+      ? response({ ...generated, ai_generation: { ...generated.ai_generation, provider, model: 'gpt-5.6-sol' } }) : baseFetch(url, options));
   mount('/vurdering?assessment_id=assessment-2');
-  expect(await screen.findByText('Codex-test')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Opret via AI Gateway' })).toBeDisabled();
+  expect(await screen.findByText('Model: GPT-5.6 Sol')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Opret ny AI-version' })).toBeDisabled();
   expect(screen.getByText('AI-udarbejdelse er ikke tilgængelig på serveren i øjeblikket.')).toBeInTheDocument();
   expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
 });
 
-test.each(['gpt-5.6-sol', 'gpt-6-astra'])('viser et planlagt kommunalt Codex-udkast med %s uden testmærkning eller automatisk Gateway-kald', async model => {
-  const codexResult = {
-    ...generated,
-    project_name: 'AI-referater til kommunale projektmøder',
-    ai_generation: { ...generated.ai_generation, provider: 'codex-local', model, run_id: 'municipal-scenario-1', model_run_provenance: 'operator_reported' },
-  };
-  const baseFetch = authFetch.getMockImplementation();
-  authFetch.mockImplementation((url, options) => url === '/api/dpia/assessments/assessment-2'
-    ? response(codexResult)
-    : url.endsWith('/generate')
-      ? response({ detail: 'AI Gateway er midlertidigt utilgængelig.' }, false, 503)
-      : baseFetch(url, options));
-  mount('/vurdering?assessment_id=assessment-2&case=case-1');
-  expect(await screen.findByText('Udarbejdet i Codex')).toBeInTheDocument();
-  expect(screen.getByText(`Udarbejdet i Codex med ${model}. Kontrolleret med typesafe-ai/jev.`)).toBeInTheDocument();
-  expect(screen.getByText('Udkastet er udarbejdet i Codex. Model og kørsels-ID er oplyst ved importen. Knappen ovenfor opretter en ny version via AI Gateway.')).toBeInTheDocument();
-  expect(screen.queryByText('Codex-test')).not.toBeInTheDocument();
-  expect(screen.queryByText(/Udarbejdet som test i Codex/)).not.toBeInTheDocument();
+test('læsevenlig udgave kan deles og skiftes tilbage uden at ændre vurderingen', async () => {
+  const view = mount('/vurdering?assessment_id=assessment-1&case=case-1&view=readable');
+  const readable = await screen.findByRole('button', { name: 'Læsevenlig udgave' });
+  expect(readable).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('tab', { name: 'Konsekvensanalyse' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Redigér rapportudkast' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Hent konsekvensanalyse (Word)' })).toBeEnabled();
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(saved.project_name);
+  fireEvent.click(screen.getByRole('button', { name: 'Fuld vurdering' }));
+  expect(screen.getByRole('tab', { name: 'Konsekvensanalyse' })).toBeVisible();
+  expect(screen.getByLabelText('Aktuel adresse')).not.toHaveTextContent('view=readable');
+  fireEvent.click(screen.getByRole('button', { name: 'Læsevenlig udgave' }));
+  expect(screen.getByLabelText('Aktuel adresse')).toHaveTextContent('view=readable');
+  expect(screen.getByLabelText('Aktuel adresse')).toHaveTextContent('assessment_id=assessment-1');
+  expect(screen.getByLabelText('Aktuel adresse')).toHaveTextContent('case=case-1');
   expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
-  const button = screen.getByRole('button', { name: 'Opret via AI Gateway' });
-  await waitFor(() => expect(button).toBeEnabled());
-  fireEvent.click(button);
-  expect(await screen.findByRole('alert')).toHaveTextContent('AI Gateway er midlertidigt utilgængelig.');
-  expect(authFetch).toHaveBeenCalledWith('/api/dpia/assessments/assessment-2/generate', expect.objectContaining({ method: 'POST' }));
-  expect(screen.getByText(`Udarbejdet i Codex med ${model}. Kontrolleret med typesafe-ai/jev.`)).toBeInTheDocument();
+  view.unmount();
 });
 
-test('et lokalt Codex-udkast aktiverer ikke Gateway-knappen når Gateway mangler', async () => {
+test('kontrol af et ændret afsnit tælles ikke som aktuel selv om kontrollen har et andet ID', async () => {
   const baseFetch = authFetch.getMockImplementation();
-  authFetch.mockImplementation((url, options) => url === '/api/dpia/ai/status'
-    ? response({ configured: false })
-    : url === '/api/dpia/assessments/assessment-2'
-      ? response({ ...generated, ai_generation: { ...generated.ai_generation, provider: 'codex-local', model: 'gpt-6-astra' } })
-      : baseFetch(url, options));
+  authFetch.mockImplementation(url => url === '/api/dpia/assessments/assessment-2' ? response({
+    ...generated,
+    editorial_revision: { note: 'Afsnittet er opdateret.', stale_check_ids: ['section:1.1'], changed_targets: ['section:1.1'] },
+    ai_generation: { ...generated.ai_generation, review: { model: 'typesafe-ai/jev', checks: [
+      { id: 'old-combined-check', label: 'Historisk samlet kontrol', section_ids: ['section:1.1'], requires_review: true },
+    ] } },
+  }) : baseFetch(url));
   mount('/vurdering?assessment_id=assessment-2');
-  expect(await screen.findByText('Udarbejdet i Codex')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Opret via AI Gateway' })).toBeDisabled();
-  expect(screen.queryByText('Codex-test')).not.toBeInTheDocument();
-  expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+  expect(await screen.findByText('Afsnittet er opdateret.')).toBeInTheDocument();
+  expect(screen.queryByText('Historisk samlet kontrol')).not.toBeInTheDocument();
+  expect(screen.getByText(/Der foreligger ikke et fuldt kvalitetstjek/)).toBeInTheDocument();
 });
 
 test('faner adskiller analysen og risici og kan vælges med tastaturet uden modelkald', async () => {

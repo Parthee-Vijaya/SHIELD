@@ -5,6 +5,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import BRAND from '../config/brand';
 import AssessmentSummary, { AssessmentRecommendations } from '../components/assessment/AssessmentSummary';
 import StructuredReportText from '../components/assessment/StructuredReportText';
+import ReadableAssessment from '../components/assessment/ReadableAssessment';
+import { modelLabel, modelNotes } from '../utils/modelPresentation';
 import RiskAssessmentPanel from '../components/assessment/RiskAssessmentPanel';
 import ReportEditor from '../components/assessment/ReportEditor';
 import ChoiceWithOtherField from '../components/ChoiceWithOtherField';
@@ -36,7 +38,7 @@ const STEPS = [
 const AI_GENERATION_TIMEOUT_MS = 61 * 60 * 1000;
 
 const Page = styled.div`
-  max-width: 1320px;
+  max-width: ${p => p.$reading ? '1080px' : '1320px'};
   margin: 0 auto;
   padding: clamp(42px, 6vw, 78px) 20px 110px;
   color: ${p => p.theme.colors.text};
@@ -464,6 +466,7 @@ const ResultTop = styled.section`
   border: 1px solid ${p => p.theme.colors.border};
   background: ${p => p.theme.colors.surface};
   h1 { font-size: clamp(2rem, 4vw, 3.25rem); max-width: 100%; }
+  ${p => p.$reading && `padding: 0; border: 0; background: transparent; &::before { display: none; }`}
 
   &::before {
     content: '';
@@ -844,6 +847,7 @@ const DpiaAssessmentPage = () => {
   const assessmentId = searchParams.get('assessment_id') || searchParams.get('assessment') || '';
   const queryCaseId = searchParams.get('case') || searchParams.get('case_db_id') || '';
   const procurementReviewId = searchParams.get('procurement_review') || '';
+  const readableView = searchParams.get('view') === 'readable';
   const draftStorageKey = queryCaseId ? `${DRAFT_STORAGE_KEY}:${queryCaseId}:${procurementReviewId || 'manual'}` : DRAFT_STORAGE_KEY;
   const [restoredDraft] = useState(() => loadDraft(draftStorageKey));
   const [prefillLoading, setPrefillLoading] = useState(Boolean(procurementReviewId && !assessmentId));
@@ -1250,11 +1254,19 @@ const DpiaAssessmentPage = () => {
 
   if (result) {
     const generation = result.ai_generation;
-    const isCodexTest = generation?.provider === 'codex-local-test';
-    const isCodexLocal = generation?.provider === 'codex-local';
-    const isCodex = isCodexTest || isCodexLocal;
+    const displayLimitations = modelNotes(generation?.limitations, generation?.model);
+    const changeView = (readable, tab = 'analysis') => {
+      const next = new URLSearchParams(searchParams);
+      if (readable) next.set('view', 'readable'); else next.delete('view');
+      setResultTab(tab);
+      setSearchParams(next);
+      requestAnimationFrame(() => {
+        const target = document.getElementById(readable ? 'readable-assessment' : `result-tab-${tab}`);
+        target?.focus();
+      });
+    };
     const staleCheckIds = new Set(asList(result.editorial_revision?.stale_check_ids));
-    const reviewChecks = asList(generation?.review?.checks).filter(check => !staleCheckIds.has(check.id));
+    const reviewChecks = asList(generation?.review?.checks).filter(check => !staleCheckIds.has(check.id) && !asList(check.section_ids).some(id => staleCheckIds.has(id)));
     const reviewFlags = reviewChecks.filter(check => check.requires_review);
     const sources = asList(generation?.sources);
     const sourceReferences = ids => asList(ids).map(id => sourceLabel(sources.find(source => source.id === id) || { id, title: id })).join(' · ');
@@ -1266,56 +1278,66 @@ const DpiaAssessmentPage = () => {
       return asList(result.sections).find(section => section.id === sectionId)?.title || target;
     };
     return (
-      <Page>
-        <ResultTop $tone={statusTone}>
+      <Page $reading={readableView}>
+        <ResultTop $tone={statusTone} $reading={readableView}>
           <Eyebrow>Konsekvensanalyse · version {result.version || 1} · {formatCheckTime(result.created_at)}</Eyebrow>
           <Title ref={headingRef} tabIndex="-1">{result.project_name || `Konsekvensanalyse · ${result.id?.slice(0, 8) || 'gemt vurdering'}`}</Title>
           {result.organisation && <Lead><strong>Dataansvarlig organisation:</strong> {result.organisation}</Lead>}
-          {(result.department || result.processing_version) && <Lead>{[result.department, result.processing_version && `Behandling: ${result.processing_version}`].filter(Boolean).join(' · ')}</Lead>}
-          <p><strong>{result.status_label || 'Kræver faglig gennemgang'}</strong></p>
-          <ResultMeta>
+          {!readableView && (result.department || result.processing_version) && <Lead>{[result.department, result.processing_version && `Behandling: ${result.processing_version}`].filter(Boolean).join(' · ')}</Lead>}
+          {!readableView && <p><strong>{result.status_label || 'Kræver faglig gennemgang'}</strong></p>}
+          <ResultActions role="group" aria-label="Visningsform">
+            <Button $primary={readableView} aria-pressed={readableView} onClick={() => changeView(true)} disabled={generating || editingReport}>Læsevenlig udgave</Button>
+            <Button $primary={!readableView} aria-pressed={!readableView} onClick={() => changeView(false)} disabled={generating || editingReport}>Fuld vurdering</Button>
+          </ResultActions>
+          {readableView ? <SourceNote>Et overblik til ledelse og faglig dialog. {generation?.model ? `Udarbejdet med ${modelLabel(generation.model)}.` : 'Baseret på den gemte vurdering.'}</SourceNote> : <ResultMeta>
             <Pill>Risiko: {riskLabel(result.risk_level)}</Pill>
             <Pill>Komplethed: {completenessPercent(result.completeness)}%</Pill>
             <Pill>DPIA påkrævet: {result.dpia_required === true ? 'Ja' : result.dpia_required === false ? 'Nej' : 'Skal afklares'}</Pill>
             <Pill>Skabelon: {result.template_version || 'ukendt'}</Pill>
-            {isCodexTest && <Pill>Codex-test</Pill>}
-            {isCodexLocal && <Pill>Udarbejdet i Codex</Pill>}
+            {generation?.model && <Pill>Model: {modelLabel(generation.model)}</Pill>}
             {generation && <Pill>AI-udarbejdet udkast · kræver faglig gennemgang</Pill>}
-          </ResultMeta>
-          <AssessmentSummary result={result} caseDbId={caseDbId} onFollowup={() => { setResultTab('followup'); requestAnimationFrame(() => { document.getElementById('result-tab-followup')?.focus(); document.getElementById('result-tab-followup')?.scrollIntoView({ block: 'center' }); }); }} />
-          <SafetyNote>Resultatet er beslutningsstøtte. Den dataansvarlige og DPO skal kontrollere faktum, hjemmel, risici og foranstaltninger før godkendelse.</SafetyNote>
-          <ResultActions data-tour="assessment-downloads">
+          </ResultMeta>}
+          {!readableView && <AssessmentSummary result={result} caseDbId={caseDbId} onFollowup={() => { setResultTab('followup'); requestAnimationFrame(() => { document.getElementById('result-tab-followup')?.focus(); document.getElementById('result-tab-followup')?.scrollIntoView({ block: 'center' }); }); }} />}
+          {!readableView && <SafetyNote>Resultatet er beslutningsstøtte. Den dataansvarlige og DPO skal kontrollere faktum, hjemmel, risici og foranstaltninger før godkendelse.</SafetyNote>}
+          {!readableView && <ResultActions data-tour="assessment-downloads">
             <Button $primary onClick={() => download('docx')} disabled={Boolean(downloading)}>{downloading === 'docx' ? 'Danner Word…' : 'Hent konsekvensanalyse (Word)'}</Button>
             <Button onClick={() => download('xlsx')} disabled={Boolean(downloading)}>{downloading === 'xlsx' ? 'Danner Excel…' : 'Hent risikovurdering (Excel)'}</Button>
             {caseDbId && <CaseLink to={`/sager/${caseDbId}`}>Tilbage til samlet sag</CaseLink>}
-            {editableResultId.current === result.id && <Button onClick={editInputs} disabled={generating||editingReport}>Redigér oplysninger</Button>}
-            <Button onClick={reset} disabled={generating||editingReport}>Start ny vurdering</Button>
-            {caseDbId && <Button onClick={()=>setEditingReport(true)} disabled={generating||editingReport}>{editingReport?'Rapporteditor er åben':'Redigér rapportudkast'}</Button>}
-          </ResultActions>
-          {caseDbId && (
+            {!readableView && editableResultId.current === result.id && <Button onClick={editInputs} disabled={generating||editingReport}>Redigér oplysninger</Button>}
+            {!readableView && <Button onClick={reset} disabled={generating||editingReport}>Start ny vurdering</Button>}
+            {!readableView && caseDbId && <Button onClick={()=>setEditingReport(true)} disabled={generating||editingReport}>{editingReport?'Rapporteditor er åben':'Redigér rapportudkast'}</Button>}
+          </ResultActions>}
+          {!readableView && caseDbId && (
             <>
               <ResultActions data-tour="ai-report">
                 <Button onClick={generateReport} disabled={generating || editingReport || !aiStatus?.configured}>
-                  {generating ? 'Udarbejder og kvalitetstjekker…' : isCodex ? 'Opret via AI Gateway' : generation ? 'Opret ny AI-version' : 'Udarbejd med AI'}
+                  {generating ? 'Udarbejder og kvalitetstjekker…' : generation ? 'Opret ny AI-version' : 'Udarbejd med AI'}
                 </Button>
                 <CaseLink to={`/sager/${encodeURIComponent(caseDbId)}?tab=technical-runs&assessment_id=${encodeURIComponent(result.id)}`}>Teknisk kørsel</CaseLink>
                 {result.parent_assessment_id && <CaseLink to={`/vurdering?assessment_id=${encodeURIComponent(result.parent_assessment_id)}&case=${encodeURIComponent(caseDbId)}`}>Se foregående version</CaseLink>}
               </ResultActions>
               <SourceNote role={generating ? 'status' : undefined}>
                 {generating
-                  ? `${isCodex ? 'AI Gateway' : 'GPT'} udarbejder rapporten. Store kildegrundlag behandles i delanalyser og samles, før JEV kontrollerer rapporten mod sagens grundlag. Det kan tage længere tid ved mange dokumenter. Den nye version gemmes på sagen, når behandlingen er færdig.`
+                  ? `GPT udarbejder rapporten. Store kildegrundlag behandles i delanalyser og samles, før JEV kontrollerer rapporten mod sagens grundlag. Det kan tage længere tid ved mange dokumenter. Den nye version gemmes på sagen, når behandlingen er færdig.`
                   : aiStatus?.configured
                     ? 'AI udarbejder en ny version ud fra det gemte grundlag. Denne version bevares i sagens historik.'
                     : 'AI-udarbejdelse er ikke tilgængelig på serveren i øjeblikket.'}
               </SourceNote>
-              {isCodexTest && <SourceNote>Codex-tests startes i Codex og gemmes på sagen. Knappen ovenfor opretter en ny version via AI Gateway.</SourceNote>}
-              {isCodexLocal && <SourceNote>Udkastet er udarbejdet i Codex. Model og kørsels-ID er oplyst ved importen. Knappen ovenfor opretter en ny version via AI Gateway.</SourceNote>}
             </>
           )}
           {generationError && <InlineError role="alert">{generationError}</InlineError>}
           {downloadError && <InlineError role="alert">{downloadError}</InlineError>}
         </ResultTop>
 
+        {readableView ? <>
+          <ReadableAssessment result={result} onOpenDetails={tab => changeView(false, tab)} />
+          <ResultActions data-tour="assessment-downloads">
+            <Button onClick={() => download('docx')} disabled={Boolean(downloading)}>{downloading === 'docx' ? 'Danner Word…' : 'Hent konsekvensanalyse (Word)'}</Button>
+            <Button onClick={() => download('xlsx')} disabled={Boolean(downloading)}>{downloading === 'xlsx' ? 'Danner Excel…' : 'Hent risikovurdering (Excel)'}</Button>
+            {caseDbId && <CaseLink to={`/sager/${caseDbId}`}>Tilbage til samlet sag</CaseLink>}
+          </ResultActions>
+          <SourceNote>Word og Excel indeholder den fulde vurdering og dens dokumentation.</SourceNote>
+        </> : <>
         {result.editorial_revision && <Card><h2>Fagligt redigeret rapportversion</h2><p>{result.editorial_revision.note}</p><SourceNote>{asList(result.editorial_revision.changed_targets).length} afsnit er ændret. De ændrede formuleringer kræver en ny faglig gennemgang. {generation ? 'De er ikke omfattet af den tidligere JEV-kontrol.' : 'Den redigerede tekst er ikke kontrolleret med JEV.'} Vurderingens risikoscorer og krav er bevaret.</SourceNote></Card>}
         {editingReport && <ReportEditor assessment={result} onClose={()=>setEditingReport(false)} onSaved={payload=>{setEditingReport(false);showSavedResult(payload);}} />}
 
@@ -1336,7 +1358,7 @@ const DpiaAssessmentPage = () => {
             {generation && (
               <Card>
                 <h2>Kvalitetstjek med JEV</h2>
-                <p>{result.editorial_revision ? (isCodexLocal ? 'Den oprindelige AI-version blev udarbejdet i Codex med' : 'Den oprindelige AI-version blev udarbejdet med') : isCodexTest ? 'Udarbejdet som test i Codex med' : isCodexLocal ? 'Udarbejdet i Codex med' : 'Udarbejdet med'} {generation.model}. {result.editorial_revision ? 'Uændrede kontrolpunkter fra den tidligere JEV-kørsel vises nedenfor.' : `Kontrolleret med ${generation.review?.model || 'JEV'}.`}</p>
+                <p>{result.editorial_revision ? 'Den oprindelige AI-version blev udarbejdet med' : 'Udarbejdet med'} {modelLabel(generation.model)}. {result.editorial_revision ? 'Uændrede kontrolpunkter fra den tidligere JEV-kørsel vises nedenfor.' : `Kontrolleret med ${modelLabel(generation.review?.model || 'JEV')}.`}</p>
                 <p>{reviewFlags.length ? `${reviewFlags.length} ${reviewFlags.length === 1 ? 'kontrolpunkt' : 'kontrolpunkter'} kræver opfølgning.` : reviewChecks.length ? 'JEV har ikke markeret kontrolpunkter til opfølgning.' : 'Der foreligger ikke et fuldt kvalitetstjek.'} Faglig gennemgang af faktum, hjemmel og risici kræves før godkendelse.</p>
                 {reviewFlags.length > 0 && <ul>{reviewFlags.slice(0, 5).map(check => <li key={check.id}>{check.label}{asList(check.section_ids).length > 0 ? ` · ${asList(check.section_ids).map(reviewTargetLabel).join(' · ')}` : ''}</li>)}</ul>}
                 {reviewChecks.length > 0 && (
@@ -1350,7 +1372,7 @@ const DpiaAssessmentPage = () => {
                     ))}</ul>
                   </ReviewDetails>
                 )}
-                {asList(generation.limitations).length > 0 && <ReviewDetails><summary>Se forbehold for AI og kildegrundlaget ({asList(generation.limitations).length})</summary><ul>{asList(generation.limitations).map((limitation, index) => <li key={index}><StructuredReportText text={limitation} /></li>)}</ul></ReviewDetails>}
+                {displayLimitations.length > 0 && <ReviewDetails><summary>Se forbehold for AI og kildegrundlaget ({displayLimitations.length})</summary><ul>{displayLimitations.map((limitation, index) => <li key={index}><StructuredReportText text={limitation} /></li>)}</ul></ReviewDetails>}
               </Card>
             )}
             {result.legal_verification && (
@@ -1469,6 +1491,7 @@ const DpiaAssessmentPage = () => {
             {sources.length === 0 && <Card><h2>Grundlag for vurderingen</h2><p>Denne version bygger på de gemte oplysninger i spørgerammen. Eventuelle dokumenter og databehandleraftaler findes under sagens Dokumentation.</p>{caseDbId && <CaseLink to={`/sager/${caseDbId}?tab=documents`}>Se sagens dokumentation</CaseLink>}</Card>}
           </div>
         </ResultGrid>
+        </>}
       </Page>
     );
   }

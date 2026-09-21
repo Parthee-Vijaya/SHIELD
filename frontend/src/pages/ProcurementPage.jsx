@@ -1,3 +1,4 @@
+import { modelLabel } from '../utils/modelPresentation';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
@@ -47,7 +48,6 @@ const showValue = (field,value) => Array.isArray(value)
   : typeof value === 'boolean' ? (value ? 'Ja' : 'Nej')
   : VALUE_LABELS[field]?.[value] || OPTION_LABELS[field]?.[value] || String(value ?? 'Ikke oplyst');
 const date = value => value ? new Date(value).toLocaleString('da-DK') : '';
-const providerLabel = provider => ({'codex-local-test':'Codex · lokal kørsel','vercel-ai-gateway':'Vercel AI Gateway'}[provider] || provider || 'Ikke oplyst');
 const positiveCount = value => Number.isInteger(value) && value > 0;
 const count = value => value.toLocaleString('da-DK');
 
@@ -202,7 +202,7 @@ export default function ProcurementPage() {
         {flaggedChecks.has('summary')&&<Notice>JEV har markeret sammenfatningen til faglig gennemgang. Kontrollér den mod leverandørmaterialet og kommunens anvendelse.</Notice>}
         <p><small>Analyse fra {date(analysis.created_at)} · {analysis.facts.length} kildeunderbyggede forslag</small></p>
         <details><summary>Om analysen og kildekontrollen</summary>
-          <dl><dt>Model</dt><dd>{analysis.model || 'Ikke oplyst'}</dd><dt>Kørsel</dt><dd>{providerLabel(analysis.generation_provider)}</dd><dt>Kildekontrol</dt><dd>{analysis.review?.model || 'Ikke oplyst'} · {checks.length} kontrolpunkter, heraf {flaggedChecks.size} markeret til gennemgang</dd></dl>
+          <dl><dt>Model</dt><dd>{modelLabel(analysis.model)}</dd><dt>Kildekontrol</dt><dd>{modelLabel(analysis.review?.model)} · {checks.length} kontrolpunkter, heraf {flaggedChecks.size} markeret til gennemgang</dd></dl>
           <p><small>JEV vurderer udsagnenes støtte i de medsendte kilder. Det er ikke en juridisk godkendelse eller en garanti for, at leverandørens oplysninger er korrekte. Kommunen skal gennemgå grundlaget og dokumentere sin vurdering.</small></p>
         </details>
         {analysis.outdated&&<Notice $error>Grundlaget er ændret siden analysen. Gå til leverandørmaterialet og analysér det aktuelle grundlag, før du fortsætter.</Notice>}

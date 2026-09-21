@@ -550,6 +550,7 @@ export function AssessmentsPanel({ assessments }) {
                   <p>{itemDescription(item) || `Gennemført ${formatDate(item.created_at || item.completed_at, true)}.`}</p>
                   <p>Version {item.version || 1}{isDpia ? ' · Konsekvensanalyse og risikovurdering' : ''}</p>
                   {href ? <TextLink href={href}>{isDpia ? 'Læs analyse og hent Word / Excel' : 'Åbn låst vurdering'} <span aria-hidden="true">→</span></TextLink> : null}
+                  {dpiaHref && <p><TextLink href={`${dpiaHref}&view=readable`}>Læsevenlig udgave →</TextLink></p>}
                 </div>
                 <StatusPill $tone={toneForStatus(status)}>{statusLabel(status)}</StatusPill>
               </ListItem>

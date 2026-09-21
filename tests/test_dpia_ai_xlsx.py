@@ -97,7 +97,7 @@ def test_workbook_preserves_provided_stakeholder_statements():
         assert request.data_subject_consultation in sheet
 
 
-def test_codex_workbook_discloses_actual_model_run_and_limitations():
+def test_imported_workbook_discloses_model_and_limitations_without_platform_tags():
     request, result = make_assessment()
     result.ai_generation = {
         "provider": "codex-local-test",
@@ -108,10 +108,9 @@ def test_codex_workbook_discloses_actual_model_run_and_limitations():
     }
     with ZipFile(BytesIO(export_dpia_xlsx(request, result))) as output:
         text = " ".join(ET.fromstring(output.read("xl/worksheets/ai-provenance.xml")).itertext())
-        assert "gpt-5.6-sol" in text
+        assert "GPT-5.6 Sol" in text
         assert "typesafe-ai/jev" in text
-        assert "Codex – lokal testkørsel" in text
-        assert "synthetic-codex-run-001" in text
+        assert "codex" not in text.lower()
         assert "Ingen dokumentbankfiler indgår i denne test." in text
         assert "openai/gpt-5.5" not in text
 

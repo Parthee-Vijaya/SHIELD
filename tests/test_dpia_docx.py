@@ -114,7 +114,7 @@ def test_word_uses_exact_matrix_and_before_after_scores(assessment):
         assert f"({risk.residual_impact})" in table.cell(2, 2).text
 
 
-def test_codex_word_discloses_actual_model_run_and_limitations(assessment):
+def test_word_shows_actual_model_and_limits_without_platform_tag(assessment):
     request, result = assessment
     result.ai_generation = {
         "provider": "codex-local-test",
@@ -124,10 +124,10 @@ def test_codex_word_discloses_actual_model_run_and_limitations(assessment):
         "limitations": ["Ingen dokumentbankfiler indgår i denne test."],
     }
     text = text_content(Document(BytesIO(export_dpia_docx(request, result))))
-    assert "gpt-5.6-sol" in text
+    assert "GPT-5.6 Sol" in text
     assert "typesafe-ai/jev" in text
-    assert "Codex – lokal testkørsel" in text
-    assert "synthetic-codex-run-001" in text
+    assert "codex" not in text.lower()
+    assert "Udarbejdet i" not in text
     assert "Ingen dokumentbankfiler indgår i denne test." in text
     assert "openai/gpt-5.5" not in text
 
@@ -202,7 +202,7 @@ def test_word_keeps_version_sources_additional_proposals_and_questions(assessmen
                         "id": "D2",
                         "title": "Historisk kilde",
                         "url": "https://example.org/legacy",
-                    }
+                    },
                 ],
                 "limitations": ["Datagrundlaget er ufuldstændigt."],
             },

@@ -13,6 +13,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Mm, Pt, RGBColor
 
+from src.services.ai_presentation import metadata_identifier, metadata_note, model_label
 from src.services.dpia_assessment import (
     CONTROL_LABELS,
     DATA_LABELS,
@@ -420,11 +421,19 @@ def build_procurement_review_docx(
         ("Analyse", analysis["id"]),
         ("Analysetidspunkt", date_label(analysis["created_at"])),
         ("Gennemgang", review["id"]),
-        ("Modeller", f"{analysis['model']} · kontrol {analysis['review']['model']}"),
-        ("Kørsel", analysis.get("generation_provider", "Ikke registreret")),
+        ("Skrivemodel", model_label(analysis["model"])),
+        ("Kontrolmodel", analysis["review"]["model"]),
         (
             "Versionsgrundlag",
-            f"{analysis.get('prompt_version', 'Ikke registreret')} · {analysis['review']['rubric_version']}",
+            " · ".join(
+                filter(
+                    None,
+                    [
+                        metadata_identifier(analysis.get("prompt_version")),
+                        analysis["review"]["rubric_version"],
+                    ],
+                )
+            ),
         ),
     ]:
         item = paragraph(doc, value, label=label)
@@ -432,7 +441,7 @@ def build_procurement_review_docx(
         for run in item.runs:
             run.font.size = Pt(9)
     if analysis.get("provenance_note"):
-        paragraph(doc, analysis["provenance_note"])
+        paragraph(doc, metadata_note(analysis["provenance_note"]))
     footer = section.footer.paragraphs[0]
     footer.paragraph_format.space_before = Pt(4)
     footer.add_run("Grundlag for juridisk gennemgang · Side ").font.size = Pt(8)
