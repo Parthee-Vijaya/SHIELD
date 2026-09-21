@@ -675,7 +675,7 @@ def _worksheet_updates(
                 # P is left untouched until an actual due date is assigned.
             }
         )
-    dpo_text = request.dpo_advice or (
+    dpo_text = ("DPO/databeskyttelsesrådgiverens inddragelse er ikke dokumenteret og skal afklares. " + request.dpo_advice) if request.dpo_involved is None else request.dpo_advice or (
         "DPO er oplyst som inddraget. DPO's konkrete synspunkter og eventuelle forbehold skal indsættes og godkendes manuelt."
         if request.dpo_involved
         else "Mangler oplysninger: DPO er ikke oplyst som inddraget; synspunkter skal indhentes og dokumenteres."

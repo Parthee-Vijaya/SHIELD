@@ -709,3 +709,163 @@ def test_export_rejects_risk_level_that_disagrees_with_matrix():
 
     with pytest.raises(TemplateError, match="inkonsistent risikomatrix"):
         export_dpia_xlsx(request, inconsistent)
+
+
+@pytest.mark.parametrize(
+    "field,words",
+    [
+        ("large_scale", "omfang er ikke afklaret"),
+        ("transfer_outside_eea", "Eventuel overførsel"),
+        ("dpo_involved", "inddragelse er ikke dokumenteret"),
+        ("human_oversight", "Menneskelig kontrol af AI-output er ikke afklaret"),
+    ],
+)
+def test_unknown_answers_are_preserved_and_block_instead_of_becoming_false(
+    field, words
+):
+    overrides = {field: None}
+    if field == "transfer_outside_eea":
+        overrides["transfer_mechanism"] = "not_assessed"
+    request, result = make_assessment(**overrides)
+    assert request.model_dump(mode="json")[field] is None
+    assert result.status == "blocked"
+    assert any(words in text for text in result.blockers)
+    assert any(words in text for text in result.missing_information)
+    if field == "dpo_involved":
+        assert not any("ikke inddraget, selv" in text for text in result.blockers)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"transfer_outside_eea": None, "transfer_mechanism": "not_applicable"},
+        {"transfer_outside_eea": None, "transfer_mechanism": "scc"},
+        {
+            "transfer_outside_eea": None,
+            "transfer_mechanism": "not_assessed",
+            "hosting_region": "third_country",
+        },
+        {"transfer_outside_eea": False, "transfer_mechanism": "not_assessed"},
+    ],
+)
+def test_unknown_transfer_cannot_imply_no_transfer_or_a_known_mechanism(overrides):
+    with pytest.raises(ValidationError):
+        DPIAAssessmentRequest.model_validate(valid_payload(**overrides))
+
+
+@pytest.mark.parametrize(
+    "field,conservative",
+    [("large_scale", True), ("transfer_outside_eea", True), ("human_oversight", False)],
+)
+def test_unknown_risk_inputs_keep_conservative_scores_with_honest_rationale(
+    field, conservative
+):
+    extra = (
+        {"transfer_mechanism": "not_assessed"}
+        if field == "transfer_outside_eea"
+        else {}
+    )
+    _, unknown = make_assessment(**{field: None}, **extra)
+    _, known = make_assessment(**{field: conservative}, **extra)
+    assert [
+        (r.likelihood, r.impact, r.residual_likelihood, r.residual_impact)
+        for r in unknown.risks
+    ] == [
+        (r.likelihood, r.impact, r.residual_likelihood, r.residual_impact)
+        for r in known.risks
+    ]
+    assert any(
+        "Til afklaring / foreløbig screening" in risk.rationale
+        for risk in unknown.risks
+    )
+    assert any("ikke en konstatering" in risk.rationale for risk in unknown.risks)
+
+
+def test_unknown_large_scale_is_provisional_in_screening_and_summary():
+    _, result = make_assessment(large_scale=None, vulnerable_subjects=False)
+    criterion = next(
+        item for item in result.screening_criteria if item.id == "large_scale"
+    )
+    assert criterion.matched is None
+    assert "foreløbige" in criterion.explanation
+    assert (
+        result.dpia_required is True
+    )  # AI criterion + conservatively unresolved scale
+    assert "Foreløbig screening" in result.screening_conclusion
+    assert "ikke afklaret" in result.executive_summary
+    assert "foreløbigt beregnede" in result.executive_summary
+    assert "ikke dokumentation" in result.sections[1].text
+
+
+def test_unknown_transfer_sections_and_unknown_human_review_do_not_assert_negative_facts():
+    _, result = make_assessment(
+        transfer_outside_eea=None,
+        transfer_mechanism="not_assessed",
+        human_oversight=None,
+        automated_decisions=True,
+    )
+    for id in ("1.4", "1.7", "2.30"):
+        section = next(item for item in result.sections if item.id == id)
+        assert "Det er ikke afklaret" in section.text
+        assert "Der er ikke oplyst overførsel" not in section.text
+    assert (
+        next(item for item in result.sections if item.id == "2.30").review_status
+        == "missing_information"
+    )
+    assert (
+        "Menneskelig kontrol er ikke afklaret"
+        in next(item for item in result.sections if item.id == "1.8").text
+    )
+    assert not any("uden reel menneskelig kontrol" in item for item in result.blockers)
+
+
+def test_unknown_answers_round_trip_with_null_screening():
+    request, result = make_assessment(
+        large_scale=None,
+        transfer_outside_eea=None,
+        transfer_mechanism="not_assessed",
+        dpo_involved=None,
+        human_oversight=None,
+    )
+    engine = get_test_engine()
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine)
+    with factory() as db:
+        save_assessment(
+            db,
+            assessment_id=result.id,
+            created_at=result.created_at,
+            request_payload=request.model_dump(mode="json"),
+            result_payload=result.model_dump(mode="json"),
+        )
+        db.commit()
+        saved = get_assessment(db, result.id)
+        for name in (
+            "large_scale",
+            "transfer_outside_eea",
+            "dpo_involved",
+            "human_oversight",
+        ):
+            assert saved.request_payload[name] is None
+        assert (
+            next(
+                item
+                for item in saved.result_payload["screening_criteria"]
+                if item["id"] == "large_scale"
+            )["matched"]
+            is None
+        )
+    engine.dispose()
+
+
+def test_unknown_human_control_survives_without_automated_decisions():
+    request, result = make_assessment(human_oversight=None, automated_decisions=False)
+    assert request.human_oversight is None
+    assert result.status == "blocked"
+    text = next(section.text for section in result.sections if section.id == "1.8")
+    assert "Menneskelig kontrol af AI-output er ikke afklaret" in text
+    assert "Der er ikke oplyst menneskelig kontrol" not in text
+    assert any(
+        "menneskelig kontrol er ikke dokumenteret" in risk.rationale
+        for risk in result.risks
+    )

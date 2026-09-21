@@ -143,7 +143,7 @@ JEV kan både overse fejl og markere korrekte tekster. Den aktuelle grænse på 
 
 Den grundlæggende vurdering kan oprettes **uden en LLM-provider**. Faste regler behandler formularens oplysninger og fastlægger blandt andet DPIA-behov, risikoscorer, manglende oplysninger og blokeringer.
 
-AI må ikke ændre disse låste værdier eller erklære et blokerende forhold løst. Et uafklaret svar om modeltræning kan for eksempel bevares som ukendt. Nye risikoforslag holdes adskilt fra skabelonens beregnede risici og kræver særskilt faglig stillingtagen.
+AI må ikke ændre disse låste værdier eller erklære et blokerende forhold løst. Modeltræning, behandlingens omfang, tredjelandsoverførsler, DPO-inddragelse og faktisk menneskelig kontrol kan stå som **Ikke afklaret**. Svaret bevares i formularen, kildegrundlaget og Word/Excel; det bliver ikke omskrevet til et nej. Hvor ukendt omfang, overførsel eller menneskelig kontrol påvirker screening og risikoscore, fremgår den forsigtige beregningsforudsætning udtrykkeligt. Et kontraktkrav om menneskelig kontrol dokumenterer ikke, at kontrollen er etableret. Nye risikoforslag holdes adskilt fra skabelonens beregnede risici og kræver særskilt faglig stillingtagen.
 
 ### Mennesker vælger, afklarer og godkender
 

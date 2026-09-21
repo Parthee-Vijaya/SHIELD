@@ -156,6 +156,16 @@ def test_plain_text_quotes_urls_and_invalid_xml_are_handled(setup):
     assert fact_value("data_subjects", ["citizens"]) == "borgere"
 
 
+def test_unknown_fact_exports_as_unresolved_not_python_none(setup):
+    _, _, _, analysis, review = reviewed_case(setup)
+    analysis = deepcopy(analysis)
+    analysis["facts"][0].update(field="transfer_outside_eea", value=None)
+    content = text_of(build_procurement_review_docx(analysis, review))
+    assert "Oplysning: Ikke afklaret" in content
+    assert "Oplysning: None" not in content
+    assert fact_value("transfer_outside_eea", None) == "Ikke afklaret"
+
+
 def test_unknown_or_crosslinked_snapshot_cannot_export(setup):
     _, _, _, analysis, review = reviewed_case(setup)
     review = deepcopy(review)

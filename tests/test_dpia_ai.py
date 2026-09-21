@@ -704,3 +704,72 @@ def test_public_source_provenance_survives_snapshot_but_case_outputs_are_never_e
             dpia_ai._document_source_provenance({**metadata, "source_url": unsafe_url})
             == {}
         )
+
+
+@pytest.mark.parametrize(
+    "excerpt_count,total_chars,expected_count", [(245, 173_966, 245), (401, 4_010, 400)]
+)
+def test_document_excerpt_budget_preserves_large_complete_packs_and_discloses_limit(
+    monkeypatch, excerpt_count, total_chars, expected_count
+):
+    import src.database.document_bank as bank
+    import src.services.document_bank_storage as storage
+    import src.services.source_material as material
+
+    groups = [[] for _ in range(8)]
+    for index in range(excerpt_count):
+        groups[index % 8].append(
+            {
+                "text": "x"
+                * (
+                    total_chars // excerpt_count + (index < total_chars % excerpt_count)
+                ),
+                "locator": f"Afsnit {index + 1}",
+            }
+        )
+    links = []
+    expected_ids = []
+    for index, excerpts in enumerate(groups):
+        key = f"version-{index}"
+        links.append(
+            SimpleNamespace(
+                link_role="evidence",
+                document_version_id=key,
+                document=SimpleNamespace(title=f"Dokument {index + 1}"),
+                version=SimpleNamespace(
+                    id=key,
+                    original_filename=f"document-{index}.pdf",
+                    version_metadata={"source_material": True},
+                    size_bytes=1000,
+                    version_number=1,
+                    storage_key=str(index),
+                    content_sha256=sha256(str(index).encode()).hexdigest(),
+                ),
+            )
+        )
+        expected_ids.extend(
+            f"document:{key}:{part + 1}" for part in range(len(excerpts))
+        )
+
+    def read(key, *, expected_sha256):
+        assert expected_sha256 == sha256(key.encode()).hexdigest()
+        return key.encode()
+
+    monkeypatch.setattr(bank, "list_case_documents", lambda *args: links)
+    monkeypatch.setattr(storage, "read_document_bytes", read)
+    monkeypatch.setattr(
+        material,
+        "extract_source",
+        lambda content, filename: SimpleNamespace(
+            excerpts=groups[int(content)], warnings=[]
+        ),
+    )
+    sources = []
+    limitations = dpia_ai.add_case_document_sources(None, "case", sources)
+    assert len(sources) == expected_count
+    assert [source["id"] for source in sources] == expected_ids[:expected_count]
+    if excerpt_count <= dpia_ai.MAX_DOCUMENT_SOURCE_EXCERPTS:
+        assert sum(len(source["text"]) for source in sources) == total_chars
+        assert not any("afkortet" in note or "udeladt" in note for note in limitations)
+    else:
+        assert any("400 kildeuddrag" in note for note in limitations)

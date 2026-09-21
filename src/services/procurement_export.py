@@ -65,6 +65,8 @@ def clean_text(value: object) -> str:
 
 
 def fact_value(field: str, value: Any) -> str:
+    if value is None:
+        return "Ikke afklaret"
     if isinstance(value, bool):
         return "Ja" if value else "Nej"
     labels = VALUE_LABELS.get(field, {})

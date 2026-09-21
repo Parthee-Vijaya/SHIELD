@@ -30,6 +30,7 @@ GENERATION_TIMEOUT_SECONDS = 240
 MAX_WORKER_OUTPUT_BYTES = 2_000_000
 MAX_DOCUMENT_SOURCE_CHARS = 175_000
 MAX_SINGLE_DOCUMENT_SOURCE_CHARS = 100_000
+MAX_DOCUMENT_SOURCE_EXCERPTS = 400
 
 
 class AIGenerationError(Exception):
@@ -295,7 +296,7 @@ def add_case_document_sources(
     seen: set[str] = set()
     remaining = MAX_DOCUMENT_SOURCE_CHARS
     attempted_documents = 0
-    remaining_segments = 200
+    remaining_segments = MAX_DOCUMENT_SOURCE_EXCERPTS
     known_ids = {item["id"] for item in sources}
     for link in links:
         version = link.version
@@ -316,7 +317,7 @@ def add_case_document_sources(
         if attempted_documents >= 10 or remaining <= 0 or remaining_segments <= 0:
             limitations.append(
                 f"Dokumentversion {version.id} er udeladt: AI-grundlaget er begrænset "
-                "til 10 dokumenter, 175.000 tegn og 200 kildeuddrag samlet, "
+                f"til 10 dokumenter, 175.000 tegn og {MAX_DOCUMENT_SOURCE_EXCERPTS} kildeuddrag samlet, "
                 "med højst 100.000 tegn fra hvert dokument."
             )
             continue
@@ -361,7 +362,7 @@ def add_case_document_sources(
                 if consumed >= limit or remaining_segments <= 0:
                     limitations.append(
                         f"Dokumentversion {version.id} er afkortet til {consumed} tegn "
-                        "eller grænsen på 200 kildeuddrag; resten indgår ikke i AI-grundlaget."
+                        f"eller grænsen på {MAX_DOCUMENT_SOURCE_EXCERPTS} kildeuddrag; resten indgår ikke i AI-grundlaget."
                     )
                     break
                 text = excerpt["text"][: limit - consumed]

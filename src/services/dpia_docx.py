@@ -453,7 +453,8 @@ def _stakeholders(
     _heading(doc, "Databeskyttelsesrådgiverens synspunkter", 2)
     _paragraph(
         doc,
-        request.dpo_advice
+        ("DPO/databeskyttelsesrådgiverens inddragelse er ikke dokumenteret og skal afklares. " + request.dpo_advice)
+        if request.dpo_involved is None else request.dpo_advice
         or (
             "DPO er oplyst som inddraget, men konkrete synspunkter er ikke dokumenteret i vurderingen."
             if request.dpo_involved
@@ -818,7 +819,7 @@ def export_dpia_docx(
     for criterion in result.screening_criteria:
         _paragraph(
             doc,
-            f"{'Ja' if criterion.matched else 'Nej'}. {criterion.explanation}",
+            criterion.explanation if criterion.matched is None else f"{'Ja' if criterion.matched else 'Nej'}. {criterion.explanation}",
             label=criterion.label,
         )
     sections = {section.id: section for section in result.sections}

@@ -28,6 +28,7 @@ const validAssessment = {
   data_matching: false,
   service_access_impact: false,
   automated_decisions: false,
+  human_oversight: false,
   solution_type: 'saas',
   supplier_name: 'Velatir',
   hosting_region: 'eu_eea',
@@ -73,6 +74,35 @@ test.each([true, false, null])('modeltræning bevarer det eksplicitte svar %s ud
 test('modeltræning accepterer ikke et manglende felt eller fri tekst som et svar', () => {
   expect(validateAssessment({ ...validAssessment, model_training: undefined }).model_training).toBeTruthy();
   expect(validateAssessment({ ...validAssessment, model_training: 'unknown' }).model_training).toBeTruthy();
+});
+
+test('uafklaret omfang, tredjeland, DPO og menneskelig kontrol bevares ærligt i requesten', () => {
+  const values = { ...validAssessment, large_scale: null, transfer_outside_eea: null, transfer_mechanism: 'scc', dpo_involved: null, human_oversight: null };
+  expect(validateAssessment(values)).toEqual({});
+  expect(toAssessmentRequest(values)).toMatchObject({ large_scale: null, transfer_outside_eea: null, transfer_mechanism: 'not_assessed', dpo_involved: null, human_oversight: null });
+  expect(values.transfer_mechanism).toBe('scc');
+});
+
+test.each([true, false])('kendte svar %s bevares, også menneskelig kontrol uden automatisk afgørelse', answer => {
+  const values = { ...validAssessment, large_scale: answer, transfer_outside_eea: answer, transfer_mechanism: 'scc', dpo_involved: answer, human_oversight: answer, automated_decisions: false };
+  expect(validateAssessment(values)).toEqual({});
+  expect(toAssessmentRequest(values)).toMatchObject({ large_scale: answer, transfer_outside_eea: answer, transfer_mechanism: answer ? 'scc' : 'not_applicable', dpo_involved: answer, human_oversight: answer, automated_decisions: false });
+});
+
+test.each(['large_scale', 'transfer_outside_eea', 'dpo_involved', 'human_oversight'])('%s accepterer eksplicit null, men ikke et udeladt felt eller fri tekst', field => {
+  expect(validateAssessment({ ...validAssessment, [field]: null })[field]).toBeUndefined();
+  expect(validateAssessment({ ...validAssessment, [field]: undefined })[field]).toBeTruthy();
+  expect(validateAssessment({ ...validAssessment, [field]: 'unknown' })[field]).toBeTruthy();
+});
+
+test('uafklaret tredjeland ophæver ikke kravet om konsistens ved dokumenteret tredjelandshosting', () => {
+  expect(validateAssessment({ ...validAssessment, hosting_region: 'third_country', transfer_outside_eea: null }).transfer_outside_eea).toBeTruthy();
+});
+
+test('øvrige ja/nej-felter kræver fortsat et afklaret svar', () => {
+  ['special_categories', 'criminal_data', 'cpr_data', 'vulnerable_subjects', 'systematic_monitoring', 'profiling_scoring', 'data_matching', 'service_access_impact', 'automated_decisions'].forEach(field => {
+    expect(validateAssessment({ ...validAssessment, [field]: null })[field]).toBeTruthy();
+  });
 });
 
 test('en planlagt kontrol reducerer ikke risiko uden verificeret evidens', () => {

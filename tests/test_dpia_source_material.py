@@ -247,15 +247,16 @@ def test_excerpt_count_cap_is_explicit_across_multiple_new_documents(monkeypatch
     metadata = {"source_material": {"extraction_version": "municipal-sources-1"}}
     links = [
         evidence(f"doc-{number}", "purpose.txt", content, metadata=metadata)
-        for number in range(2)
+        for number in range(3)
     ]
     sources, warnings, _ = source_data(
         monkeypatch, links, {link.version.id: content for link in links}
     )
-    assert len(sources) == 200
-    assert sources[-1]["id"] == "document:doc-1:50"
-    assert any("200 kildeuddrag" in warning for warning in warnings)
+    assert len(sources) == 400
+    assert sources[-1]["id"] == "document:doc-2:100"
+    assert any("400 kildeuddrag" in warning for warning in warnings)
 
+    assert not any(source["id"] == "document:doc-2:101" for source in sources)
 
 def test_presentation_marked_as_output_is_never_read_even_if_also_linked_as_evidence(
     monkeypatch,

@@ -30,6 +30,8 @@ from src.services.dpia_assessment import DPIAAssessmentRequest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROMPT_VERSION = "municipal-ai-solution-evidence-2026-09-20-v2"
+# Serialized evidence includes excerpt IDs, provenance and profile metadata.
+MAX_SOURCE_PACK_CHARS = 300_000
 ALLOWED_CODEX_MODELS = {"gpt-5.6-sol", "gpt-6-astra"}
 ALLOWED_FIELDS = {
     "purpose",
@@ -178,7 +180,7 @@ def prepare_source_pack(db: Session, case_id: str) -> dict:
         "source_fingerprint": source_fingerprint(sources),
         "prompt_version": PROMPT_VERSION,
     }
-    if len(json.dumps(pack, ensure_ascii=False)) > 175_000:
+    if len(json.dumps(pack, ensure_ascii=False)) > MAX_SOURCE_PACK_CHARS:
         raise MaterialAnalysisError(
             "Kildematerialet er for omfattende til én analyse. Afgræns de dokumenter, der indgår i sagen."
         )
@@ -242,7 +244,12 @@ def validate_draft(pack: dict, raw: dict) -> dict:
         raise MaterialAnalysisError(
             "Manglende dokumenterede oplysninger skal fremgå som spørgsmål med høj prioritet."
         )
-    return draft.model_dump(mode="json", exclude_none=True)
+    result = draft.model_dump(mode="json")
+    for fact in result["facts"]:
+        # A null value records uncertainty; only the optional label may be omitted.
+        if fact["label"] is None:
+            del fact["label"]
+    return result
 
 
 def run_worker(payload: dict) -> dict:

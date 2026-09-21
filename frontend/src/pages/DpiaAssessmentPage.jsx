@@ -633,10 +633,10 @@ const TextField = ({ name, label, value, errors, onChange, textarea = false, hel
   );
 };
 
-const SelectField = ({ name, label, value, errors, onChange, options, placeholder = 'Vælg…' }) => (
+const SelectField = ({ name, label, value, errors, onChange, options, placeholder = 'Vælg…', disabled = false }) => (
   <Field>
     <label htmlFor={fieldId(name)}>{label}</label>
-    <Select id={fieldId(name)} value={value} onChange={e => onChange(name, e.target.value)} $invalid={Boolean(errors[name])} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${fieldId(name)}-error` : undefined}>
+    <Select id={fieldId(name)} value={value} disabled={disabled} onChange={e => onChange(name, e.target.value)} $invalid={Boolean(errors[name])} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${fieldId(name)}-error` : undefined}>
       <option value="">{placeholder}</option>
       {Object.entries(options).map(([key, text]) => <option key={key} value={key}>{text}</option>)}
     </Select>
@@ -1388,7 +1388,7 @@ const DpiaAssessmentPage = () => {
                 <ScreeningGrid>
                   {asList(result.screening_criteria).map((criterion) => (
                     <ScreeningItem key={criterion.id} $matched={criterion.matched}>
-                      <ScreeningState $matched={criterion.matched}>{criterion.matched ? 'Matcher' : 'Matcher ikke'}</ScreeningState>
+                      <ScreeningState $matched={criterion.matched}>{criterion.matched === null ? 'Ikke afklaret' : criterion.matched ? 'Matcher' : 'Matcher ikke'}</ScreeningState>
                       <strong>{criterion.label}</strong>
                       <p>{criterion.explanation}</p>
                     </ScreeningItem>
@@ -1505,7 +1505,7 @@ const DpiaAssessmentPage = () => {
           <TextField name="cpr_legal_reference" label="Konkret CPR-hjemmel eller reference" value={values.cpr_legal_reference} errors={errors} onChange={update} placeholder="Angiv lov og bestemmelse" />
         </>}
         <BooleanField name="vulnerable_subjects" label="Omfatter behandlingen børn eller andre sårbare personer?" value={values.vulnerable_subjects} errors={errors} onChange={update} />
-        <BooleanField name="large_scale" label="Sker behandlingen i stort omfang?" value={values.large_scale} errors={errors} onChange={update} />
+        <BooleanField name="large_scale" label="Sker behandlingen i stort omfang?" value={values.large_scale} errors={errors} onChange={update} allowUnknown />
         <BooleanField name="systematic_monitoring" label="Indebærer løsningen systematisk overvågning eller sporing?" value={values.systematic_monitoring} errors={errors} onChange={update} />
       </Grid>
     );
@@ -1515,8 +1515,8 @@ const DpiaAssessmentPage = () => {
         <SelectField name="solution_type" label="Løsningstype" value={values.solution_type} errors={errors} onChange={update} options={OPTION_LABELS.solution_type} />
         <TextField name="supplier_name" label="Leverandør eller udviklingsansvarlig" value={values.supplier_name} errors={errors} onChange={update} />
         <SelectField name="hosting_region" label="Primært hostingområde" value={values.hosting_region} errors={errors} onChange={update} options={OPTION_LABELS.hosting_region} />
-        <BooleanField name="transfer_outside_eea" label="Overføres eller tilgås data uden for EU/EØS?" value={values.transfer_outside_eea} errors={errors} onChange={update} />
-        {values.transfer_outside_eea === true && <SelectField name="transfer_mechanism" label="Overførselsgrundlag" value={values.transfer_mechanism} errors={errors} onChange={update} options={OPTION_LABELS.transfer_mechanism} />}
+        <BooleanField name="transfer_outside_eea" label="Overføres eller tilgås data uden for EU/EØS?" value={values.transfer_outside_eea} errors={errors} onChange={update} allowUnknown />
+        {(values.transfer_outside_eea === true || values.transfer_outside_eea === null) && <SelectField name="transfer_mechanism" label="Overførselsgrundlag" value={values.transfer_outside_eea === null ? 'not_assessed' : values.transfer_mechanism} disabled={values.transfer_outside_eea === null} errors={errors} onChange={update} options={OPTION_LABELS.transfer_mechanism} />}
         <Full>
           <BooleanField name="model_training" label="Bruges organisationens input eller output til træning af modeller?" value={values.model_training} errors={errors} onChange={update} allowUnknown />
           <SourceNote>Vælg Ikke afklaret, når den konkrete aftale eller opsætning ikke dokumenterer svaret. Et ønske om ingen træning er ikke dokumentation. Leverandørmodellens udviklingsrisici skal fortsat vurderes ved et nej.</SourceNote>
@@ -1531,7 +1531,10 @@ const DpiaAssessmentPage = () => {
         <BooleanField name="data_matching" label="Sammenstilles oplysninger fra flere registre eller datakilder?" value={values.data_matching} errors={errors} onChange={update} />
         <BooleanField name="service_access_impact" label="Kan brugen påvirke adgang til en ydelse, rettighed, mulighed eller kontrakt?" value={values.service_access_impact} errors={errors} onChange={update} />
         <BooleanField name="automated_decisions" label="Træffer eller understøtter løsningen afgørelser om personer?" value={values.automated_decisions} errors={errors} onChange={update} />
-        {values.automated_decisions === true && <BooleanField name="human_oversight" label="Er der reel menneskelig kontrol før en afgørelse?" value={values.human_oversight} errors={errors} onChange={update} />}
+        <Full>
+          <BooleanField name="human_oversight" label="Er reel menneskelig kontrol af løsningens output etableret?" value={values.human_oversight} errors={errors} onChange={update} allowUnknown />
+          <SourceNote>Et krav i en aftale eller en plan dokumenterer ikke, at kontrollen er etableret. Vælg Ikke afklaret, hvis den faktiske arbejdsgang ikke er dokumenteret. Planlagte eller oplyste kontroller registreres særskilt under Styring og kontrol.</SourceNote>
+        </Full>
       </Grid>
     );
 
@@ -1567,7 +1570,7 @@ const DpiaAssessmentPage = () => {
           />
         </Full>
         <TextField name="retention_period" label="Opbevarings- og slettefrist" value={values.retention_period} errors={errors} onChange={update} placeholder="Fx 90 dage efter afsluttet sag" />
-        <BooleanField name="dpo_involved" label="Er DPO/databeskyttelsesrådgiver inddraget?" value={values.dpo_involved} errors={errors} onChange={update} />
+        <BooleanField name="dpo_involved" label="Er DPO/databeskyttelsesrådgiver inddraget?" value={values.dpo_involved} errors={errors} onChange={update} allowUnknown />
         <Full><CheckboxField name="controls" label="Planlagte eller oplyste kontroller – reducerer ikke restrisiko uden evidens" values={values.controls} options={CONTROL_OPTIONS} errors={errors} onToggle={toggle} /></Full>
         <Full><VerifiedControlsField planned={values.controls} verified={values.verified_controls} evidence={values.control_evidence} errors={errors} onToggle={toggleVerifiedControl} onEvidence={updateControlEvidence} /></Full>
         <Full><CheckboxField name="rights_procedures" label="Dokumenterede procedurer for registreredes rettigheder" values={values.rights_procedures} options={RIGHTS_PROCEDURE_OPTIONS} errors={errors} onToggle={toggle} /></Full>

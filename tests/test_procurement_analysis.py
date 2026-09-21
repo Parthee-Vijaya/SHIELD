@@ -415,3 +415,118 @@ def test_reimport_is_idempotent_without_repeating_paid_review(setup):
                 run_id="example-sol-run",
                 worker=never_called,
             )
+
+
+@pytest.mark.parametrize("field", ["transfer_outside_eea", "large_scale", "human_oversight"])
+def test_unknown_fact_value_survives_evaluation_storage_and_review_prefill(
+    setup, field
+):
+    client, factory, case_id = setup
+    draft = deepcopy(DRAFT)
+    draft["facts"][0].update(field=field, value=None, label=None)
+    seen = []
+
+    def worker(payload):
+        seen.append(payload)
+        fact = payload["draft"]["facts"][0]
+        assert "value" in fact and fact["value"] is None
+        assert "label" not in fact
+        # The evaluated payload must remain valid when it is checked again to save it.
+        service.MaterialDraft.model_validate(payload["draft"])
+        return {"review": review(payload["draft"])}
+
+    with factory() as db:
+        pack = service.prepare_source_pack(db, case_id)
+        saved = service.import_codex_analysis(
+            db,
+            pack,
+            draft,
+            model="gpt-5.6-sol",
+            run_id=f"unknown-{field}",
+            worker=worker,
+        )
+        assert len(seen) == 1
+        stored = db.get(ProcurementAnalysis, saved["id"])
+        assert stored.generation_payload["facts"][0]["value"] is None
+
+    response = client.post(
+        f"/api/v3/cases/{case_id}/procurement/review",
+        json={"analysis_id": saved["id"], "accepted_fact_ids": ["hosting"], "note": ""},
+    )
+    assert response.status_code == 201, response.text
+    review_id = response.json()["id"]
+    assert field in response.json()["dpia_prefill"]
+    assert response.json()["dpia_prefill"][field] is None
+    fetched = client.get(f"/api/v3/cases/{case_id}/procurement/reviews/{review_id}")
+    assert fetched.status_code == 200, fetched.text
+    assert field in fetched.json()["dpia_prefill"]
+    assert fetched.json()["dpia_prefill"][field] is None
+
+def test_realistic_eight_document_pack_keeps_all_245_excerpts(setup, monkeypatch):
+    import json
+
+    _, factory, case_id = setup
+    sources = [
+        {
+            "id": f"document:version-{index // 31}:{index % 31 + 1}",
+            "title": "Officiel leverandørdokumentation med produktbeskrivelse, databehandleraftale og revision",
+            "text": "x" * (173_966 // 245 + (index < 173_966 % 245)),
+            "version": "1",
+            "checksum": "a" * 64,
+            "locator": f"Afsnit {index + 1}",
+            "document_version_id": f"version-{index // 31}",
+            "source_url": "https://supplier.example/security/documents/latest-auditor-report.pdf",
+        }
+        for index in range(245)
+    ]
+    monkeypatch.setattr(service, "evidence_for_case", lambda *args: deepcopy(sources))
+    with factory() as db:
+        pack = service.prepare_source_pack(db, case_id)
+        assert (
+            230_000
+            < len(json.dumps(pack, ensure_ascii=False))
+            < service.MAX_SOURCE_PACK_CHARS
+        )
+        assert pack["sources"] == sources
+        assert len({source["id"] for source in pack["sources"]}) == 245
+        assert sum(len(source["text"]) for source in pack["sources"]) == 173_966
+        assert pack["source_fingerprint"] == service.source_fingerprint(sources)
+        assert pack["source_pack_sha256"] == service.digest(
+            {key: value for key, value in pack.items() if key != "source_pack_sha256"}
+        )
+        service.check_pack(db, pack)
+
+
+def test_serialized_source_pack_is_still_bounded_at_300000(setup, monkeypatch):
+    import json
+
+    _, factory, case_id = setup
+    sources = [{**SOURCE, "text": ""}]
+    monkeypatch.setattr(service, "evidence_for_case", lambda *args: deepcopy(sources))
+    with factory() as db:
+        empty = service.prepare_source_pack(db, case_id)
+        unsigned = {
+            key: value for key, value in empty.items() if key != "source_pack_sha256"
+        }
+        sources[0]["text"] = "x" * (
+            service.MAX_SOURCE_PACK_CHARS
+            - len(json.dumps(unsigned, ensure_ascii=False))
+        )
+        accepted = service.prepare_source_pack(db, case_id)
+        assert (
+            len(
+                json.dumps(
+                    {
+                        key: value
+                        for key, value in accepted.items()
+                        if key != "source_pack_sha256"
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            == 300_000
+        )
+        sources[0]["text"] += "x"
+        with pytest.raises(service.MaterialAnalysisError, match="for omfattende"):
+            service.prepare_source_pack(db, case_id)
+        assert db.query(ProcurementAnalysis).count() == 0

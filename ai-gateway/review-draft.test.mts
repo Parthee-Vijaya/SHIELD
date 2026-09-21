@@ -129,3 +129,17 @@ test('invalid recommendations fail before any evaluator call', async () => {
     assert.equal(calls, 0);
   }
 });
+
+
+test('unknown questionnaire answers reach every JEV unit as locked uncertainty, not negative facts', async () => {
+  const candidate = input();
+  const fields = ['large_scale', 'transfer_outside_eea', 'human_oversight', 'dpo_involved'];
+  candidate.sources.push(...fields.map(field => ({ id: `input:${field}`, title: field, text: 'null' })));
+  await reviewDraft(candidate, async (units) => {
+    for (const unit of units) {
+      assert.deepEqual(Object.keys(unit.locked_values?.uncertain_inputs as object), fields);
+      assert(Object.values(unit.locked_values?.uncertain_inputs as object).every(value => String(value).includes('Ikke afklaret')));
+    }
+    return { model: 'typesafe-ai/jev', rubric_version: 'offline-test', checks: [], status: 'requires_human_review', threshold: .5, threshold_note: 'test', usage: [] };
+  });
+});

@@ -210,10 +210,13 @@ export const validateStep = (step, values) => {
     if (!values.personal_data_categories?.length) {
       errors.personal_data_categories = 'Vælg mindst én kategori af personoplysninger.';
     }
-    ['special_categories', 'criminal_data', 'cpr_data', 'vulnerable_subjects', 'large_scale', 'systematic_monitoring']
+    ['special_categories', 'criminal_data', 'cpr_data', 'vulnerable_subjects', 'systematic_monitoring']
       .forEach((field) => {
         if (typeof values[field] !== 'boolean') errors[field] = 'Vælg ja eller nej.';
       });
+    if (values.large_scale !== null && typeof values.large_scale !== 'boolean') {
+      errors.large_scale = 'Vælg ja, nej eller ikke afklaret.';
+    }
     if (values.special_categories === true && ['not_applicable', ''].includes(values.article_9_basis)) {
       errors.article_9_basis = 'Vælg artikel 9-grundlag eller markér, at det ikke er afklaret.';
     }
@@ -241,13 +244,15 @@ export const validateStep = (step, values) => {
     }
     if (!requiredText(values.hosting_region)) errors.hosting_region = 'Vælg hvor løsningen hostes.';
     [
-      'transfer_outside_eea',
       'profiling_scoring',
       'data_matching',
       'service_access_impact',
       'automated_decisions',
     ].forEach((field) => {
       if (typeof values[field] !== 'boolean') errors[field] = 'Vælg ja eller nej.';
+    });
+    ['transfer_outside_eea', 'human_oversight'].forEach(field => {
+      if (values[field] !== null && typeof values[field] !== 'boolean') errors[field] = 'Vælg ja, nej eller ikke afklaret.';
     });
     if (values.model_training !== null && typeof values.model_training !== 'boolean') {
       errors.model_training = 'Vælg ja, nej eller ikke afklaret.';
@@ -257,9 +262,6 @@ export const validateStep = (step, values) => {
     }
     if (values.hosting_region === 'third_country' && values.transfer_outside_eea !== true) {
       errors.transfer_outside_eea = 'Tredjelands-hosting skal registreres som overførsel uden for EU/EØS.';
-    }
-    if (values.automated_decisions === true && typeof values.human_oversight !== 'boolean') {
-      errors.human_oversight = 'Tag stilling til menneskelig kontrol.';
     }
   }
 
@@ -272,7 +274,7 @@ export const validateStep = (step, values) => {
     if (requiresOfficialLegalSource(values) && !isOfficialRetsinformationUrl(values.legal_basis_source_url)) {
       errors.legal_basis_source_url = 'Indsæt det officielle HTTPS-link til loven på Retsinformation.';
     }
-    if (typeof values.dpo_involved !== 'boolean') errors.dpo_involved = 'Vælg ja eller nej.';
+    if (values.dpo_involved !== null && typeof values.dpo_involved !== 'boolean') errors.dpo_involved = 'Vælg ja, nej eller ikke afklaret.';
     (values.verified_controls || []).forEach((control) => {
       if (!values.controls?.includes(control)) {
         errors.verified_controls = 'En verificeret kontrol skal også være valgt som planlagt eller oplyst.';
@@ -319,10 +321,12 @@ export const toAssessmentRequest = (input) => {
   criminal_data_legal_reference: values.criminal_data ? values.criminal_data_legal_reference.trim() : '',
   cpr_basis: values.cpr_data ? values.cpr_basis : 'not_applicable',
   cpr_legal_reference: values.cpr_data ? values.cpr_legal_reference.trim() : '',
-  transfer_mechanism: values.transfer_outside_eea
+  transfer_mechanism: values.transfer_outside_eea === null
+    ? 'not_assessed'
+    : values.transfer_outside_eea
     ? values.transfer_mechanism
     : 'not_applicable',
-  human_oversight: values.automated_decisions ? Boolean(values.human_oversight) : false,
+  human_oversight: values.human_oversight,
   verified_controls: (values.verified_controls || []).filter(control => values.controls?.includes(control)),
   control_evidence: Object.fromEntries(
     (values.verified_controls || [])

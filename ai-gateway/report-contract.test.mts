@@ -90,3 +90,26 @@ test('raw worker input is accepted up to 500000 characters and rejected above it
   assert.equal(rejected.status, 1, rejected.stderr);
   assert.equal(JSON.parse(rejected.stdout).error.code, 'ai_generation_failed');
 });
+
+
+test('245 document excerpts plus questionnaire and full 39-section 33-risk report fit existing bounds', () => {
+  const input = {
+    request: { purpose: 'Kommunal dokumentgennemgang. '.repeat(180) },
+    result: {
+      executive_summary: 'Vurderingen skal afklares.', scope: 'Kommunens dokumentbehandling.',
+      sections: Array.from({ length: 39 }, (_, index) => ({ id: String(index), title: 'Afsnit', text: 'Grundlag. '.repeat(90) })),
+      risks: Array.from({ length: 33 }, (_, index) => ({ id: String(index), area: 'Risiko', scenario: 'Scenarie. '.repeat(40), measures: 'Foranstaltning. '.repeat(50), rationale: 'Vurderingsgrundlag. '.repeat(20) })),
+    },
+    sources: Array.from({ length: 245 }, (_, index) => ({
+      id: `document:version-${Math.floor(index / 31)}:${index % 31 + 1}`,
+      title: 'Officiel leverandørdokumentation med produktbeskrivelse, databehandleraftale og revision',
+      text: 'x'.repeat(Math.floor(173966 / 245) + Number(index < 173966 % 245)),
+      locator: `Afsnit ${index + 1}`, version: '1', checksum: 'a'.repeat(64),
+      document_version_id: `version-${Math.floor(index / 31)}`,
+      source_url: 'https://supplier.example/security/documents/latest-auditor-report.pdf',
+    })),
+  };
+  assert(JSON.stringify(input).length < MAX_REPORT_INPUT_CHARS);
+  assert.equal(input.sources.reduce((sum, source) => sum + source.text.length, 0), 173966);
+  assert.deepEqual(validateReportInput(input).sources, input.sources);
+});

@@ -87,7 +87,10 @@ export function buildReviewUnits(
   input: Pick<z.infer<typeof inputSchema>, 'result' | 'sources'>,
   draft: ReportDraft,
 ): ReviewUnit[] {
-  return [
+  const uncertainInputs = Object.fromEntries(input.sources
+    .filter(source => ['input:large_scale', 'input:transfer_outside_eea', 'input:dpo_involved', 'input:human_oversight'].includes(source.id) && source.text.trim() === 'null')
+    .map(source => [source.id.slice('input:'.length), 'Ikke afklaret; en foreløbig score er ikke dokumentation for et faktisk forhold.']));
+  const units: ReviewUnit[] = [
     { id: 'summary', label: 'Resumé og scope', kind: 'summary', text: `${draft.executive_summary}\n${draft.scope}`, source_ids: draft.summary_source_ids,
       locked_values: { status: input.result.status, risk_level: input.result.risk_level, blockers: input.result.blockers, missing_information: input.result.missing_information } },
     ...draft.sections.map(section => ({
@@ -117,6 +120,9 @@ export function buildReviewUnits(
       locked_values: { role: 'optional_proposal_only', implementation_verified: false, legal_approval: false },
     })),
   ];
+  return Object.keys(uncertainInputs).length
+    ? units.map(unit => ({ ...unit, locked_values: { ...unit.locked_values, uncertain_inputs: uncertainInputs } }))
+    : units;
 }
 
 export function validateReportInput(raw: unknown) {

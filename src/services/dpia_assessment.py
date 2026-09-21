@@ -76,17 +76,17 @@ class DPIAAssessmentRequest(BaseModel):
     special_categories: bool
     criminal_data: bool
     vulnerable_subjects: bool
-    large_scale: bool
+    large_scale: bool | None
     systematic_monitoring: bool
     profiling_scoring: bool = False
     data_matching: bool = False
     service_access_impact: bool = False
     automated_decisions: bool
-    human_oversight: bool
+    human_oversight: bool | None
     solution_type: Literal["ai_system", "saas", "internal_system", "integration", "other"]
     supplier_name: str = Field(default="", max_length=500)
     hosting_region: Literal["denmark", "eu_eea", "third_country", "unknown"]
-    transfer_outside_eea: bool
+    transfer_outside_eea: bool | None
     transfer_mechanism: Literal[
         "not_applicable", "adequacy_decision", "scc", "bcr", "derogation", "not_assessed"
     ]
@@ -100,7 +100,7 @@ class DPIAAssessmentRequest(BaseModel):
     ]
     legal_basis_reference: str = Field(default="", max_length=2_000)
     legal_basis_source_url: str = Field(default="", max_length=2_000)
-    dpo_involved: bool
+    dpo_involved: bool | None
     controls: list[Control] = Field(default_factory=list, max_length=10)
     verified_controls: list[Control] = Field(default_factory=list, max_length=10)
     control_evidence: dict[Control, str] = Field(default_factory=dict)
@@ -132,11 +132,13 @@ class DPIAAssessmentRequest(BaseModel):
     def validate_conditional_core_data(self) -> "DPIAAssessmentRequest":
         if self.solution_type in {"ai_system", "saas", "integration"} and len(self.supplier_name) < 2:
             raise ValueError("supplier_name er påkrævet for den valgte løsningstype")
-        if self.transfer_outside_eea and self.transfer_mechanism == "not_applicable":
+        if self.transfer_outside_eea is None and self.transfer_mechanism != "not_assessed":
+            raise ValueError("transfer_mechanism skal være not_assessed, når overførsel ikke er afklaret")
+        if self.transfer_outside_eea is True and self.transfer_mechanism == "not_applicable":
             raise ValueError("transfer_mechanism kan ikke være not_applicable ved tredjelandsoverførsel")
-        if not self.transfer_outside_eea and self.transfer_mechanism != "not_applicable":
+        if self.transfer_outside_eea is False and self.transfer_mechanism != "not_applicable":
             raise ValueError("transfer_mechanism skal være not_applicable uden tredjelandsoverførsel")
-        if self.hosting_region == "third_country" and not self.transfer_outside_eea:
+        if self.hosting_region == "third_country" and self.transfer_outside_eea is not True:
             raise ValueError("third_country-hosting kræver transfer_outside_eea=true")
         if "children" in self.data_subjects and not self.vulnerable_subjects:
             raise ValueError("børn og unge skal markeres som sårbare registrerede")
@@ -201,7 +203,7 @@ class DPIAScreeningCriterion(BaseModel):
         "innovative_technology", "rights_or_service_access",
     ]
     label: str
-    matched: bool
+    matched: bool | None
     explanation: str
 
 
@@ -439,7 +441,7 @@ def _risk_scores(definition: RiskDefinition, request: DPIAAssessmentRequest) -> 
         impact += 1
     if request.vulnerable_subjects and definition.area in {"Rimelighed", "Rettigheder", "Menneskeligt review"}:
         impact += 1
-    if request.large_scale and risk_id in {"3.6", "3.7", "4.6", "4.7", "5.6", "6.3", "6.5"}:
+    if request.large_scale is not False and risk_id in {"3.6", "3.7", "4.6", "4.7", "5.6", "6.3", "6.5"}:
         likelihood += 1
     if request.systematic_monitoring and risk_id in {"3.5", "3.6", "3.8", "6.1", "6.9"}:
         likelihood += 1
@@ -448,11 +450,11 @@ def _risk_scores(definition: RiskDefinition, request: DPIAAssessmentRequest) -> 
         impact += 1
     if request.model_training is True and risk_id.startswith(("4.", "5.")):
         likelihood += 1
-    if (request.transfer_outside_eea or request.hosting_region == "third_country") and risk_id in {"3.7", "4.8", "6.3", "6.5"}:
+    if (request.transfer_outside_eea is not False or request.hosting_region == "third_country") and risk_id in {"3.7", "4.8", "6.3", "6.5"}:
         likelihood += 1
     if request.solution_type in {"saas", "integration"} and risk_id in {"3.7", "4.8", "6.5"}:
         likelihood += 1
-    if not request.human_oversight and risk_id in {"5.7", "6.7", "6.9", "6.10"}:
+    if request.human_oversight is not True and risk_id in {"5.7", "6.7", "6.9", "6.10"}:
         likelihood += 1
     return min(4, likelihood), min(4, impact)
 
@@ -494,6 +496,13 @@ def _build_risks(request: DPIAAssessmentRequest) -> list[DPIARisk]:
             measure_parts.append("Oplyst/planlagt, men ikke verificeret: " + ", ".join(selected_text))
         if missing_text:
             measure_parts.append("Skal vurderes/implementeres: " + ", ".join(missing_text))
+        provisional = []
+        if request.large_scale is None and definition.id in {"3.6", "3.7", "4.6", "4.7", "5.6", "6.3", "6.5"}:
+            provisional.append("behandlingens omfang er ikke afklaret; foreløbigt anvendes samme forsigtige score som ved stort omfang")
+        if request.transfer_outside_eea is None and definition.id in {"3.7", "4.8", "6.3", "6.5"}:
+            provisional.append("eventuel overførsel uden for EU/EØS er ikke afklaret; foreløbigt anvendes samme forsigtige score som ved overførsel")
+        if request.human_oversight is None and definition.id in {"5.7", "6.7", "6.9", "6.10"}:
+            provisional.append("menneskelig kontrol er ikke dokumenteret; foreløbigt anvendes samme forsigtige score som uden dokumenteret kontrol")
         risks.append(DPIARisk(
             id=definition.id,
             area=definition.area,
@@ -506,6 +515,7 @@ def _build_risks(request: DPIAAssessmentRequest) -> list[DPIARisk]:
             residual_impact=residual_impact,
             residual_risk=risk_matrix(residual_likelihood, residual_impact),
             owner=request.owner,
+            rationale=("Til afklaring / foreløbig screening: " + "; ".join(provisional) + ". Dette er en forsigtig beregningsforudsætning, ikke en konstatering af de faktiske forhold.") if provisional else "",
         ))
     return risks
 
@@ -542,14 +552,22 @@ def _build_sections(request: DPIAAssessmentRequest, dpia_required: bool) -> list
         return _missing_section(section_id, missing_text)
     supplier = f" Leverandøren er angivet som {request.supplier_name}." if request.supplier_name else ""
     transfer = (
+        "Det er ikke afklaret, om personoplysninger overføres uden for EU/EØS. Dataflow, fjernadgang og eventuelt overførselsgrundlag skal dokumenteres."
+        if request.transfer_outside_eea is None else
         "Der er oplyst overførsel uden for EU/EØS. Oplyst overførselsgrundlag: "
         f"{TRANSFER_MECHANISM_LABELS[request.transfer_mechanism]}."
         if request.transfer_outside_eea else "Der er ikke oplyst overførsel uden for EU/EØS."
     )
     automated = (
         "Løsningen anvendes til automatiserede beslutninger. "
-        + ("Der er oplyst menneskelig kontrol." if request.human_oversight else "Der er ikke oplyst menneskelig kontrol.")
+        + ("Menneskelig kontrol er ikke afklaret og skal dokumenteres." if request.human_oversight is None else "Der er oplyst menneskelig kontrol." if request.human_oversight else "Der er ikke oplyst menneskelig kontrol.")
         if request.automated_decisions else "Der er ikke oplyst automatiserede individuelle beslutninger."
+    )
+    if request.human_oversight is None and not request.automated_decisions:
+        automated += " Menneskelig kontrol af AI-output er ikke afklaret og skal dokumenteres."
+    screening_note = (
+        "Foreløbig screening: behandlingens omfang er ikke afklaret. Det uafklarede kriterium medregnes forsigtigt; dette er ikke dokumentation for faktisk stort omfang. "
+        if request.large_scale is None else ""
     )
     timing = " ".join(
         f"{label}: {value}."
@@ -565,7 +583,7 @@ def _build_sections(request: DPIAAssessmentRequest, dpia_required: bool) -> list
     department = f" Fagområde: {request.department}." if request.department else ""
     sections = [
         _section("1.1", request.purpose),
-        _section("1.2", f"Konsekvensanalysen gennemføres før eller som led i anvendelsen af {request.project_name}. Den deterministiske screening vurderer, at en DPIA {'er påkrævet' if dpia_required else 'ikke er entydigt påkrævet ud fra de oplyste kriterier'}; konklusionen skal godkendes af DPO/juridisk funktion.", source="deterministic_rule"),
+        _section("1.2", screening_note + f"Konsekvensanalysen gennemføres før eller som led i anvendelsen af {request.project_name}. Den deterministiske screening vurderer, at en DPIA {'er påkrævet' if dpia_required else 'ikke er entydigt påkrævet ud fra de oplyste kriterier'}; konklusionen skal godkendes af DPO/juridisk funktion.", source="deterministic_rule"),
         _section("1.3", f"{request.organisation} ønsker at anvende en løsning af typen {SOLUTION_LABELS[request.solution_type]} til det beskrevne formål.{supplier}"),
         _section("1.4", f"Oplyst behandling: {request.processing_description} Data hostes i {HOSTING_LABELS[request.hosting_region]}. {transfer} {timing}".strip()),
         _section("1.5", f"Det specifikke formål er: {request.purpose} Videreanvendelse til uforenelige formål er ikke omfattet."),
@@ -640,7 +658,7 @@ def _build_sections(request: DPIAAssessmentRequest, dpia_required: bool) -> list
         ),
         right_section("2.28", "automated_decision_review", "artikel 22-grundlag, menneskelig indgriben og mulighed for at bestride resultatet skal dokumenteres.") if request.automated_decisions else _section("2.28", automated, source="deterministic_rule", status="not_applicable"),
         _section("2.29", f"{request.supplier_name} er oplyst som leverandør. Databehandlerrolle, instruks, underdatabehandlere, auditret og sletning skal dokumenteres.") if request.supplier_name else _section("2.29", "Der er ikke oplyst en ekstern leverandør. Det skal verificeres, om andre databehandlere indgår.", source="deterministic_rule"),
-        _section("2.30", f"{transfer} Overførselsgrundlag, supplerende foranstaltninger og transfer impact assessment skal dokumenteres." if request.transfer_outside_eea else transfer, source="provided_input", status="requires_review" if request.transfer_outside_eea else "not_applicable"),
+        _section("2.30", f"{transfer} Overførselsgrundlag, supplerende foranstaltninger og transfer impact assessment skal dokumenteres." if request.transfer_outside_eea is True else transfer, source="missing_information" if request.transfer_outside_eea is None else "provided_input", status="missing_information" if request.transfer_outside_eea is None else "requires_review" if request.transfer_outside_eea else "not_applicable"),
     ]
     if len(sections) != 39 or [item.id for item in sections] != list(SECTION_TITLES):
         raise RuntimeError("DPIA-sektionsmapping er inkonsistent")
@@ -703,6 +721,8 @@ def _screen_dpia_required(
             label="Behandling i stort omfang",
             matched=request.large_scale,
             explanation=(
+                "Ikke afklaret. Kriteriet medregnes forsigtigt i den foreløbige screening; dette dokumenterer ikke, at behandlingen faktisk sker i stort omfang."
+                if request.large_scale is None else
                 "Behandlingen er oplyst at ske i stort omfang."
                 if request.large_scale else
                 "Behandlingen er ikke oplyst at ske i stort omfang."
@@ -751,7 +771,7 @@ def _screen_dpia_required(
             ),
         ),
     ]
-    return sum(item.matched for item in criteria) >= 2, criteria
+    return sum(item.matched is not False for item in criteria) >= 2, criteria
 
 
 def _quality_findings(request: DPIAAssessmentRequest, dpia_required: bool) -> tuple[list[str], list[str]]:
@@ -772,7 +792,13 @@ def _quality_findings(request: DPIAAssessmentRequest, dpia_required: bool) -> tu
     if request.hosting_region == "unknown":
         finding = "Hostinglokation og dataopbevaringslande er ikke afklaret."
         missing.append(finding); blockers.append(finding)
-    if request.transfer_outside_eea and request.transfer_mechanism == "not_assessed":
+    if request.large_scale is None:
+        finding = "Behandlingens omfang er ikke afklaret; dokumentér antal registrerede, datamængde, varighed og geografisk udbredelse."
+        missing.append(finding); blockers.append(finding)
+    if request.transfer_outside_eea is None:
+        finding = "Eventuel overførsel uden for EU/EØS er ikke afklaret; dataflow, fjernadgang og overførselsgrundlag skal dokumenteres."
+        missing.append(finding); blockers.append(finding)
+    if request.transfer_outside_eea is True and request.transfer_mechanism == "not_assessed":
         finding = "Overførselsgrundlag for tredjelandsoverførsel er ikke afklaret."
         missing.append(finding); blockers.append(finding)
     if request.special_categories and request.article_9_basis == "not_assessed":
@@ -792,10 +818,16 @@ def _quality_findings(request: DPIAAssessmentRequest, dpia_required: bool) -> tu
     if not request.retention_period:
         finding = "Opbevarings- og slettefrister er ikke dokumenteret."
         missing.append(finding); blockers.append(finding)
-    if request.automated_decisions and not request.human_oversight:
+    if request.human_oversight is None:
+        finding = "Menneskelig kontrol af AI-output er ikke afklaret; ansvar, kontroltrin og mulighed for indgriben skal dokumenteres."
+        missing.append(finding); blockers.append(finding)
+    if request.automated_decisions and request.human_oversight is False:
         finding = "Automatiserede beslutninger er oplyst uden reel menneskelig kontrol."
         missing.append(finding); blockers.append(finding)
-    if dpia_required and not request.dpo_involved:
+    if request.dpo_involved is None:
+        finding = "DPO/databeskyttelsesrådgiverens inddragelse er ikke dokumenteret og skal afklares."
+        missing.append(finding); blockers.append(finding)
+    if dpia_required and request.dpo_involved is False:
         finding = "DPO/databeskyttelsesrådgiver er ikke inddraget, selv om screeningen udløser DPIA."
         missing.append(finding); blockers.append(finding)
     if not request.controls:
@@ -843,8 +875,8 @@ def _completeness(
         request.legal_basis not in {"public_task", "legal_obligation"}
         or bool(request.legal_basis_reference),
         bool(request.retention_period), bool(request.controls), bool(request.verified_controls),
-        not request.transfer_outside_eea or request.transfer_mechanism not in {"not_assessed", "not_applicable"},
-        not request.automated_decisions or request.human_oversight,
+        request.transfer_outside_eea is False or (request.transfer_outside_eea is True and request.transfer_mechanism not in {"not_assessed", "not_applicable"}),
+        request.human_oversight is not None and (not request.automated_decisions or request.human_oversight),
         not request.special_categories or request.article_9_basis not in {"not_applicable", "not_assessed"},
         not request.criminal_data or (
             request.criminal_data_basis not in {"not_applicable", "not_assessed"}
@@ -855,13 +887,13 @@ def _completeness(
             and bool(request.cpr_legal_reference)
         ),
         not request.solution_type in {"ai_system", "saas", "integration"} or bool(request.supplier_name),
-        not request.large_scale or "logging" in request.verified_controls,
+        request.large_scale is not None and (not request.large_scale or "logging" in request.verified_controls),
         not request.systematic_monitoring or "data_minimisation" in request.verified_controls,
         not request.vulnerable_subjects or "human_review" in request.verified_controls,
         request.model_training is not None and (
             request.model_training is False or "testing" in request.verified_controls
         ),
-        request.dpo_involved,
+        request.dpo_involved is True,
     ]
     field_score = 100 * sum(checks) / len(checks)
     resolved_sections = sum(section.review_status != "missing_information" for section in sections)
@@ -915,6 +947,12 @@ def assess_dpia(
             "Tommelfingerreglen om mindst to kriterier er ikke opfyldt. Ét kriterium eller andre konkrete forhold kan dog stadig gøre en DPIA nødvendig."
         )
     )
+    if request.large_scale is None:
+        screening_conclusion = (
+            f"Foreløbig screening: {matched_count} af 9 højrisikokriterier er oplyst, og behandlingens omfang er ikke afklaret. "
+            "Det uafklarede kriterium medregnes forsigtigt, uden at der dermed konstateres stort omfang. "
+            + ("En DPIA behandles som nødvendig, indtil screeningens grundlag er afklaret fagligt." if dpia_required else "DPIA-behovet skal afklares fagligt; det foreløbige grundlag når ikke to kriterier.")
+        )
     executive_summary = (
         f"{request.organisation} vurderer brugen af {request.project_name} til formålet: {request.purpose} "
         f"Screeningen identificerer {criteria_text}. DPIA er derfor "
@@ -922,6 +960,12 @@ def assess_dpia(
         f"Højeste beregnede resterende risikoniveau er {RISK_LEVEL_TEXT[risk_level]}. Resultatet er et deterministisk udkast, "
         "ikke en juridisk godkendelse; alle oplyste kontroller og konklusioner skal verificeres."
     )
+    if request.large_scale is None:
+        executive_summary = (
+            f"{request.organisation} vurderer brugen af {request.project_name} til formålet: {request.purpose} "
+            f"{screening_conclusion} Højeste foreløbigt beregnede resterende risikoniveau er {RISK_LEVEL_TEXT[risk_level]}. "
+            "Resultatet er et deterministisk udkast, ikke en juridisk godkendelse; uafklarede oplysninger og kontroller skal verificeres."
+        )
     scope = (
         f"Analysen omfatter {request.organisation}s behandling i {request.project_name}: "
         f"{request.processing_description} Registrerede er {_labels(request.data_subjects, SUBJECT_LABELS)}, "

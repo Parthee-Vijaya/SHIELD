@@ -176,3 +176,27 @@ def test_historical_exports_label_new_reading_aids_and_do_not_infer_approval():
         assert "Godkendelse registreret" not in text
         assert result.blockers[0] in text
     assert result.model_dump(mode="json") == before
+
+
+def test_unknown_scale_transfer_dpo_and_human_control_remain_explicit_in_exports():
+    request, result = make_assessment(
+        large_scale=None,
+        transfer_outside_eea=None,
+        transfer_mechanism="not_assessed",
+        dpo_involved=None,
+        human_oversight=None,
+    )
+    word = text_content(Document(BytesIO(export_dpia_docx(request, result))))
+    assert "Ikke afklaret. Kriteriet medregnes forsigtigt" in word
+    with ZipFile(BytesIO(export_dpia_xlsx(request, result))) as archive:
+        excel = " ".join(
+            " ".join(ET.fromstring(archive.read(name)).itertext())
+            for name in archive.namelist()
+            if name.endswith(".xml")
+        )
+    for content in (word, excel):
+        assert "inddragelse er ikke dokumenteret" in content
+        assert "Det er ikke afklaret, om personoplysninger overføres" in content
+        assert "Foreløbig screening" in content
+        assert "Menneskelig kontrol af AI-output er ikke afklaret" in content
+        assert "DPO er ikke oplyst som inddraget" not in content

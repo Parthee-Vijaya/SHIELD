@@ -5,7 +5,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { lightTheme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { DRAFT_STORAGE_KEY } from '../features/dpia/assessmentModel';
+import { DRAFT_STORAGE_KEY, INITIAL_ASSESSMENT } from '../features/dpia/assessmentModel';
 import DpiaAssessmentPage from './DpiaAssessmentPage';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
@@ -92,6 +92,58 @@ test('modeltræning kan ændres fra nej til ikke afklaret og bevares som null i 
   expect(within(question).getByRole('radio', { name: 'Nej' })).not.toBeChecked();
   await waitFor(() => expect(JSON.parse(window.localStorage.getItem(DRAFT_STORAGE_KEY)).values.model_training).toBeNull());
   expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+});
+
+test.each([
+  ['large_scale', 1, 'Sker behandlingen i stort omfang?'],
+  ['transfer_outside_eea', 2, 'Overføres eller tilgås data uden for EU/EØS?'],
+  ['human_oversight', 2, 'Er reel menneskelig kontrol af løsningens output etableret?'],
+  ['dpo_involved', 3, 'Er DPO/databeskyttelsesrådgiver inddraget?'],
+])('%s kan markeres uafklaret uden at ændre andre svar', async (field, step, label) => {
+  window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ values: { [field]: false, automated_decisions: false }, step }));
+  mount('/vurdering');
+  const question = screen.getByRole('group', { name: label });
+  expect(within(question).getByRole('radio', { name: 'Nej' })).toBeChecked();
+  fireEvent.click(within(question).getByRole('radio', { name: 'Ikke afklaret' }));
+  expect(within(question).getByRole('radio', { name: 'Ikke afklaret' })).toBeChecked();
+  await waitFor(() => expect(JSON.parse(window.localStorage.getItem(DRAFT_STORAGE_KEY)).values[field]).toBeNull());
+  expect(JSON.parse(window.localStorage.getItem(DRAFT_STORAGE_KEY)).values.automated_decisions).toBe(false);
+  if (field === 'transfer_outside_eea') {
+    expect(screen.getByRole('combobox', { name: 'Overførselsgrundlag' })).toHaveValue('not_assessed');
+    expect(screen.getByRole('combobox', { name: 'Overførselsgrundlag' })).toBeDisabled();
+  }
+  expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+});
+
+test('sender en vurdering med fire uafklarede svar uden at opfinde negative oplysninger', async () => {
+  const values = {
+    ...INITIAL_ASSESSMENT, project_name: 'Dokumentassistent', organisation: 'Eksempel Kommune', owner: 'Kontaktperson',
+    purpose: 'Dokumentgennemgang i forbindelse med aktindsigt i kommunen.',
+    processing_description: 'Dokumenter indlæses, forslag til anonymisering gennemgås og output eksporteres til sagsbehandlingen.',
+    data_subjects: ['citizens'], personal_data_categories: ['case_data'], special_categories: false, criminal_data: false,
+    cpr_data: false, vulnerable_subjects: false, systematic_monitoring: false, profiling_scoring: false,
+    data_matching: false, service_access_impact: false, automated_decisions: false,
+    solution_type: 'ai_system', supplier_name: 'Eksempel ApS', hosting_region: 'unknown',
+    transfer_mechanism: 'scc', model_training: null, retention_period: 'Afventer dokumenteret slettefrist.', legal_basis: 'not_assessed',
+    large_scale: null, transfer_outside_eea: null, dpo_involved: null, human_oversight: null,
+  };
+  window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ values, step: 3 }));
+  const baseFetch = authFetch.getMockImplementation();
+  authFetch.mockImplementation((url, options) => url === '/api/dpia/assessments' ? response({ ...saved, status_label: 'Blokeret – mangler kritiske oplysninger' }) : baseFetch(url, options));
+  mount('/vurdering');
+  fireEvent.click(screen.getByRole('button', { name: 'Udarbejd vurdering' }));
+  await screen.findByText('Blokeret – mangler kritiske oplysninger');
+  const request = authFetch.mock.calls.find(([url]) => url === '/api/dpia/assessments');
+  expect(JSON.parse(request[1].body)).toMatchObject({ large_scale: null, transfer_outside_eea: null, transfer_mechanism: 'not_assessed', dpo_involved: null, human_oversight: null, automated_decisions: false, verified_controls: [] });
+});
+
+test('et ukendt screeningkriterium vises som ikke afklaret og aldrig som matcher ikke', async () => {
+  const baseFetch = authFetch.getMockImplementation();
+  authFetch.mockImplementation((url, options) => url === '/api/dpia/assessments/assessment-1' ? response({ ...saved, screening_criteria: [{ id: 'large_scale', label: 'Behandling i stort omfang', matched: null, explanation: 'Behandlingens omfang er ikke afklaret.' }] }) : baseFetch(url, options));
+  mount();
+  await screen.findByText('Behandling i stort omfang');
+  expect(screen.getByText('Ikke afklaret')).toBeInTheDocument();
+  expect(screen.queryByText('Matcher ikke')).not.toBeInTheDocument();
 });
 
 test('genåbner en gemt vurdering med sagslink, risikofelter og uden at erstatte den lokale kladde', async () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeMaterial, validateMaterialDraft } from './analyze-material.mts';
+import { analyzeMaterial, validateMaterialDraft, validateMaterialInput, readMaterialInput, MAX_MATERIAL_INPUT_CHARS, MAX_MATERIAL_RAW_INPUT_CHARS } from './analyze-material.mts';
 import { reviewUnits } from './review.mts';
 
 const source = { id: 'document:1:1', title: 'Materiale', text: 'Kundens data hostes i Danmark.', locator: 'Side 2' };
@@ -61,4 +61,63 @@ test('material summary keeps all large sources while its exact-citation fact ret
   assert.deepEqual(result.draft, draft);
   assert.deepEqual(result.review.checks.map(check => check.id), ['summary', 'fact:hosting']);
   assert.match(result.review.threshold_note, /samlet eller kalibreret sandsynlighed/);
+});
+
+
+test('245 excerpts and 173966 text characters survive material validation and review unchanged', async () => {
+  const sources = Array.from({ length: 245 }, (_, index) => ({
+    id: `document:version-${Math.floor(index / 31)}:${index % 31 + 1}`,
+    title: 'Officiel leverandørdokumentation med produktbeskrivelse, databehandleraftale og revision',
+    text: 'x'.repeat(Math.floor(173966 / 245) + Number(index < 173966 % 245)),
+    locator: `Afsnit ${index + 1}`, version: '1', checksum: 'a'.repeat(64),
+    document_version_id: `version-${Math.floor(index / 31)}`,
+    source_url: 'https://supplier.example/security/documents/latest-auditor-report.pdf',
+  }));
+  const largeDraft = { ...draft, facts: [] };
+  const largeInput = { ...input, sources, mode: 'evaluate' as const, draft: largeDraft };
+  assert(JSON.stringify(largeInput).length > 230000);
+  assert.deepEqual(validateMaterialInput(largeInput).sources, sources);
+  let inspected = false;
+  await analyzeMaterial(largeInput, async (units, evidence) => {
+    inspected = true;
+    assert.deepEqual(units[0].source_ids, sources.map(item => item.id));
+    assert.deepEqual(evidence.map(item => [item.id, item.text]), sources.map(item => [item.id, item.text]));
+    assert.equal(evidence.reduce((sum, item) => sum + item.text.length, 0), 173966);
+    return { model: 'typesafe-ai/jev', rubric_version: 'test', checks: [], status: 'requires_human_review', threshold: .5, threshold_note: 'test', usage: [] };
+  });
+  assert(inspected);
+});
+
+test('material parsed and raw input bounds agree at 400000 characters', async () => {
+  assert.equal(MAX_MATERIAL_INPUT_CHARS, 400000);
+  assert.equal(MAX_MATERIAL_RAW_INPUT_CHARS, MAX_MATERIAL_INPUT_CHARS);
+  const candidate = { profile: {}, sources: [{ id: 'document:1', title: 'Kilde', text: '' }] };
+  candidate.sources[0].text = 'x'.repeat(MAX_MATERIAL_INPUT_CHARS - JSON.stringify(candidate).length);
+  const boundary = JSON.stringify(candidate);
+  assert.equal(boundary.length, MAX_MATERIAL_INPUT_CHARS);
+  assert.doesNotThrow(() => validateMaterialInput(candidate));
+  async function* chunks(value: string) { yield value.slice(0, 200000); yield value.slice(200000); }
+  assert.equal(await readMaterialInput(chunks(boundary)), boundary);
+  await assert.rejects(readMaterialInput(chunks(boundary + ' ')), /INPUT_TOO_LARGE/);
+  candidate.sources[0].text += 'x';
+  assert.throws(() => validateMaterialInput(candidate), /INPUT_TOO_LARGE/);
+  let called = false;
+  await assert.rejects(analyzeMaterial(candidate, async () => { called = true; throw Error('must not run'); }), /INPUT_TOO_LARGE/);
+  assert.equal(called, false);
+});
+
+
+test('only explicitly nullable evidence fields may preserve unknown values', () => {
+  for (const field of ['large_scale', 'transfer_outside_eea', 'human_oversight']) {
+    const candidate = structuredClone(draft) as any;
+    candidate.facts[0].field = field;
+    candidate.facts[0].value = null;
+    assert.equal(validateMaterialDraft(input, candidate).facts[0].value, null);
+  }
+  for (const field of ['special_categories', 'criminal_data', 'automated_decisions', 'dpo_involved']) {
+    const candidate = structuredClone(draft) as any;
+    candidate.facts[0].field = field;
+    candidate.facts[0].value = null;
+    assert.throws(() => validateMaterialDraft(input, candidate));
+  }
 });
