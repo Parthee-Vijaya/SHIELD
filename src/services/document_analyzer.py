@@ -64,6 +64,7 @@ class ChunkSignals:
     chunk: Chunk
     signals: dict[str, bool] = field(default_factory=dict)
     error: Optional[str] = None      # If extraction failed for this chunk
+    uncertain_signals: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -279,7 +280,7 @@ def analyze_document(
         try:
             signals = extractor.extract(chunk.text, rules)
             bool_signals = {k: v for k, v in signals.items() if isinstance(v, bool)}
-            chunk_signals.append(ChunkSignals(chunk=chunk, signals=bool_signals))
+            chunk_signals.append(ChunkSignals(chunk=chunk, signals=bool_signals, uncertain_signals=list(getattr(extractor, "last_uncertain_signals", []))))
         except SignalExtractionError as exc:
             err = str(exc)
             warnings.append(f"chunk {chunk.label}: {err}")

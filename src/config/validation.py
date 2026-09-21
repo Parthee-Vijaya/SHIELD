@@ -172,6 +172,14 @@ def _redact_db_url(url: str) -> str:
 
 
 def _check_llm_provider(report: ConfigReport) -> None:
+    from src.services.codex_text_provider import is_available, MODEL
+    if is_available():
+        report.add(CheckItem(
+            name="LLM provider", status="ok",
+            summary=f"{MODEL} · midlertidig lokal AI-forbindelse",
+            detail="Aktiveret til lokal afprøvning. Modellen er ikke kaldt som del af denne konfigurationskontrol.",
+        ))
+        return
     azure_key = os.getenv("AZURE_OPENAI_API_KEY")
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     openai_key = os.getenv("OPENAI_API_KEY")

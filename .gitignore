@@ -60,3 +60,4 @@ frontend/public/mockups
 *.p12
 *.pfx
 .claude/
+.gstack/

@@ -9,13 +9,28 @@ import json
 import os
 from typing import Dict, List, Any, Optional, Tuple, Callable
 from datetime import datetime, timedelta
-from urllib.parse import urlencode, quote_plus, urlsplit
+from urllib.parse import urlencode, quote_plus, urlsplit, urlunsplit, parse_qs, parse_qsl
 import re
 from dataclasses import dataclass
 import logging
 import html
 
 logger = logging.getLogger(__name__)
+
+
+RESEARCH_FOCUS_AREAS = {
+    "EU AI Act", "GDPR", "Dansk lovgivning", "Automatiserede beslutninger",
+    "Højrisiko AI systemer", "Biometrisk identifikation", "Databeskyttelse",
+    "Datatilsynets vejledninger",
+}
+
+
+def validate_focus_areas(values: Optional[List[str]]) -> List[str]:
+    selected = values or ["EU AI Act", "GDPR", "Dansk lovgivning"]
+    normalized = ["Dansk lovgivning" if value == "dansk lovgivning" else value for value in selected]
+    if len(normalized) > 8 or any(value not in RESEARCH_FOCUS_AREAS for value in normalized):
+        raise ValueError("Vælg et af de angivne fokusområder til research.")
+    return list(dict.fromkeys(normalized))
 
 
 @dataclass
@@ -50,6 +65,8 @@ class WebSearcher:
 
     def __init__(self):
         self.session: Optional[aiohttp.ClientSession] = None
+        from src.services.codex_text_provider import is_available
+        self.use_codex = is_available()
         self.sources_cache: Dict[str, Source] = {}
 
         # Brug Azure OpenAI hvis tilgængelig, ellers standard OpenAI
@@ -134,10 +151,9 @@ class WebSearcher:
         if progress_callback:
             await progress_callback("Starter juridisk research...", "initializing", 0)
 
-        if focus_areas is None:
-            focus_areas = ["EU AI Act", "GDPR", "dansk lovgivning"]
+        focus_areas = validate_focus_areas(focus_areas)
 
-        results = {
+        results: Dict[str, Any] = {
             "query": query,
             "focus_areas": focus_areas,
             "sources": [],
@@ -153,7 +169,7 @@ class WebSearcher:
             await progress_callback("Søger i EUR-Lex, Datatilsynet, EDPB...", "searching", 10)
 
         search_tasks = [
-            self._search_eur_lex(query),
+            self._search_eur_lex(query, focus_areas=focus_areas),
             self._search_datatilsynet(query),
             self._search_retsinformation(query),
             self._search_eu_official(query),
@@ -162,7 +178,7 @@ class WebSearcher:
             self._search_duckduckgo(query, focus_areas=focus_areas)
         ]
 
-        if self.openai_api_key:
+        if not self.use_codex and self.openai_api_key:
             search_tasks.append(self._llm_discover_sources(query, focus_areas))
 
         if progress_callback:
@@ -182,7 +198,7 @@ class WebSearcher:
             elif isinstance(result, Exception):
                 logger.warning(f"Søgning fejlede: {result}")
 
-        if len(all_sources) < 3 and self.openai_api_key:
+        if len(all_sources) < 3 and not self.use_codex and self.openai_api_key:
             try:
                 llm_sources = await self._llm_discover_sources(query, focus_areas)
                 all_sources.extend(llm_sources)
@@ -194,8 +210,15 @@ class WebSearcher:
             all_sources.extend(extra_sources)
 
         all_sources = self._deduplicate_sources(all_sources)
+        # An unavailable page or an authority's homepage is not evidence.
+        # Keep only fetched text; do not pad a thin result with invented sources.
+        all_sources = [source for source in all_sources if source.content.strip()]
+        results["warnings"] = []
         if len(all_sources) < 3:
-            all_sources.extend(self._ensure_minimum_sources(all_sources, query, focus_areas))
+            results["warnings"].append(
+                "Der blev fundet færre end tre kilder med læsbart indhold. Søgeresultatet kan være ufuldstændigt."
+            )
+        results["status"] = "sources_found" if all_sources else "no_sources"
 
         if progress_callback:
             await progress_callback(f"Fundet {len(all_sources)} kilder - sorterer efter relevans...", "processing", 50)
@@ -206,6 +229,10 @@ class WebSearcher:
         # Tag de bedste kilder
         top_sources = all_sources[:10]
         results["sources"] = [self._source_to_dict(s) for s in top_sources]
+        if not top_sources:
+            results["summary"] = "Der blev ikke fundet læsbare kilder til spørgsmålet. Prøv et mere præcist emne."
+            results["llm_provider"] = None
+            return results
 
         if progress_callback:
             await progress_callback(f"Genererer citationer fra {len(top_sources)} top kilder...", "analyzing", 60)
@@ -215,7 +242,7 @@ class WebSearcher:
         results["citations"] = [self._citation_to_dict(c) for c in citations]
 
         # Generer sammenfatning og LLM svar
-        if self.use_azure or self.openai_api_key:
+        if self.use_codex or self.use_azure or self.openai_api_key:
             if progress_callback:
                 await progress_callback("Analyserer med AI LLM...", "analyzing", 70)
 
@@ -225,18 +252,31 @@ class WebSearcher:
                 results["llm_answer_key_points"] = llm_answer.get("key_points", [])
                 results["llm_answer_citations"] = llm_answer.get("citations", [])
                 results["llm_answer_confidence"] = llm_answer.get("confidence", 0.8)
+                if self.use_codex:
+                    from src.services.codex_text_provider import MODEL, PROVIDER
+                    results["llm_provider"], results["model"] = PROVIDER, MODEL
+                else:
+                    results["llm_provider"] = "azure" if self.use_azure else "openai"
+                    results["model"] = self.azure_deployment if self.use_azure else self.openai_model
 
-            if progress_callback:
-                await progress_callback("Genererer krydsreferencer...", "analyzing", 80)
-            results["cross_references"] = await self._generate_cross_references(query, top_sources)
+            if self.use_codex:
+                # One explicitly selected model produces all generated fields.
+                # Never fall through to cloud helpers when local opt-in is active.
+                results["cross_references"] = []
+                results["key_findings"] = llm_answer.get("key_points", []) if llm_answer else []
+                results["recommendations"] = llm_answer.get("recommendations", []) if llm_answer else []
+            else:
+                if progress_callback:
+                    await progress_callback("Genererer krydsreferencer...", "analyzing", 80)
+                results["cross_references"] = await self._generate_cross_references(query, top_sources)
 
-            if progress_callback:
-                await progress_callback("Udtrækker key findings...", "analyzing", 85)
-            results["key_findings"] = await self._extract_key_findings_with_llm(query, top_sources)
+                if progress_callback:
+                    await progress_callback("Udtrækker key findings...", "analyzing", 85)
+                results["key_findings"] = await self._extract_key_findings_with_llm(query, top_sources)
 
-            if progress_callback:
-                await progress_callback("Genererer anbefalinger...", "analyzing", 90)
-            results["recommendations"] = await self._generate_recommendations_with_llm(query, top_sources)
+                if progress_callback:
+                    await progress_callback("Genererer anbefalinger...", "analyzing", 90)
+                results["recommendations"] = await self._generate_recommendations_with_llm(query, top_sources)
         else:
             results["key_findings"] = await self._extract_key_findings(top_sources)
             results["recommendations"] = await self._generate_recommendations(query, citations)
@@ -245,7 +285,7 @@ class WebSearcher:
             await progress_callback("Genererer sammenfatning...", "finalizing", 95)
 
         results["summary"] = await self._generate_summary(query, top_sources, citations)
-        results["llm_provider"] = "openai" if self.openai_api_key else None
+        results.setdefault("llm_provider", None)
 
         if progress_callback:
             await progress_callback(f"Research afsluttet! {len(top_sources)} kilder, {len(citations)} citationer", "complete", 100)
@@ -255,7 +295,7 @@ class WebSearcher:
 
     async def _llm_discover_sources(self, query: str, focus_areas: List[str]) -> List[Source]:
         """Brug OpenAI LLM til at foreslå relevante autoritative kilder."""
-        if not self.openai_api_key or not self.session:
+        if self.use_codex or not self.openai_api_key or not self.session:
             return []
 
         system_prompt = (
@@ -325,7 +365,7 @@ class WebSearcher:
 
     async def _generate_cross_references(self, query: str, sources: List[Source]) -> List[Dict[str, Any]]:
         """Brug OpenAI til at skabe krydsreferencer mellem kilder."""
-        if not self.openai_api_key or not sources:
+        if self.use_codex or not self.openai_api_key or not sources:
             return []
 
         docs = []
@@ -413,7 +453,7 @@ class WebSearcher:
 
     async def _generate_llm_answer(self, query: str, sources: List[Source]) -> Optional[Dict[str, Any]]:
         """Generer et detaljeret Perplexity-stil svar med citationer og confidence scores."""
-        if (not self.use_azure and not self.openai_api_key) or not sources:
+        if (not self.use_codex and not self.use_azure and not self.openai_api_key) or not sources:
             return None
 
         docs = []
@@ -437,6 +477,7 @@ class WebSearcher:
             "  \"key_points\": [\"Hovedpunkt 1\", \"Hovedpunkt 2\", ...],\n"
             "  \"citations\": [{\"source_index\": int, \"quote\": string, \"relevance\": string}, ...]\n"
             "}\n\n"
+            "Tilføj også 'recommendations': en liste af konkrete anbefalinger, tydeligt adskilt fra vurderinger.\n"
             "VIGTIGT:\n"
             "- Brug ALTID de leverede kilder - citér kun verificerede fakta\n"
             "- Tilføj [nummer] efter hver sætning der refererer til en kilde\n"
@@ -480,34 +521,53 @@ class WebSearcher:
             }
 
         try:
-            async with self.session.post(url, headers=headers, json=payload) as response:
-                if response.status != 200:
-                    text = await response.text()
-                    logger.warning("OpenAI svar fejlede: %s - %s", response.status, text)
-                    return None
-                data = await response.json()
-        except Exception as exc:
-            logger.warning("OpenAI svar forespørgsel mislykkedes: %s", exc)
+            if self.use_codex:
+                from src.services.codex_text_provider import generate_text
+                content = await asyncio.to_thread(generate_text, system_prompt, user_prompt, max_tokens=2500)
+                data = {"choices": [{"message": {"content": content}}]}
+            else:
+                async with self.session.post(url, headers=headers, json=payload) as response:
+                    if response.status != 200:
+                        logger.warning("Modelbesvarelsen fejlede med HTTP %s", response.status)
+                        return None
+                    data = await response.json()
+        except Exception:
+            logger.warning("Modelbesvarelsen kunne ikke gennemføres")
             return None
 
         try:
             content = data["choices"][0]["message"]["content"]
+            content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
             parsed = json.loads(content)
+            if not isinstance(parsed, dict):
+                return None
             answer = parsed.get("answer", "")
+            if not isinstance(answer, str) or not answer.strip():
+                return None
             overall_confidence = parsed.get("confidence", 0.8)
-            key_points = parsed.get("key_points", [])
+            key_points_raw = parsed.get("key_points", [])
+            key_points = [item.strip() for item in key_points_raw if isinstance(item, str) and item.strip()] if isinstance(key_points_raw, list) else []
+            recommendations_raw = parsed.get("recommendations", [])
+            recommendations = [item.strip() for item in recommendations_raw if isinstance(item, str) and item.strip()] if isinstance(recommendations_raw, list) else []
             citations_map = parsed.get("citations", [])
-        except (KeyError, json.JSONDecodeError, IndexError) as exc:
+            if not isinstance(citations_map, list):
+                citations_map = []
+        except (KeyError, json.JSONDecodeError, IndexError, TypeError, AttributeError) as exc:
             logger.warning("Kunne ikke tolke OpenAI svar JSON: %s", exc)
             return None
 
         citation_details = []
         for entry in citations_map:
-            idx = entry.get("source_index")
-            if idx is None:
+            if not isinstance(entry, dict):
+                continue
+            citation_index = entry.get("source_index")
+            if type(citation_index) is not int or not 1 <= citation_index <= len(sources):
                 continue
             try:
-                source = sources[idx - 1]
+                source = sources[citation_index - 1]
+                quote_text = str(entry.get("quote") or "").strip()
+                if not quote_text or " ".join(quote_text.split()) not in " ".join(source.content.split()):
+                    continue
                 citation_details.append({
                     "snippet": entry.get("quote", ""),
                     "title": source.title,
@@ -522,36 +582,25 @@ class WebSearcher:
         return {
             "answer": answer,
             "key_points": key_points,
+            "recommendations": recommendations,
             "citations": citation_details,
             "confidence": overall_confidence
         }
 
-    async def _search_eur_lex(self, query: str) -> List[Source]:
-        """Søger i EUR-Lex databasen"""
+    async def _search_eur_lex(self, query: str, focus_areas: Optional[List[str]] = None) -> List[Source]:
+        """Fetch named regulations selected by topic and explicit focus."""
+        normalized = query.lower()
+        focus = set(focus_areas or [])
+        document_queries = []
+        if (not focus or focus & {"GDPR", "Databeskyttelse", "Datatilsynets vejledninger", "Automatiserede beslutninger"}) and ("GDPR" in focus or any(term in normalized for term in ("gdpr", "databeskytt", "personoplys", "konsekvensanalyse", "dpia"))):
+            document_queries.append("GDPR 2016/679")
+        if (not focus or focus & {"EU AI Act", "Højrisiko AI systemer", "Biometrisk identifikation"}) and ("EU AI Act" in focus or any(term in normalized for term in ("ai act", "ai-forordning", "kunstig intelligens", "højrisiko", "2024/1689"))):
+            document_queries.append("AI Act 2024/1689")
         sources = []
-        try:
-            # Specifik søgning efter AI Act og GDPR
-            ai_act_queries = [
-                "Regulation (EU) 2024/1689 artificial intelligence",
-                "AI Act high-risk AI systems",
-                "prohibited AI practices EU"
-            ]
-
-            gdpr_queries = [
-                "Regulation (EU) 2016/679 GDPR",
-                "automated decision-making GDPR",
-                "data protection AI systems"
-            ]
-
-            for search_query in ai_act_queries + gdpr_queries:
-                if any(term in query.lower() for term in search_query.lower().split()):
-                    source = await self._fetch_eur_lex_document(search_query)
-                    if source:
-                        sources.append(source)
-
-        except Exception as e:
-            logger.error(f"EUR-Lex søgning fejlede: {e}")
-
+        for document_query in document_queries:
+            source = await self._fetch_eur_lex_document(document_query)
+            if source:
+                sources.append(source)
         return sources
 
     async def _search_datatilsynet(self, query: str) -> List[Source]:
@@ -667,30 +716,25 @@ class WebSearcher:
             for match in pattern.finditer(html_text):
                 href, title_html = match.groups()
                 href = html.unescape(href)
-                title = re.sub('<[^<]+?>', '', html.unescape(title_html)).strip()
-                if not href.startswith('http'):
+                if href.startswith("//"):
+                    href = "https:" + href
+                parsed = urlsplit(href)
+                if parsed.hostname and parsed.hostname.endswith("duckduckgo.com"):
+                    href = parse_qs(parsed.query).get("uddg", [href])[0]
+                if urlsplit(href).scheme not in {"http", "https"}:
                     continue
+                title = re.sub('<[^<]+?>', '', html.unescape(title_html)).strip()
                 if href in seen_urls:
                     continue
                 seen_urls.add(href)
-            source = await self._fetch_source(href)
-            if not source:
-                source = Source(
-                    title=title or href,
-                    url=href,
-                    content='',
-                    domain=self._extract_domain(href),
-                    date_accessed=datetime.now(),
-                    source_type='website',
-                    authority=self.trusted_domains.get(self._extract_domain(href), {}).get('authority'),
-                    relevance_score=0.2
+                source = await self._fetch_source(href)
+                if source is None or not source.content.strip():
+                    continue
+                source.title = title or source.title
+                source.relevance_score = max(
+                    source.relevance_score,
+                    0.6 if self._is_relevant(source.content, query) else 0.3,
                 )
-            source.title = title or source.title
-            if self._is_relevant(source.content, query):
-                source.relevance_score = max(source.relevance_score, 0.6)
-                sources.append(source)
-            elif len(sources) < limit - 1:
-                source.relevance_score = max(source.relevance_score, 0.3)
                 sources.append(source)
                 if len(sources) >= limit:
                     break
@@ -757,22 +801,10 @@ class WebSearcher:
 
                         # Hent fuld kilde
                         source = await self._fetch_source(link)
-                        if not source:
-                            # Fallback til snippet hvis fetch fejler
-                            domain = self._extract_domain(link)
-                            source = Source(
-                                title=title,
-                                url=link,
-                                content=snippet,
-                                domain=domain,
-                                date_accessed=datetime.now(),
-                                source_type='website',
-                                authority=self.trusted_domains.get(domain, {}).get('authority'),
-                                relevance_score=0.7  # Google ranker godt
-                            )
-                        else:
-                            source.title = title
-                            source.relevance_score = max(source.relevance_score, 0.7)
+                        if source is None:
+                            continue
+                        source.title = title or source.title
+                        source.relevance_score = max(source.relevance_score, 0.7)
 
                         # Øg relevans for trusted domæner
                         if source.domain in self.trusted_domains:
@@ -817,79 +849,19 @@ class WebSearcher:
         return sources
 
     async def _fetch_eur_lex_document(self, search_query: str) -> Optional[Source]:
-        """Henter specifikt EUR-Lex dokument"""
-        try:
-            if "2024/1689" in search_query or "AI Act" in search_query:
-                # AI Act specifik URL og indhold
-                url = "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689"
-                title = "Regulation (EU) 2024/1689 on Artificial Intelligence (AI Act)"
-                content = """
-                Artikel 5 - Forbudte AI-praksisser:
-                1. Følgende AI-praksisser er forbudt:
-                (a) Anvendelse af subliminale teknikker ud over en persons bevidsthed
-                (b) Udnyttelse af svagheder hos specifikke grupper af personer
-                (c) Social scoring af fysiske personer af offentlige myndigheder
-                (d) Real-time fjernbiometrisk identifikation i offentligt tilgængelige rum
-
-                Artikel 6-15 - Høj-risiko AI-systemer:
-                Høj-risiko AI-systemer skal opfylde krav til:
-                - Risikostyringssystem (Artikel 9)
-                - Data og datastyring (Artikel 10)
-                - Teknisk dokumentation (Artikel 11)
-                - Registrering og logging (Artikel 12)
-                - Gennemsigtighed og information til brugere (Artikel 13)
-                - Menneskeligt tilsyn (Artikel 14)
-                - Nøjagtighed, robusthed og cybersikkerhed (Artikel 15)
-                """
-
-                return Source(
-                    title=title,
-                    url=url,
-                    content=content,
-                    domain="eur-lex.europa.eu",
-                    date_accessed=datetime.now(),
-                    date_published=datetime(2024, 7, 12),
-                    source_type="regulation",
-                    authority="EU",
-                    relevance_score=0.95
-                )
-
-            elif "2016/679" in search_query or "GDPR" in search_query:
-                # GDPR specifik information
-                url = "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
-                title = "Regulation (EU) 2016/679 (General Data Protection Regulation)"
-                content = """
-                Artikel 22 - Automatiseret individuel beslutningstagning:
-                1. Den registrerede har ret til ikke at være underlagt en afgørelse, der udelukkende er baseret på automatiseret behandling
-                2. Undtagelser gælder når afgørelsen er:
-                (a) Nødvendig for indgåelse eller opfyldelse af en kontrakt
-                (b) Tilladt ved EU-ret eller medlemsstatens ret
-                (c) Baseret på den registreredes udtrykkelige samtykke
-
-                Artikel 35 - Konsekvensanalyse for databeskyttelse (DPIA):
-                1. Når en behandling kan medføre høj risiko for fysiske personers rettigheder og frihedsrettigheder
-                3. DPIA er især påkrævet for:
-                (a) Systematisk og omfattende evaluering af personlige aspekter
-                (b) Behandling i stort omfang af særlige kategorier af personoplysninger
-                (c) Systematisk overvågning af et offentligt tilgængeligt område i stort omfang
-                """
-
-                return Source(
-                    title=title,
-                    url=url,
-                    content=content,
-                    domain="eur-lex.europa.eu",
-                    date_accessed=datetime.now(),
-                    date_published=datetime(2016, 5, 4),
-                    source_type="regulation",
-                    authority="EU",
-                    relevance_score=0.90
-                )
-
-        except Exception as e:
-            logger.error(f"Kunne ikke hente EUR-Lex dokument: {e}")
-
-        return None
+        """Fetch the actual official document; never substitute stored prose."""
+        normalized = search_query.lower()
+        if "2024/1689" in normalized or "ai act" in normalized:
+            url = "https://eur-lex.europa.eu/legal-content/DA/TXT/?uri=CELEX:32024R1689"
+        elif "2016/679" in normalized or "gdpr" in normalized:
+            url = "https://eur-lex.europa.eu/legal-content/DA/TXT/?uri=CELEX:32016R0679"
+        else:
+            return None
+        source = await self._fetch_source(url, authority="EU")
+        if source is None or not source.content.strip():
+            return None
+        source.source_type = "regulation"
+        return source
 
     def _extract_domain(self, url: str) -> str:
         try:
@@ -901,106 +873,67 @@ class WebSearcher:
     def _deduplicate_sources(self, sources: List[Source]) -> List[Source]:
         dedup: Dict[str, Source] = {}
         for source in sources:
-            key = source.url.rstrip('/')
+            # Tracking parameters do not identify a different document. Keep
+            # semantic query parameters (including EUR-Lex uri/CELEX IDs).
+            parts = urlsplit(source.url)
+            query = [
+                (name, value) for name, value in parse_qsl(parts.query, keep_blank_values=True)
+                if not name.lower().startswith("utm_")
+                and name.lower() not in {"trk", "gclid", "fbclid"}
+            ]
+            key = urlunsplit((parts.scheme.lower(), parts.netloc.lower(),
+                             parts.path.rstrip('/'), urlencode(query), ""))
             existing = dedup.get(key)
             if not existing or source.relevance_score > existing.relevance_score:
                 dedup[key] = source
         return list(dedup.values())
 
-    def _ensure_minimum_sources(self, sources: List[Source], query: str, focus_areas: Optional[List[str]]) -> List[Source]:
-        placeholders: List[Source] = []
-        seen_urls = {source.url.rstrip('/') for source in sources}
-        extra_queries = focus_areas or []
-        extra_queries = extra_queries[:3]
-        base_candidates = [
-            ("https://www.datatilsynet.dk/", "Datatilsynet"),
-            ("https://edpb.europa.eu/our-work-tools/our-documents/linje_en", "EDPB"),
-            ("https://kl.dk", "KL")
-        ]
-
-        for url, authority in base_candidates:
-            if len(sources) + len(placeholders) >= 3:
-                break
-            key = url.rstrip('/')
-            if key in seen_urls:
-                continue
-            placeholders.append(Source(
-                title=f"Ekstern reference – {authority}",
-                url=url,
-                content=f"Placeholder for {authority} relateret til {query}",
-                domain=self._extract_domain(url),
-                date_accessed=datetime.now(),
-                source_type='website',
-                authority=authority,
-                relevance_score=0.2
-            ))
-            seen_urls.add(key)
-
-        for idx, area in enumerate(extra_queries):
-            if len(sources) + len(placeholders) >= 3:
-                break
-            synthetic_url = f"https://example.com/search?q={quote_plus(query + ' ' + area)}"
-            if synthetic_url in seen_urls:
-                continue
-            placeholders.append(Source(
-                title=f"Supplerende kilde – {area}",
-                url=synthetic_url,
-                content=f"Supplerende materiale om {area}",
-                domain=self._extract_domain(synthetic_url),
-                date_accessed=datetime.now(),
-                source_type='website',
-                authority=area,
-                relevance_score=0.1
-            ))
-            seen_urls.add(synthetic_url)
-
-        return placeholders
-
     async def _fetch_source(self, url: str, authority: str = None) -> Optional[Source]:
-        """Henter en kilde fra URL"""
+        """Read bounded HTML/PDF source bytes; never replace failed fetches."""
+        if not self.session:
+            return None
+        max_bytes = 5 * 1024 * 1024
         try:
-            if not self.session:
-                return None
-
             async with self.session.get(url) as response:
-                if response.status == 200:
-                    content = await response.text()
-
-                    # Ekstraher titel og clean content med BeautifulSoup
+                if response.status != 200:
+                    return None
+                if response.content_length is not None and response.content_length > max_bytes:
+                    return None
+                raw = bytearray()
+                async for chunk in response.content.iter_chunked(65536):
+                    raw.extend(chunk)
+                    if len(raw) > max_bytes:
+                        return None
+                content_type = response.headers.get("Content-Type", "").lower()
+                is_pdf = "application/pdf" in content_type or bytes(raw[:5]) == b"%PDF-"
+                title = url
+                if is_pdf:
+                    from src.services.document_analyzer import parse_pdf
+                    clean_content, _ = await asyncio.to_thread(parse_pdf, bytes(raw))
+                else:
                     from bs4 import BeautifulSoup
-                    soup = BeautifulSoup(content, 'html.parser')
-
-                    # Fjern script og style tags
-                    for script in soup(["script", "style", "noscript"]):
-                        script.decompose()
-
-                    # Ekstraher titel
-                    title = soup.title.string.strip() if soup.title else url
-
-                    # Ekstraher ren tekst fra body
-                    clean_content = soup.get_text(separator=' ', strip=True)
-
-                    # Rens whitespace og begræns længde
-                    clean_content = ' '.join(clean_content.split())[:2000]
-
-                    domain = self._extract_domain(url)
-                    source_info = self.trusted_domains.get(domain, {})
-
-                    return Source(
-                        title=title,
-                        url=url,
-                        content=clean_content,
-                        domain=domain,
-                        date_accessed=datetime.now(),
-                        source_type=source_info.get('type', 'website'),
-                        authority=authority or source_info.get('authority'),
-                        relevance_score=0.7 if domain in self.trusted_domains else 0.3
-                    )
-
-        except Exception as e:
-            logger.error(f"Kunne ikke hente kilde {url}: {e}")
-
-        return None
+                    soup = BeautifulSoup(bytes(raw), "html.parser")
+                    if soup.title:
+                        title = soup.title.get_text(" ", strip=True) or url
+                    for element in soup(["script", "style", "noscript", "nav", "header", "footer", "aside"]):
+                        element.decompose()
+                    main_content = soup.find("main") or soup.find("article") or soup.find(attrs={"role": "main"}) or soup.body or soup
+                    clean_content = main_content.get_text(separator=" ", strip=True)
+                clean_content = " ".join(clean_content.split())[:20000]
+                if not clean_content:
+                    return None
+                domain = self._extract_domain(url)
+                source_info = self.trusted_domains.get(domain, {})
+                return Source(
+                    title=title, url=url, content=clean_content, domain=domain,
+                    date_accessed=datetime.now(),
+                    source_type="pdf" if is_pdf else source_info.get("type", "website"),
+                    authority=authority or source_info.get("authority"),
+                    relevance_score=0.7 if domain in self.trusted_domains else 0.3,
+                )
+        except Exception:
+            logger.warning("Kildefilen kunne ikke hentes eller læses fra %s", self._extract_domain(url))
+            return None
 
     def _is_relevant(self, content: str, query: str) -> bool:
         """Kontroller om indhold er relevant for søgeforespørgslen"""
@@ -1127,6 +1060,8 @@ class WebSearcher:
 
     async def _extract_key_findings_with_llm(self, query: str, sources: List[Source]) -> List[str]:
         """Udtrækker detaljerede nøglefund med lovtekst citater."""
+        if self.use_codex:
+            return []
         if (not self.use_azure and not self.openai_api_key) or not sources:
             return await self._extract_key_findings(sources)
 
@@ -1211,7 +1146,7 @@ class WebSearcher:
 
     async def _generate_recommendations_with_llm(self, query: str, sources: List[Source]) -> List[str]:
         """Generer anbefalinger med OpenAI LLM."""
-        if not self.openai_api_key or not sources:
+        if self.use_codex or not self.openai_api_key or not sources:
             return []
 
         docs = []
@@ -1372,7 +1307,7 @@ class WebSearcher:
         search_names.append("EDPB")
 
         # 3. OpenAI source discovery (hvis tilgængelig)
-        if self.openai_api_key:
+        if not self.use_codex and self.openai_api_key:
             if progress_callback:
                 await progress_callback("AI-baseret kildeopdagelse...", "loading")
             search_tasks.append(self._llm_discover_sources(query, ["AI Act", "GDPR", "compliance"]))
@@ -1434,7 +1369,7 @@ class WebSearcher:
         if not sources:
             return "Ingen relevante kilder fundet."
 
-        if not self.openai_api_key:
+        if not self.use_codex and not self.openai_api_key:
             # Fallback uden LLM
             return f"Fundet {len(sources)} relevante kilder fra {', '.join(set(s.authority or s.domain for s in sources[:3]))}."
 
@@ -1471,6 +1406,12 @@ class WebSearcher:
         }
 
         try:
+            if self.use_codex:
+                from src.services.codex_text_provider import generate_text
+                summary = await asyncio.to_thread(generate_text, system_prompt, user_prompt, max_tokens=int(max_length * 0.8))
+                if not isinstance(summary, str) or not summary.strip():
+                    return f"Fundet {len(sources)} kilder, men sammenfatning fejlede."
+                return summary.strip()[:max_length]
             async with self.session.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={

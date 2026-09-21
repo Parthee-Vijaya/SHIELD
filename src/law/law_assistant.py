@@ -186,7 +186,10 @@ class _LLMProvider:
             "LM_STUDIO_CHAT_MODEL", os.getenv("LM_STUDIO_MODEL", "")
         )
 
-        if self.azure_endpoint and not _is_placeholder(self.azure_api_key):
+        from src.services.codex_text_provider import is_available
+        if is_available():
+            self.provider = "codex_local"
+        elif self.azure_endpoint and not _is_placeholder(self.azure_api_key):
             self.provider = "azure"
         elif not _is_placeholder(self.openai_api_key):
             self.provider = "openai"
@@ -221,6 +224,9 @@ class _LLMProvider:
         )
 
     def _model(self) -> str:
+        if self.provider == "codex_local":
+            from src.services.codex_text_provider import MODEL
+            return MODEL
         if self.provider == "azure":
             return self.azure_deployment
         if self.provider == "openai":
@@ -255,6 +261,9 @@ class _LLMProvider:
         max_tokens: int = 1800,
         json_mode: bool = False,
     ) -> str:
+        if self.provider == "codex_local":
+            from src.services.codex_text_provider import generate_text
+            return generate_text(system, user, max_tokens=max_tokens)
         client = self._client()
         kwargs: dict[str, Any] = {
             "model": self._model(),
@@ -279,6 +288,10 @@ class _LLMProvider:
         max_tokens: int = 1800,
     ):
         """Yield (delta_text, finish_reason) tuples. Sync generator."""
+        if self.provider == "codex_local":
+            from src.services.codex_text_provider import generate_text
+            yield generate_text(system, user, max_tokens=max_tokens), "stop"
+            return
         client = self._client()
         stream = client.chat.completions.create(
             model=self._model(),
@@ -305,7 +318,7 @@ _SYSTEM_PROMPT = """Du er S.H.I.E.L.D. — en dansk juridisk AI-assistent for ko
 Stil: præcis, kortfattet, embedsmandsdansk uden floskler. Hver påstand skal kunne hjemles i en konkret lovparagraf der er sendt til dig som kontekst.
 
 Faste regler:
-1. Svar KUN på baggrund af lovparagrafferne i konteksten — gæt aldrig.
+1. Svar KUN på baggrund af lovparagrafferne i konteksten — gæt aldrig. Kataloget kan være historisk; fremstil ikke uddragene som kontrolleret gældende ret, og oplys når de ikke besvarer spørgsmålet.
 2. Når du citerer eller henviser til en lov, brug formatet [N] hvor N er kildens nummer i konteksten.
 3. Citér ordret hvor relevant — sæt citater i »danske gåseøjne«.
 4. Hvis konteksten ikke besvarer spørgsmålet entydigt: sig det direkte og foreslå hvad sagsbehandleren bør gøre (kontakt jurist, læs anden lov, indhent oplysninger).
@@ -440,6 +453,7 @@ class LawAssistant:
                 accumulated["citations"] = event.get("citations", [])
                 accumulated["follow_up_questions"] = event.get("follow_up_questions", [])
                 accumulated["provider"] = event.get("provider", accumulated["provider"])
+                accumulated["model"] = event.get("model")
             elif etype == "error":
                 accumulated["error"] = event.get("message")
         return accumulated
@@ -462,6 +476,9 @@ class LawAssistant:
             _retrieve_sources, query, category, max_sources, mode
         )
 
+        retrieval_info["warnings"] = [
+            "Lovuddragene kommer fra det lokale katalog. Aktualitet og anvendelighed er ikke kontrolleret ved denne forespørgsel."
+        ]
         yield {"event": "retrieval", "sources": sources, "retrieval": retrieval_info}
 
         if not sources:
@@ -524,8 +541,10 @@ class LawAssistant:
                 item = await queue.get()
                 if item is None:
                     break
+                if item.get("event") == "error":
+                    yield {"event": "error", "message": "Modelbesvarelsen kunne ikke færdiggøres. Prøv igen senere."}
+                    return
                 if item.get("event") != "delta":
-                    yield item
                     continue
                 text = item["text"]
                 prose_parts.append(text)
@@ -566,6 +585,7 @@ class LawAssistant:
             "citations": [],
             "follow_up_questions": parsed["follow_up_questions"],
             "provider": provider.label(),
+            "model": provider._model(),
         }
 
 

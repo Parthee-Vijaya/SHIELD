@@ -122,14 +122,26 @@ def test_api_validation_readiness_and_not_found_are_fail_closed(client: TestClie
 
 
 def test_cors_allows_localhost_and_rejects_untrusted_origin(client: TestClient):
+    # Other suites may import the application before this module configures its
+    # environment. Exercise the running app's explicit allow-list, not a later
+    # environment value that cannot change already-created middleware.
+    cors = next(
+        middleware for middleware in main.app.user_middleware
+        if middleware.cls is main.CORSMiddleware
+    )
+    from urllib.parse import urlsplit
+    local_origin = next(
+        origin for origin in cors.kwargs["allow_origins"]
+        if urlsplit(origin).hostname == "localhost"
+    )
     headers = {
-        "Origin": "http://localhost",
+        "Origin": local_origin,
         "Access-Control-Request-Method": "POST",
         "Access-Control-Request-Headers": "content-type",
     }
     allowed = client.options("/api/dpia/assessments", headers=headers)
     assert allowed.status_code == 200
-    assert allowed.headers["access-control-allow-origin"] == "http://localhost"
+    assert allowed.headers["access-control-allow-origin"] == local_origin
 
     rejected = client.options(
         "/api/dpia/assessments",

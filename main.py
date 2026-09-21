@@ -1,6 +1,6 @@
 """S.H.I.E.L.D. backend — konsekvensanalyse for AI og persondata."""
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks, Request, Query, Depends, Response
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks, Request, Query, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse, Response
 from pydantic import BaseModel, Field
@@ -669,6 +669,7 @@ class HealthCheck(BaseModel):
     status: str
     timestamp: datetime
     services: Dict[str, str]
+    ai: Dict[str, str] | None = None
 
 
 class QuickCheckRequest(BaseModel):
@@ -710,8 +711,8 @@ class AICase(BaseModel):
 
 
 class ResearchRequest(BaseModel):
-    emne: str
-    fokusområder: List[str] = None
+    emne: str = Field(min_length=3, max_length=2000)
+    fokusområder: List[str] | None = Field(default=None, max_length=8)
 
 
 class SevenPointAssessmentRequest(BaseModel):
@@ -882,10 +883,17 @@ async def health_check():
         if s == "degraded" or s.startswith("missing:"):
             if overall != "down":
                 overall = "degraded"
+    from src.services.codex_text_provider import is_available, MODEL, PROVIDER
+    ai_info = None
+    if is_available():
+        llm_status = "configured"
+        services["llm"] = llm_status
+        ai_info = {"provider": PROVIDER, "model": MODEL, "connection": "local_temporary", "status": "configured"}
     return HealthCheck(
         status=overall,
         timestamp=datetime.now(),
         services=services,
+        ai=ai_info,
     )
 
 
@@ -1144,6 +1152,7 @@ def dpia_ai_status(user: UserPrincipal = Depends(CASE_ACCESS)):
 @limiter.limit(LLM_HEAVY)
 def generate_dpia_report(
     request: Request,
+    response: Response,
     assessment_id: str,
     db: Session = Depends(get_db),
     user: UserPrincipal = Depends(CASE_WRITE),
@@ -1328,7 +1337,7 @@ async def v3_admin_backups():
 
 @app.post("/api/v3/admin/backups/run")
 @limiter.limit(ADMIN_WRITE)
-async def v3_admin_backups_run(request: Request):
+async def v3_admin_backups_run(request: Request, response: Response):
     """Manuel trigger af pg_dump-backup. Returnerer summary med path,
     størrelse og varighed. Tager 0.5-3s for typiske dataset-størrelser."""
     from src.services.backup_service import run_backup
@@ -1557,29 +1566,27 @@ async def test_web_search(request: Dict[str, Any]):
             "results_count": len(results),
             "sample": results[0] if results else None
         }
-    except Exception as e:
-        logger.warning(f"Web search test failed (using mock): {e}")
-        # Return success with mock data for SSL/network issues
-        return {
-            "success": True,
-            "results_count": 1,
-            "sample": {
-                "title": "Web Search Available (Mock Mode)",
-                "body": "Web search module is functional but using mock data due to network constraints"
-            }
-        }
+    except Exception:
+        logger.warning("Web search test failed")
+        return JSONResponse(status_code=503, content={
+            "success": False, "results_count": 0, "sample": None,
+            "error": "Websøgningen kunne ikke gennemføres. Ingen søgeresultater blev modtaget.",
+        })
 
 
 @app.post("/api/compliance/test-llm")
 async def test_llm(request: Dict[str, Any]):
     """Test LLM connectivity with timeout.
 
-    Probe-prioritet matcher v3 signal_extractor: LM Studio > Azure > OpenAI.
-    Sender en lille completion mod /v1/chat/completions for hver provider og
-    returnerer den første der svarer.
+    Explicit opt-in local GPT-5.6 Sol takes priority; otherwise probe
+    LM Studio, Azure and OpenAI in order. Only a non-empty text completion
+    counts as a successful connection, never a placeholder or empty response.
     """
     import asyncio
     import httpx
+
+    def completion_text(value: Any) -> Optional[str]:
+        return value.strip() if isinstance(value, str) and value.strip() else None
 
     async def probe_lm_studio():
         base_url = os.getenv("LM_STUDIO_BASE_URL")
@@ -1601,10 +1608,13 @@ async def test_llm(request: Dict[str, Any]):
                 return None
             data = resp.json()
             content = (data.get("choices", [{}])[0].get("message", {}) or {}).get("content", "")
+            content = completion_text(content)
+            if content is None:
+                return None
             return {
                 "success": True,
                 "model": f"{model} (LM Studio)",
-                "response": content[:120] or "OK",
+                "response": content[:120],
             }
         except Exception as exc:
             logger.warning(f"LM Studio probe failed: {exc}")
@@ -1630,10 +1640,13 @@ async def test_llm(request: Dict[str, Any]):
                 timeout=5,
             )
             response = await asyncio.to_thread(llm.invoke, "Say 'OK' if you can read this.")
+            content = completion_text(getattr(response, "content", None))
+            if content is None:
+                return None
             return {
                 "success": True,
                 "model": f"{deployment_name} (Azure)",
-                "response": response.content,
+                "response": content[:120],
             }
         except Exception as exc:
             logger.warning(f"Azure OpenAI probe failed: {exc}")
@@ -1653,46 +1666,54 @@ async def test_llm(request: Dict[str, Any]):
                 timeout=5,
             )
             response = await asyncio.to_thread(llm.invoke, "Say 'OK' if you can read this.")
+            content = completion_text(getattr(response, "content", None))
+            if content is None:
+                return None
             return {
                 "success": True,
                 "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                "response": response.content,
+                "response": content[:120],
             }
         except Exception as exc:
             logger.warning(f"OpenAI probe failed: {exc}")
             return None
 
     async def test_llm_connection():
+        from src.services.codex_text_provider import is_available, generate_text, MODEL, PROVIDER
+        if is_available():
+            answer = await asyncio.to_thread(generate_text, "Svar kort og uden værktøjer.", "Skriv kun OK.", max_tokens=20)
+            validated_answer = completion_text(answer)
+            if validated_answer is None:
+                raise ValueError("Empty or invalid model response")
+            return {"success": True, "model": MODEL, "provider": PROVIDER, "response": validated_answer[:120]}
         for probe in (probe_lm_studio, probe_azure, probe_openai):
             result = await probe()
             if result and result.get("success"):
                 return result
         return {
             "success": False,
-            "error": "Ingen LLM-provider svarede (LM Studio offline + ingen Azure/OpenAI-nøgle)",
+            "error": "Ingen modeltjeneste returnerede en brugbar tekstbesvarelse.",
             "model": None,
         }
 
     try:
-        # 8 second timeout for the whole operation
-        result = await asyncio.wait_for(test_llm_connection(), timeout=8.0)
+        from src.services.codex_text_provider import is_available
+        result = await asyncio.wait_for(test_llm_connection(), timeout=120.0 if is_available() else 8.0)
         if not result.get("success") and result.get("error"):
             return JSONResponse(status_code=503, content=result)
         return result
     except asyncio.TimeoutError:
         logger.warning("LLM test timed out")
-        return {
-            "success": True,
-            "model": "timeout (mock)",
-            "response": "LLM connection timeout - using mock mode"
-        }
+        return JSONResponse(status_code=503, content={
+            "success": False, "model": None,
+            "error": "Modeltjenesten svarede ikke inden tidsgrænsen. Ingen modelbesvarelse blev modtaget.",
+        })
     except Exception as e:
         logger.error(f"LLM test failed unexpectedly: {e}")
-        return {
-            "success": True,
-            "model": "error (mock)",
-            "response": "LLM test failed - using mock mode"
-        }
+        return JSONResponse(status_code=503, content={
+            "success": False, "model": None,
+            "error": "Modeltesten kunne ikke gennemføres. Ingen modelbesvarelse blev modtaget.",
+        })
 
 
 @app.post("/api/ai/diagnose-issue")
@@ -1953,7 +1974,7 @@ async def get_agent_config(agent_id: str):
 
 @app.post("/api/research/juridisk", response_model=Dict[str, Any])
 @limiter.limit(LLM_LIGHT)
-async def juridisk_research(request: Request, body: ResearchRequest):
+async def juridisk_research(request: Request, body: ResearchRequest, response: Response):
     """
     Udfører juridisk research med kildecitation med OpenAI + Web Search
     """
@@ -1981,17 +2002,28 @@ async def juridisk_research(request: Request, body: ResearchRequest):
             "message": f"Research afsluttet - {len(research_result.get('sources', []))} kilder fundet"
         }
 
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as e:
         logger.error(f"Juridisk research fejlede: {e}")
         raise HTTPException(status_code=500, detail=f"Research fejl: {str(e)}")
 
 
 @app.get("/api/research/juridisk/stream")
-async def juridisk_research_stream(emne: str = Query(..., description="Research emne")):
+async def juridisk_research_stream(
+    emne: str = Query(..., min_length=3, max_length=2000, description="Research emne"),
+    focus_areas: List[str] | None = Query(default=None, max_length=8),
+):
     """
     Server-Sent Events endpoint for real-time research progress
     """
     from asyncio import Queue
+    from src.research.web_searcher import validate_focus_areas
+
+    try:
+        selected_focus_areas = validate_focus_areas(focus_areas)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     async def event_generator():
         progress_queue: Queue = Queue()
@@ -2025,7 +2057,7 @@ async def juridisk_research_stream(emne: str = Query(..., description="Research 
                 async with WebSearcher() as searcher:
                     research_result = await searcher.research_topic(
                         query=emne,
-                        focus_areas=["EU AI Act", "GDPR", "dansk lovgivning"],
+                        focus_areas=selected_focus_areas,
                         progress_callback=progress_callback
                     )
                 processing_time = time.time() - start_time
@@ -2075,7 +2107,7 @@ async def juridisk_research_stream(emne: str = Query(..., description="Research 
                 yield f"data: {json.dumps(error_data)}\n\n"
             else:
                 final_data = {
-                    "message": "Research complete",
+                    "message": "Research afsluttet",
                     "status": "complete",
                     "progress": 100,
                     "result": research_result,
@@ -2294,7 +2326,7 @@ async def get_knowledge_base():
 
 @app.post("/api/knowledge-base/update", response_model=Dict[str, Any])
 @limiter.limit(ADMIN_WRITE)
-async def trigger_kb_update(request: Request, background_tasks: BackgroundTasks):
+async def trigger_kb_update(request: Request, background_tasks: BackgroundTasks, response: Response):
     """Trigger manuel opdatering af vidensbasen."""
     try:
         # Import update_knowledge_base direkte (async version)
@@ -2356,7 +2388,7 @@ async def get_eu_ai_act_checker(lang: str = "en"):
 
 @app.post("/api/eu-ai-act-checker/refresh", response_model=Dict[str, Any])
 @limiter.limit(ADMIN_WRITE)
-async def refresh_eu_ai_act_checker(request: Request):
+async def refresh_eu_ai_act_checker(request: Request, response: Response):
     """Manuel trigger — henter fresh logic.json + content_*.json fra EC.
 
     Tager 1-3s. Returnerer summary med før/efter version-stempler så
@@ -2388,7 +2420,7 @@ async def get_ai_projects():
 
 @app.post("/api/ai-projects/refresh", response_model=Dict[str, Any])
 @limiter.limit(ADMIN_WRITE)
-async def refresh_ai_projects_endpoint(request: Request):
+async def refresh_ai_projects_endpoint(request: Request, response: Response):
     """Manuel trigger af AI-projekt-katalog-syncen. Returnerer summary
     af kørslen — tager 10-20s for ~143 projekter."""
     from src.services.ai_projects_updater import refresh_ai_projects
@@ -2526,7 +2558,7 @@ async def search_laws_api(request: LawSearchRequest):
 
 @app.post("/api/law/ask", response_model=Dict[str, Any])
 @limiter.limit(LLM_HEAVY)
-async def ask_law_assistant(request: Request, body: LawAskRequest):
+async def ask_law_assistant(request: Request, body: LawAskRequest, response: Response):
     """
     Ask legal question and get AI-generated answer with citations.
 
@@ -2547,6 +2579,8 @@ async def ask_law_assistant(request: Request, body: LawAskRequest):
                 mode=body.mode,
             )
 
+        if result.get("error"):
+            raise HTTPException(status_code=503, detail="Modelbesvarelsen kunne ikke færdiggøres. Prøv igen senere.")
         return {
             "success": True,
             "query": body.query,
@@ -2558,8 +2592,11 @@ async def ask_law_assistant(request: Request, body: LawAskRequest):
             "follow_up_questions": result.get('follow_up_questions'),
             "retrieval": result.get('retrieval'),
             "provider": result.get('provider'),
+            "model": result.get('model'),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Law AI assistant failed: {e}")
         raise HTTPException(status_code=500, detail=f"AI assistent fejlede: {str(e)}")
@@ -3088,7 +3125,6 @@ def _v3_load_rules():
     return result.rules
 
 
-@lru_cache(maxsize=1)
 def _v3_signal_extractor() -> SignalExtractor:
     return SignalExtractor()
 
@@ -3153,6 +3189,9 @@ async def v3_assess(
     # via the LLM signal extractor.
     merged_signals: Dict[str, bool] = dict(request.signals)
     extracted_signals: Dict[str, bool] = {}
+    extracted_predicates: Dict[str, Any] = {}
+    uncertain_signals: set[str] = set()
+    model_info = None
     warnings: List[str] = []
     extraction_failed = False
 
@@ -3160,9 +3199,13 @@ async def v3_assess(
         extractor = _v3_signal_extractor()
         if extractor.is_configured:
             try:
-                extracted_signals = extractor.extract(
-                    request.system_description, rules
-                )
+                extracted_signals = await asyncio.to_thread(extractor.extract, request.system_description, rules)
+                extracted_predicates = getattr(extractor, "batch_predicates", {})
+                model_info = getattr(extractor, "model_info", None)
+                uncertain_signals = set(getattr(extractor, "last_uncertain_signals", [])) - set(request.signals)
+                if uncertain_signals:
+                    extraction_failed = True
+                    warnings.append(f"{len(uncertain_signals)} forhold er ikke dokumenteret i beskrivelsen og kræver afklaring.")
             except SignalExtractionError as exc:
                 extraction_failed = True
                 warnings.append(f"signal extraction failed: {exc}")
@@ -3178,7 +3221,7 @@ async def v3_assess(
     # An empty set of trigger facts cannot support a legal GO conclusion.  A
     # description-only request whose extractor is unavailable must be retried
     # with explicit signals; continuing would make every rule look irrelevant.
-    if not merged_signals and not request.predicates:
+    if not merged_signals and not request.predicates and not extracted_predicates:
         detail = (
             "Signal extraction is unavailable; provide explicit signals or retry when the extractor is operational."
             if extraction_failed
@@ -3188,7 +3231,7 @@ async def v3_assess(
 
     rule_input = RuleInput(
         signals=merged_signals,
-        predicates=request.predicates,
+        predicates={**extracted_predicates, **request.predicates},
     )
 
     try:
@@ -3197,7 +3240,7 @@ async def v3_assess(
         raise HTTPException(status_code=400, detail=f"evaluation error: {exc}")
 
     aggregate = aggregate_status(decisions)
-    unresolved_inputs = sorted({item for decision in decisions for item in decision.needs_input})
+    unresolved_inputs = sorted({item for decision in decisions for item in decision.needs_input} | uncertain_signals)
     if extraction_failed and aggregate == Status.GO:
         aggregate = Status.BETINGET_GO
         warnings.append("aggregate status held at BETINGET-GO because signal extraction was incomplete")
@@ -3211,6 +3254,8 @@ async def v3_assess(
         "unresolved_inputs": unresolved_inputs,
         "signals_provided": dict(request.signals),
         "signals_extracted_by_llm": extracted_signals,
+        "predicates_extracted_by_llm": extracted_predicates,
+        "model_info": model_info,
         "decisions": [d.model_dump(mode="json") for d in decisions],
         "warnings": warnings,
     }
@@ -3614,146 +3659,156 @@ async def v3_compare(request: V3CompareRequest):
 @limiter.limit(LLM_HEAVY)
 async def v3_document_analyze(
     request: Request,
+    response: Response,
     file: UploadFile = File(...),
-    case_id: Optional[str] = None,
-    note: Optional[str] = None,
+    case_id: Optional[str] = Form(default=None, max_length=128),
+    case_db_id: Optional[str] = Form(default=None, max_length=36),
+    note: Optional[str] = Form(default=None, max_length=4000),
     user: UserPrincipal = Depends(CASE_WRITE),
 ):
-    """Parse a PDF or DOCX, chunk it, extract signals via LLM per chunk,
-    then evaluate the v3 rule engine against the merged signals.
-
-    Returns the same shape as /api/v3/assess plus per-chunk attribution
-    so the UI can highlight which section triggered which rule."""
+    """Analyze an uploaded document and retain its exact result with the case."""
     from src.services.document_analyzer import (
-        parse_document,
-        analyze_document,
-        chunk_rule_map,
-        DocumentParseError,
+        parse_document, analyze_document, chunk_rule_map, DocumentParseError,
     )
+    from src.database.connection import SessionLocal
+    from src.database import cases as v3_cases
+    from src.database.case_workspace import add_workspace_reference
+    from src.services import document_storage
+    from src.services.citation_verifier import RuleFreshness
+    from src.database.legal_monitoring import MonitoredLegalSource
+    from src.services.law_change_impact import link_case_to_legal_source
 
-    content = await file.read()
+    # Validate the case before a paid model call, with no transaction held open.
+    if case_db_id:
+        with SessionLocal() as check_db:
+            if v3_cases.get_case(check_db, case_db_id) is None:
+                raise HTTPException(status_code=404, detail="Sagen findes ikke.")
+    content = await file.read(10 * 1024 * 1024 + 1)
+    await file.close()
     if not content:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-    if len(content) > 10 * 1024 * 1024:  # 10 MB cap
-        raise HTTPException(
-            status_code=413,
-            detail=f"File too large ({len(content)} bytes). Max 10 MB.",
-        )
-
+        raise HTTPException(status_code=400, detail="Den uploadede fil er tom.")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Filen må højst fylde 10 MB.")
     try:
-        text, offsets, kind = parse_document(content, file.filename or "")
+        text, offsets, kind = await asyncio.to_thread(parse_document, content, file.filename or "")
     except DocumentParseError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        logger.exception("document parse failed")
-        raise HTTPException(status_code=500, detail=f"parse failed: {exc}")
-
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        raise HTTPException(status_code=400, detail="Dokumentet kunne ikke læses sikkert.") from None
     if not text.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Document contained no extractable text (scanned PDF without OCR?).",
-        )
-
+        raise HTTPException(status_code=400, detail="Dokumentet indeholder ingen læsbar tekst. En skannet PDF kræver tekstgenkendelse.")
     try:
         rules = _v3_load_rules()
     except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     extractor = _v3_signal_extractor()
-    result = analyze_document(
-        text,
-        rules,
-        offsets,
-        extractor=extractor,
-    )
-
-    # Build chunk → triggered rule_ids mapping for UI highlighting.
+    if not extractor.is_configured:
+        raise HTTPException(status_code=422, detail="Dokumentanalysen kræver en tilgængelig model. Udfyld de konkrete forhold i formularen, eller prøv igen når modeltjenesten er tilgængelig. Ingen vurdering er gemt.")
+    result = await asyncio.to_thread(analyze_document, text, rules, offsets, extractor=extractor)
+    if not result.merged_signals and not result.extracted_predicates:
+        raise HTTPException(status_code=422, detail="Der kunne ikke udtrækkes konkrete forhold fra dokumentet. Ingen vurdering er gemt; gennemgå materialet og udfyld formularen.")
     chunk_to_rules = chunk_rule_map(result, rules)
-
-    # Persist to audit-log so this analysis shows up in /historik.
-    audit_id: Optional[str] = None
-    try:
-        from src.database.connection import SessionLocal
-        db = SessionLocal()
-        try:
-            request_payload = {
-                "kind": "document",
-                "filename": file.filename,
-                "size_bytes": len(content),
-                "format": kind,
-                "text_length": result.text_length,
-                "chunk_count": result.chunk_count,
-                "merged_signals": result.merged_signals,
-                "case_id": case_id,
-                "note": note,
-            }
-            response_payload = {
-                "rule_engine_version": "3.0.0-alpha.5",
-                "evaluated_at": datetime.now(UTC).isoformat(),
-                "rules_loaded": result.rules_loaded,
-                "aggregate_status": result.aggregate_status,
-                "decisions": [d.model_dump(mode="json") for d in result.decisions],
-                "warnings": result.warnings,
-            }
-            entry = v3_audit.save_assessment(
-                db,
-                request_payload=request_payload,
-                response_payload=response_payload,
-                case_id=case_id,
-                user_id=user.oid,
-                note=note,
-            )
-            audit_id = entry.id
-            db.commit()
-        finally:
-            db.close()
-    except Exception as exc:
-        logger.warning("v3 audit log write failed (analysis still returned): %s", exc)
-
-    # Persist the source document so the UI can show "where in the doc did
-    # this predikat come from" — page-level highlights in /api/v3/documents/.
-    if audit_id:
-        try:
-            from src.services import document_storage
-            await asyncio.to_thread(
-                document_storage.store,
-                audit_id,
-                content=content,
-                filename=file.filename or "",
-                kind=kind,
-                content_type=file.content_type,
-            )
-        except Exception as exc:
-            logger.warning("source document storage failed for %s: %s", audit_id, exc)
-
-    return {
+    unresolved = sorted({item for decision in result.decisions for item in decision.needs_input})
+    missing_signals = sorted({name for chunk in result.chunk_signals for name in chunk.uncertain_signals} - set(result.merged_signals))
+    unresolved = sorted(set(unresolved) | set(missing_signals))
+    extraction_failed = any(chunk.error for chunk in result.chunk_signals) or bool(missing_signals)
+    payload = {
         "rule_engine_version": "3.0.0-alpha.5",
         "evaluated_at": datetime.now(UTC).isoformat(),
-        "filename": file.filename,
-        "format": kind,
-        "size_bytes": len(content),
-        "text_length": result.text_length,
-        "chunk_count": result.chunk_count,
-        "rules_loaded": result.rules_loaded,
-        "aggregate_status": result.aggregate_status,
-        "merged_signals": result.merged_signals,
-        "extracted_predicates": result.extracted_predicates,
-        "decisions": [d.model_dump(mode="json") for d in result.decisions],
+        "filename": file.filename, "format": kind, "size_bytes": len(content),
+        "text_length": result.text_length, "chunk_count": result.chunk_count,
+        "rules_loaded": result.rules_loaded, "aggregate_status": result.aggregate_status,
+        "assessment_complete": not extraction_failed and not unresolved,
+        "unresolved_inputs": unresolved,
+        "merged_signals": result.merged_signals, "extracted_predicates": result.extracted_predicates,
+        "decisions": [decision.model_dump(mode="json") for decision in result.decisions],
         "chunks": [
-            {
-                "index": c.index,
-                "label": c.label,
-                "page": c.page,
-                "char_start": c.char_start,
-                "char_end": c.char_end,
-                "preview": c.text[:300] + ("…" if len(c.text) > 300 else ""),
-                "triggered_rules": chunk_to_rules.get(c.index, []),
-            }
-            for c in result.chunks
+            {"index": chunk.index, "label": chunk.label, "page": chunk.page,
+             "char_start": chunk.char_start, "char_end": chunk.char_end,
+             "preview": chunk.text[:300] + ("…" if len(chunk.text) > 300 else ""),
+             "triggered_rules": chunk_to_rules.get(chunk.index, [])}
+            for chunk in result.chunks
         ],
-        "warnings": result.warnings,
-        "audit_log_id": audit_id,
+        "warnings": list(result.warnings), "case_db_id": case_db_id,
+        "model_info": getattr(extractor, "model_info", None),
     }
+    if extraction_failed and payload["aggregate_status"] == "GO":
+        payload["aggregate_status"] = "BETINGET-GO"
+        payload["warnings"].append("Dokumentanalysen er ufuldstændig og kræver faglig gennemgang.")
+    audit_id = None
+    db = SessionLocal()
+    try:
+        linked_case = v3_cases.get_case(db, case_db_id) if case_db_id else None
+        if case_db_id and linked_case is None:
+            raise HTTPException(status_code=404, detail="Sagen findes ikke længere.")
+        triggered = [decision for decision in result.decisions if decision.triggered]
+        freshness = {
+            item.rule_id: item for item in db.query(RuleFreshness).filter(
+                RuleFreshness.rule_id.in_([decision.rule_id for decision in triggered])
+            ).all()
+        } if triggered else {}
+        payload["legal_source_receipts"] = [
+            {"rule_id": decision.rule_id, "law": decision.kilde.lov,
+             "article": decision.kilde.artikel, "source_url": str(decision.kilde.url),
+             "status": "verified" if freshness.get(decision.rule_id) and freshness[decision.rule_id].citation_found and not freshness[decision.rule_id].flagged_for_review else "requires_review" if freshness.get(decision.rule_id) else "not_checked",
+             "last_checked_at": freshness[decision.rule_id].last_checked_at.isoformat() if freshness.get(decision.rule_id) and freshness[decision.rule_id].last_checked_at else None,
+             "verification_method": freshness[decision.rule_id].verification_method if freshness.get(decision.rule_id) else None}
+            for decision in triggered
+        ]
+        if payload["aggregate_status"] == "GO" and any(item["status"] != "verified" for item in payload["legal_source_receipts"]):
+            payload["aggregate_status"] = "BETINGET-GO"
+            payload["warnings"].append("Mindst én udløst retskilde mangler en aktuel, bestået kildekontrol.")
+        entry = v3_audit.save_assessment(
+            db,
+            request_payload={"kind": "document", "filename": file.filename,
+                "size_bytes": len(content), "format": kind, "text_length": result.text_length,
+                "chunk_count": result.chunk_count, "merged_signals": result.merged_signals,
+                "case_id": case_id, "case_db_id": case_db_id, "note": note},
+            response_payload=payload,
+            case_id=linked_case.case_id if linked_case else case_id,
+            user_id=user.oid, note=note,
+        )
+        audit_id = entry.id
+        if linked_case is not None:
+            v3_cases.attach_assessment(db, linked_case.id, entry.id, payload["aggregate_status"])
+            add_workspace_reference(
+                db, case_db_id=linked_case.id, reference_type="legal_screening", reference_id=entry.id,
+                title="Juridisk screening af dokument", summary=f"Resultat: {payload['aggregate_status']}",
+                source_version=payload["rule_engine_version"],
+                details={"aggregate_status": payload["aggregate_status"],
+                    "assessment_complete": payload["assessment_complete"],
+                    "created_at": payload["evaluated_at"], "url": f"/historik/{entry.id}"},
+                created_by=user.name,
+            )
+            rules_by_id = {rule.id: rule for rule in rules}
+            for decision in triggered:
+                source = db.query(MonitoredLegalSource).filter(
+                    MonitoredLegalSource.source_key == f"rule:{decision.rule_id}"
+                ).one_or_none()
+                if source is None:
+                    continue
+                rule = rules_by_id[decision.rule_id]
+                link_case_to_legal_source(
+                    db, case_db_id=linked_case.id, source_id=source.id,
+                    article_reference=rule.kilde.artikel,
+                    relevance=f"Udløst regel {decision.rule_id}",
+                    assessment_reference_type="legal_screening",
+                    assessment_reference_id=entry.id, linked_by=user.name,
+                )
+        await asyncio.to_thread(document_storage.store, audit_id, content=content,
+            filename=file.filename or "", kind=kind, content_type=file.content_type)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        if audit_id:
+            await asyncio.to_thread(document_storage.delete, audit_id)
+        if isinstance(exc, HTTPException):
+            raise
+        logger.exception("Document assessment persistence failed")
+        raise HTTPException(status_code=503, detail="Dokumentanalysen kunne ikke gemmes samlet. Ingen vurdering er gemt.") from None
+    finally:
+        db.close()
+    return {**payload, "audit_log_id": audit_id}
 
 
 # ---------------------------------------------------------------------------

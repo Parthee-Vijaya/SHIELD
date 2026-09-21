@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,27 @@ def get_law_by_slug(slug: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _explicitly_names_law(query: str, law: Dict[str, Any]) -> bool:
+    """Recognize a full catalogue law name, optionally in Danish genitive.
+
+    Catalogue titles can include a section suffix ("Ferieloven § 1").
+    Match the law name on word boundaries, never a common content keyword.
+    """
+    title = re.split(r"\s*§", law.get("title", ""), maxsplit=1)[0]
+    names = [title]
+    slug = law.get("slug", "")
+    if re.search(r"lov(?:en)?$", slug, re.IGNORECASE):
+        names.append(slug.replace("-", " "))
+    normalized_query = " ".join(query.casefold().split())
+    for name in names:
+        normalized_name = " ".join(name.casefold().strip(" .,:;()").split())
+        if len(normalized_name) < 5 or normalized_name in {"loven", "dansk lovgivning"}:
+            continue
+        if re.search(rf"(?<!\w){re.escape(normalized_name)}s?(?!\w)", normalized_query):
+            return True
+    return False
+
+
 def search_laws(query: str, category: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Search laws by text query with relevance scoring
@@ -107,13 +129,25 @@ def search_laws(query: str, category: Optional[str] = None, limit: int = 10) -> 
         List of dicts with keys: law, relevance, matches
     """
     # Normalize query
-    search_terms = query.lower().split()
-    search_terms = [term for term in search_terms if len(term) > 2]
+    stopwords = {
+        "hvad", "hvordan", "hvilke", "hvilken", "hvorfor", "hvornår", "hvor", "siger",
+        "det", "den", "der", "som", "for", "med", "til", "fra", "ved", "om", "og", "eller",
+        "skal", "kan", "må", "har", "have", "være", "ikke", "jeg", "mig", "min", "vores",
+        "når", "man", "bliver", "blev", "giver", "krav", "stiller", "gælder", "brug", "bruge",
+        "løsning", "løsningen", "system", "systemet", "kommune", "kommunes", "kommunal",
+    }
+    search_terms = [term for term in re.findall(r"[\wæøåÆØÅ]+", query.lower())
+                    if len(term) > 2 and term not in stopwords]
 
     if not search_terms:
         return []
 
     all_laws = get_all_laws()
+    explicitly_named = [law for law in all_laws if _explicitly_names_law(query, law)]
+    if explicitly_named:
+        # An explicit law name constrains retrieval; generic words such as
+        # "anvendelsesområde" must not introduce unrelated laws into the answer.
+        all_laws = explicitly_named
 
     # Filter by category if specified
     if category:
@@ -126,8 +160,8 @@ def search_laws(query: str, category: Optional[str] = None, limit: int = 10) -> 
         summary_lower = law.get('summary', '').lower()
         content_lower = law.get('content', '').lower()
 
-        score = 0
-        matches = []
+        score = 100 if explicitly_named else 0
+        matches = ['explicit_title'] if explicitly_named else []
 
         for term in search_terms:
             # Title matches (highest weight)
