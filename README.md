@@ -311,6 +311,12 @@ AI-knappen kræver korrekt serveropsætning og adgang til de fastlagte modeller.
 
 Koden fastlåser `ai` til version **7.0.107**. Evaluatorgrænsefladen er eksperimentel, så opgraderinger kræver kontrol af kontrakter og test. Se [`docs/AI_GATEWAY.md`](docs/AI_GATEWAY.md).
 
+### Midlertidig lokal tekstforbindelse
+
+Ved lokal afprøvning kan `SHIELD_ENABLE_CODEX_LOCAL=true` gives til backendprocessen. Det kræver en installeret og allerede indlogget Codex CLI og bruger **GPT-5.6 Sol** til juridiske tekstsvar, sammenfatning af søgeresultater og udtræk til indledende screening. Funktionen er slået fra som standard og er ikke en SaaS-integration. Den læser eller kopierer ikke loginoplysninger. Hvert kald kører isoleret med værktøjer slået fra, højst to samtidige kald og en tidsgrænse på 150 sekunder. Den fælles forbindelsestest skal have modtaget et reelt svar, før den melder succes.
+
+Denne tekstforbindelse erstatter ikke JEV eller AI Gateway-forløbet for materialeanalyse og rapportgenerering. Modelnavnet følger svarene; manglende kildebelæg og mislykkede kald vises som sådanne. Konfigurationen følger [OpenAI's officielle indstillingsreference](https://learn.chatgpt.com/docs/config-file/config-reference).
+
 ## Kontrol og test
 
 Ved klargøringen til dette repository den **21. september 2026** bestod **584 backendtests, 201 frontendtests og 27 Gateway-tests** samt AI-typekontrollen. Det er en kontrol af den aktuelle kode og dens testscenarier, ikke en attestering af juridisk korrekthed eller produktionsdrift.
@@ -403,6 +409,7 @@ Repositoryet indeholder også ældre research-, vidensbase- og juridiske screeni
 
 - [AI-løsninger fra materiale til vurderingsgrundlag](docs/PROCUREMENT_WORKFLOW.md)
 - [Læsevenlig udgave til ledelse og faglig dialog](docs/READABLE_ASSESSMENTS.md)
+- [Samlede værktøjer: færre menupunkter, screenshots og funktionstest](docs/SECONDARY_TOOLS_QA.md)
 - [AI Gateway, GPT, JEV og lokal modelimport](docs/AI_GATEWAY.md)
 - [Dokumentarbejde, afklaringslister og rapportrevision](docs/AILEX_FUNCTIONAL_IMPROVEMENTS.md)
 - [Microsoft Entra ID og roller](docs/ENTRA_ID_SETUP.md)
