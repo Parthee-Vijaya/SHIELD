@@ -1,6 +1,7 @@
 """Word exports must preserve the assessment, provenance and review boundary."""
 
 from datetime import UTC, datetime
+from copy import deepcopy
 from io import BytesIO
 from zipfile import ZipFile
 from xml.etree import ElementTree
@@ -319,3 +320,83 @@ def test_word_accepts_long_case_names_without_invalid_core_metadata(assessment):
     assert len(doc.core_properties.author) == 255
     assert len(doc.sections[0].header.paragraphs[0].text) < 130
     assert doc.styles["Title"].element.xpath(".//w:pBdr") == []
+
+
+def test_word_formats_report_markdown_without_changing_snapshot_or_source_metadata(
+    assessment,
+):
+    request, result = assessment
+    result.executive_summary = (
+        "## Dokumenteret\nAftalen beskriver **kommunens instrukser**.\n"
+        "### Personoplysninger\nOplysningstyperne kræver kontrol.\n"
+        "Skal afklares\n- **Hosting:** Den konkrete region mangler.\n"
+        "- Sletning er ikke dokumenteret.\n"
+        "Før godkendelse\n3. Indhent leverandørens svar.\n7. Få en faglig beslutning."
+    )
+    result.sections[0] = result.sections[0].model_copy(
+        update={
+            "text": "## Sikkerhed\nSkal afklares: **Adgangskontrollen** skal verificeres.\n<script>ingen handling</script>",
+        }
+    )
+    result.ai_generation = {
+        "sources": [
+            {
+                "id": "synthetic-source",
+                "title": "## Kildetitel med **markører**",
+            }
+        ]
+    }
+    before = deepcopy(result.model_dump(mode="json"))
+    word = Document(BytesIO(export_dpia_docx(request, result)))
+    heading = next(p for p in word.paragraphs if p.text == "Dokumenteret")
+    subheading = next(p for p in word.paragraphs if p.text == "Personoplysninger")
+    assert heading.style.name == "Heading 3"
+    assert subheading.style.name == "Heading 4"
+    assert (
+        next(p for p in word.paragraphs if p.text == "Skal afklares").style.name
+        == "Heading 3"
+    )
+    statement = next(
+        p
+        for p in word.paragraphs
+        if p.text == "Aftalen beskriver kommunens instrukser."
+    )
+    assert any(
+        run.text == "kommunens instrukser" and run.bold for run in statement.runs
+    )
+    bullet = next(
+        p for p in word.paragraphs if p.text == "Hosting: Den konkrete region mangler."
+    )
+    assert bullet.style.name == "List Bullet"
+    assert any(run.text == "Hosting:" and run.bold for run in bullet.runs)
+    text = text_content(word)
+    for preserved in (
+        "3. Indhent leverandørens svar.",
+        "7. Få en faglig beslutning.",
+        "Sletning er ikke dokumenteret.",
+        "Skal afklares: Adgangskontrollen skal verificeres.",
+        "<script>ingen handling</script>",
+        "## Kildetitel med **markører**",
+    ):
+        assert preserved in text
+    assert "## Dokumenteret" not in text and "**Adgangskontrollen**" not in text
+    assert result.model_dump(mode="json") == before
+
+
+def test_word_report_formatting_preserves_literal_markup_and_safe_empty_fragments():
+    from src.services.dpia_docx import _structured_text
+
+    word = Document()
+    _structured_text(word, "", keep_with_next=True)
+    assert not word.paragraphs
+    _structured_text(
+        word,
+        "Bogstaveligt \\**ikke fed**\nKilden hedder vendor__data__id.\n`**rå tekst**`\n**Uafsluttet",
+        heading_level=4,
+    )
+    assert [p.text for p in word.paragraphs] == [
+        "Bogstaveligt \\**ikke fed**",
+        "Kilden hedder vendor__data__id.",
+        "**rå tekst**",
+        "**Uafsluttet",
+    ]

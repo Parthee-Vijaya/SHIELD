@@ -1291,12 +1291,19 @@ const DpiaAssessmentPage = () => {
   if (result) {
     const generation = result.ai_generation;
     const displayLimitations = modelNotes(generation?.limitations, generation?.model);
-    const changeView = (readable, tab = 'analysis') => {
+    const changeView = (readable, tab = 'analysis', sectionId) => {
       const next = new URLSearchParams(searchParams);
       if (readable) next.set('view', 'readable'); else next.delete('view');
       setResultTab(tab);
       setSearchParams(next);
       requestAnimationFrame(() => {
+        const section = !readable && sectionId && document.getElementById(`assessment-section-${sectionId}`);
+        if (section) {
+          section.open = true;
+          section.scrollIntoView({ block: 'start' });
+          section.querySelector('summary')?.focus({ preventScroll: true });
+          return;
+        }
         const target = document.getElementById(readable ? 'readable-assessment' : `result-tab-${tab}`);
         target?.focus();
       });
@@ -1366,7 +1373,7 @@ const DpiaAssessmentPage = () => {
         </ResultTop>
 
         {readableView ? <>
-          <ReadableAssessment result={result} onOpenDetails={tab => changeView(false, tab)} />
+          <ReadableAssessment result={result} onOpenDetails={(tab, sectionId) => changeView(false, tab, sectionId)} />
           <ResultActions data-tour="assessment-downloads">
             <Button onClick={() => download('docx')} disabled={Boolean(downloading)}>{downloading === 'docx' ? 'Danner Word…' : 'Hent konsekvensanalyse (Word)'}</Button>
             <Button onClick={() => download('xlsx')} disabled={Boolean(downloading)}>{downloading === 'xlsx' ? 'Danner Excel…' : 'Hent risikovurdering (Excel)'}</Button>
@@ -1464,7 +1471,7 @@ const DpiaAssessmentPage = () => {
             <Card>
               <h2>Konsekvensanalysens afsnit</h2>
               {asList(result.sections).length ? asList(result.sections).map((section, index) => (
-                <SectionDetails key={section.id || index}>
+                <SectionDetails id={`assessment-section-${section.id}`} key={section.id || index} style={{ scrollMarginTop: 100 }}>
                   <summary>
                     <strong>{section.id && `${section.id} · `}{section.title}</strong>
                     <Pill>{REVIEW_STATUS_LABELS[section.review_status] || section.review_status || 'Kræver faglig gennemgang'}</Pill>

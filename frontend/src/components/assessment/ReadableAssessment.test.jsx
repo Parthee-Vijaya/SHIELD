@@ -67,7 +67,7 @@ test('prioriterer høj risiko og ukendt niveau og viser forslag som forslag', ()
   ] };
   const onOpenDetails = jest.fn();
   mount(result, onOpenDetails);
-  const risks = within(screen.getByRole('list', { name: 'Prioriterede risici' })).getAllByRole('listitem');
+  const risks = within(screen.getByRole('list', { name: 'Prioriterede risici' })).getAllByRole('heading', { level: 4 }).map(heading => heading.closest('li'));
   expect(risks[0]).toHaveTextContent('Høj risiko');
   expect(risks[1]).toHaveTextContent('Ukendt risiko');
   expect(risks[2]).toHaveTextContent('Mellem risiko');
@@ -79,7 +79,7 @@ test('prioriterer høj risiko og ukendt niveau og viser forslag som forslag', ()
 });
 
 test('supplerende uscorede risici fremgår sammen med det samlede antal', () => {
-  mount({ risks: [{ id: 'risk1', residual_risk: 'high' }], additional_risks: [{ scenario: 'Manglende kvalitetskontrol.' }] });
+  mount({ risks: [{ id: 'risk1', residual_risk: 'high' }], additional_risks: [null, '', 12, [], { scenario: 'Manglende kvalitetskontrol.' }] });
   expect(screen.getByText('1 supplerende risiko er beskrevet uden en særskilt beregnet score')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Se alle risici og forslag (2) →' })).toBeInTheDocument();
 });
@@ -115,12 +115,53 @@ test('anbefalinger vises adskilt og deres forudsætninger er tilgængelige', () 
   expect(within(advice).getByText('Afklar driftsansvar og kvalitet.')).toBeInTheDocument();
 });
 
-test('lange faglige tekster forkortes visuelt og bevares fuldt under læs hele punktet', () => {
+test('hele resuméet vises med tydelige statusoverskrifter uden afkortning', () => {
   const summary = `Indledende forklaring. ${'Dokumentationen skal følges op. '.repeat(30)}Sidste væsentlige forbehold.`;
-  mount({ executive_summary: summary });
+  mount({ executive_summary: `Dokumenteret\n${summary}\n\nSkal afklares\nAftalens rækkevidde.\n\nFør godkendelse\nAfklar dataflowet.` });
   const region = screen.getByRole('region', { name: 'Vurderingens hovedbudskab' });
-  expect(within(region).getByText('Læs hele punktet')).toBeInTheDocument();
+  expect(within(region).queryByText('Læs hele punktet')).not.toBeInTheDocument();
+  expect(within(region).getByRole('heading', { name: 'Dokumenteret', level: 4 })).toBeVisible();
+  expect(within(region).getByRole('heading', { name: 'Skal afklares', level: 4 })).toBeVisible();
+  expect(within(region).getByRole('heading', { name: 'Før godkendelse', level: 4 })).toBeVisible();
   expect(region).toHaveTextContent('Sidste væsentlige forbehold.');
+});
+
+test('personoplysninger, hosting og databehandleraftale kan læses adskilt med kildevej tilbage', () => {
+  const result = { sections: [
+    { id: '1.6', text: 'Kun nødvendige kontaktoplysninger. Følsomme data er ikke afklaret.', review_status: 'requires_review' },
+    { id: '1.7', text: 'EU-datacentre. Fjernadgang er ikke dokumenteret.', review_status: 'requires_review' },
+    { id: '2.29', text: 'Aftalen er indsendt. Underleverandørlisten skal afklares.', source_ids: ['synthetic:agreement'] },
+  ] };
+  const before = JSON.stringify(result);
+  const open = jest.fn();
+  mount(result, open);
+  const menu = screen.getByRole('navigation', { name: 'Emner i vurderingen' });
+  expect(screen.getByText(result.sections[0].text)).toBeVisible();
+  expect(screen.queryByText(result.sections[1].text)).not.toBeInTheDocument();
+  fireEvent.click(within(menu).getByRole('button', { name: /Hosting/ }));
+  expect(screen.getByText(result.sections[1].text)).toBeVisible();
+  expect(screen.queryByText(result.sections[0].text)).not.toBeInTheDocument();
+  fireEvent.click(within(menu).getByRole('button', { name: /Databehandleraftale/ }));
+  expect(screen.getByText(result.sections[2].text)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Se afsnittet og kildegrundlaget →' }));
+  expect(open).toHaveBeenCalledWith('analysis', '2.29');
+  expect(JSON.stringify(result)).toBe(before);
+});
+
+test('øvrige risici og anbefalinger kan læses med detaljer uden at skifte visning', () => {
+  mount({
+    risks: Array.from({ length: 4 }, (_, i) => ({ id: `r${i}`, area: `Risiko ${i}`, residual_risk: 'high', scenario: `Hændelse ${i}`, consequences: `Konsekvens ${i}`, rationale: `Årsag ${i}`, owner: 'Ansvar afklares', implementation_status: 'requires_verification' })),
+    recommendations: Array.from({ length: 4 }, (_, i) => ({ id: `a${i}`, title: `Forslag ${i}`, proposal: `Handling ${i}`, rationale: `Begrundelse ${i}`, prerequisites: `Forudsætning ${i}`, verification: `Opfølgning ${i}` })),
+  });
+  expect(screen.getByText('Konsekvens 0')).toBeVisible();
+  expect(screen.getByText('Konsekvens 3')).not.toBeVisible();
+  screen.getByText('Læs de øvrige 1 risici her').closest('details').setAttribute('open', '');
+  expect(screen.getByText('Konsekvens 3')).toBeVisible();
+  expect(screen.getByText('Årsag 3')).toBeVisible();
+  expect(screen.getByText('Begrundelse 0')).toBeVisible();
+  screen.getByText('Læs de øvrige 1 anbefalinger her').closest('details').setAttribute('open', '');
+  expect(screen.getByText('Forudsætning 3')).toBeVisible();
+  expect(screen.getByText('Opfølgning 3')).toBeVisible();
 });
 
 test('modelformidling viser GPT uden værktøjstag for kendte metadata', () => {

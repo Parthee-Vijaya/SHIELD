@@ -110,30 +110,141 @@ def _paragraph(
     p.add_run(_text(text))
 
 
+_REPORT_LABELS = {
+    "dokumenteret",
+    "skal afklares",
+    "før godkendelse",
+    "konklusion",
+    "hovedfund",
+    "afklaringer",
+    "mangler før godkendelse",
+    "næste skridt",
+    "anbefalinger",
+    "databehandleraftale",
+    "databehandleraftale (dba)",
+    "personoplysninger",
+    "persondata",
+    "hosting",
+    "hosting og dataplacering",
+    "dataplacering",
+    "sikkerhed",
+    "informationssikkerhed",
+    "sletning",
+    "sletning og opbevaring",
+    "opbevaring og sletning",
+    "underdatabehandlere",
+    "tredjelandsoverførsler",
+}
+_INLINE_FORMAT = re.compile(
+    r"`[^`\n]+`|\*\*(?=\S)(?:[^\n]*?\S)\*\*|__(?=\S)(?:[^\n]*?\S)__"
+)
+
+
+def _formatted_runs(paragraph: Any, text: str) -> None:
+    """Apply authored emphasis only; XML/HTML and unknown syntax stay text."""
+    offset = 0
+    for match in _INLINE_FORMAT.finditer(text):
+        token = match.group()
+        start, end = match.span()
+        prefix = text[:start]
+        escaped = (len(prefix) - len(prefix.rstrip("\\"))) % 2 == 1
+        neighbours = (
+            text[start - 1 : start] + text[end : end + 1]
+            if start
+            else text[end : end + 1]
+        )
+        word_underscore = token.startswith("__") and any(
+            char.isalnum() or char == "_" for char in neighbours
+        )
+        if escaped or word_underscore:
+            continue
+        paragraph.add_run(text[offset:start])
+        if token.startswith("`"):
+            paragraph.add_run(token[1:-1]).font.name = "Consolas"
+        else:
+            paragraph.add_run(token[2:-2]).bold = True
+        offset = end
+    paragraph.add_run(text[offset:])
+
+
 def _structured_text(
-    doc: DocumentType, text: object, *, label: str = "", keep_with_next: bool = False
+    doc: DocumentType,
+    text: object,
+    *,
+    label: str = "",
+    keep_with_next: bool = False,
+    heading_level: int = 3,
 ) -> None:
-    """Render authored paragraphs and lists without interpreting their claims."""
+    """Render report headings, emphasis and lists without changing statements.
+
+    This is deliberately not an HTML/Markdown engine. No link is fetched or
+    made executable; source and provenance metadata retain their plain rendering.
+    """
+    start = len(doc.paragraphs)
     if label:
         _paragraph(doc, "", label=label, keep_with_next=True)
-    for block in re.split(r"\n\s*\n", _text(text).strip()):
-        lines = block.splitlines()
-        if lines and all(re.match(r"^\s*(?:[-*•]|\d+[.)])\s+", line) for line in lines):
-            for line in lines:
-                numbered = bool(re.match(r"^\s*\d+[.)]\s+", line))
-                doc.add_paragraph(
-                    re.sub(r"^\s*(?:[-*•]|\d+[.)])\s+", "", line),
-                    style="List Number" if numbered else "List Bullet",
+    lines = [line for line in _text(text).splitlines() if line.strip()]
+    levels = [
+        len(match[1]) for line in lines if (match := re.match(r"^\s*(#{1,6})\s+", line))
+    ]
+    first_level = min(levels, default=1)
+    for raw in lines:
+        line = raw.strip()
+        heading = re.match(r"^(#{1,6})\s+(.+?)(?:\s+#+)?$", line)
+        bold_heading = re.fullmatch(r"(?:\*\*(.+?)\*\*|__(.+?)__)\s*:?", line)
+        bold_label = (
+            next((part for part in bold_heading.groups() if part), "")
+            if bold_heading
+            else ""
+        )
+        plain_label = line.removesuffix(":")
+        if (
+            heading
+            or plain_label.casefold() in _REPORT_LABELS
+            or (bold_label and len(bold_label) <= 120 and bold_label[-1] not in ".!?")
+        ):
+            title = (
+                heading[2] if heading else (bold_label.removesuffix(":") or plain_label)
+            )
+            level = (
+                min(9, heading_level + len(heading[1]) - first_level)
+                if heading
+                else heading_level
+            )
+            paragraph = doc.add_heading(level=level)
+            _formatted_runs(paragraph, title)
+            continue
+        bullet = re.match(r"^(\s*)([-+*•]|\d+[.)])\s+(.+)$", raw)
+        if bullet:
+            numbered = bullet[2][0].isdigit()
+            paragraph = doc.add_paragraph(
+                style="List Paragraph" if numbered else "List Bullet"
+            )
+            indentation = len(bullet[1].expandtabs(4))
+            if numbered or indentation:
+                paragraph.paragraph_format.left_indent = Mm(
+                    6 + min(indentation, 24) * 2
                 )
+                paragraph.paragraph_format.first_line_indent = Mm(-4)
+            # Keep the author's actual numbers, including non-sequential items.
+            _formatted_runs(
+                paragraph, (bullet[2] + " " if numbered else "") + bullet[3]
+            )
         else:
-            _paragraph(doc, block)
-    if keep_with_next:
+            paragraph = doc.add_paragraph()
+            prefix, separator, body = line.partition(":")
+            if separator and prefix.casefold() in _REPORT_LABELS:
+                paragraph.add_run(prefix + separator).bold = True
+                _formatted_runs(paragraph, body)
+            else:
+                _formatted_runs(paragraph, line)
+    if keep_with_next and len(doc.paragraphs) > start:
         doc.paragraphs[-1].paragraph_format.keep_with_next = True
 
 
 def _bullet_list(doc: DocumentType, values: Iterable[object]) -> None:
     for value in values:
-        doc.add_paragraph(_text(value), style="List Bullet")
+        _formatted_runs(doc.add_paragraph(style="List Bullet"), _text(value))
 
 
 def _recommendations(doc: DocumentType, guide: dict) -> None:
@@ -173,7 +284,7 @@ def _recommendations(doc: DocumentType, guide: dict) -> None:
                     _paragraph(doc, "", label=label, keep_with_next=True)
                     _bullet_list(doc, value)
                 else:
-                    _structured_text(doc, value, label=label)
+                    _structured_text(doc, value, label=label, heading_level=4)
         _source_ids(doc, item.get("source_ids", []))
 
 
@@ -279,6 +390,12 @@ def _document(request: DPIAAssessmentRequest) -> DocumentType:
         ("Heading 1", 15, "1F3864"),
         ("Heading 2", 12, "2E5496"),
         ("Heading 3", 11, "000000"),
+        ("Heading 4", 10.5, "000000"),
+        ("Heading 5", 10, "000000"),
+        ("Heading 6", 10, "000000"),
+        ("Heading 7", 10, "000000"),
+        ("Heading 8", 10, "000000"),
+        ("Heading 9", 10, "000000"),
     ):
         style = doc.styles[name]
         style.font.name, style.font.size = "Arial", Pt(size)
@@ -368,18 +485,20 @@ def _risk_register(doc: DocumentType, result: DPIAAssessmentResponse) -> None:
             group = risk_id.split(".")[0]
             _heading(doc, RISK_GROUPS[group], 2)
         _heading(doc, f"{risk.id} {risk.area}", 3)
-        _structured_text(doc, risk.scenario, label="Hvad kan ske?")
+        _structured_text(doc, risk.scenario, label="Hvad kan ske?", heading_level=4)
         _structured_text(
             doc,
             getattr(risk, "rationale", "")
             or "En særskilt begrundelse er ikke dokumenteret i denne vurderingsversion og skal afklares fagligt.",
             label="Hvorfor er dette en risiko?",
+            heading_level=4,
         )
         _structured_text(
             doc,
             getattr(risk, "consequences", "")
             or "De konkrete følger for de registrerede er ikke særskilt beskrevet og skal afklares fagligt.",
             label="Hvem rammes – og hvad er konsekvensen?",
+            heading_level=4,
         )
         table = _table(
             doc,
@@ -404,7 +523,10 @@ def _risk_register(doc: DocumentType, result: DPIAAssessmentResponse) -> None:
         _risk_fill(table.rows[1].cells[3], risk.inherent_risk)
         _risk_fill(table.rows[2].cells[3], risk.residual_risk)
         _structured_text(
-            doc, risk.measures, label="Mitigerende forslag og oplyste foranstaltninger"
+            doc,
+            risk.measures,
+            label="Mitigerende forslag og oplyste foranstaltninger",
+            heading_level=4,
         )
         _paragraph(
             doc,
@@ -445,7 +567,7 @@ def _risk_register(doc: DocumentType, result: DPIAAssessmentResponse) -> None:
                 ("rationale", "Hvorfor er dette en risiko?"),
             ):
                 if risk.get(key):
-                    _structured_text(doc, risk[key], label=label)
+                    _structured_text(doc, risk[key], label=label, heading_level=4)
             _source_ids(doc, risk.get("source_ids", []))
 
 

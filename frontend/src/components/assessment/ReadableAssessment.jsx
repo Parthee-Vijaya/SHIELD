@@ -1,20 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import StructuredReportText from './StructuredReportText';
 import { modelNote } from '../../utils/modelPresentation';
+import { buildReadableTopics } from './readableTopics';
 
 const Page = styled.section`
   min-width: 0;
   color: ${p => p.theme.colors.ink};
   overflow-wrap: anywhere;
   h2 { margin: 0 0 12px; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -0.035em; }
-  h3 { margin: 0 0 12px; font-size: 1.16rem; line-height: 1.35; }
-  h4 { margin: 0 0 8px; font-size: 0.95rem; line-height: 1.5; }
+  h3 { margin: 0 0 14px; font-size: 1.35rem; line-height: 1.3; letter-spacing: -0.02em; }
+  h4 { margin: 0 0 10px; font-size: 1.12rem; line-height: 1.4; }
+  h5 { margin: 0 0 10px; font-size: 1rem; line-height: 1.4; }
   p, li, dd { font-size: 0.94rem; line-height: 1.65; }
-  p { max-width: 78ch; }
+  p { max-width: 72ch; }
   details { margin-top: 12px; }
   summary { width: fit-content; max-width: 100%; cursor: pointer; font-size: 0.85rem; line-height: 1.6; font-weight: 600; }
-  summary:focus-visible, button:focus-visible { outline: 3px solid ${p => p.theme.colors.primary}; outline-offset: 4px; }
+  summary:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid ${p => p.theme.colors.primary}; outline-offset: 4px; }
+  section[id], h4[id] { scroll-margin-top: 100px; }
 `;
 const Introduction = styled.header`
   padding: 28px 0;
@@ -45,10 +48,100 @@ const Counts = styled.dl`
   @media (max-width: 440px) { gap: 10px; dt { font-size: 0.73rem; } }
 `;
 const Section = styled.section`
-  padding: 26px 0;
+  padding: 34px 0;
   border-bottom: 1px solid ${p => p.theme.colors.line};
   min-width: 0;
   > p { margin: 0 0 14px; }
+`;
+const Contents = styled.nav`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 18px 0;
+  border-bottom: 1px solid ${p => p.theme.colors.line};
+  a { color: ${p => p.theme.colors.ink}; font-size: 0.85rem; font-weight: 600; text-underline-offset: 5px; }
+`;
+const TopicLayout = styled.div`
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(0, 2.2fr);
+  align-items: start;
+  gap: 32px;
+  margin-top: 26px;
+  @media (max-width: 850px) { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+`;
+const TopicMenu = styled.nav`
+  display: grid;
+  gap: 3px;
+  button {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+    padding: 13px 14px;
+    border: 0;
+    border-left: 3px solid transparent;
+    background: transparent;
+    text-align: left;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: ${p => p.theme.colors.inkSoft};
+    cursor: pointer;
+    span { flex: 0 0 1.4em; white-space: nowrap; font-size: 0.73rem; opacity: 0.8; }
+    &:hover { background: ${p => p.theme.colors.surface}; color: ${p => p.theme.colors.ink}; }
+    &[aria-pressed='true'] { border-left-color: ${p => p.theme.colors.primary}; background: ${p => p.theme.colors.surface}; color: ${p => p.theme.colors.ink}; font-weight: 650; }
+  }
+  @media (max-width: 850px) { display: none; }
+`;
+const MobileTopics = styled.label`
+  display: none;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  select { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 10px; background: ${p => p.theme.colors.surface}; color: ${p => p.theme.colors.ink}; border: 1px solid ${p => p.theme.colors.line}; font: inherit; font-weight: 400; }
+  select:focus-visible { outline: 3px solid ${p => p.theme.colors.primary}; outline-offset: 3px; }
+  @media (max-width: 850px) { display: block; }
+`;
+const TopicPanel = styled.section`
+  min-width: 0;
+  border-left: 1px solid ${p => p.theme.colors.line};
+  padding-left: 30px;
+  > header { padding-bottom: 22px; border-bottom: 1px solid ${p => p.theme.colors.line}; }
+  > header p { margin: 0; color: ${p => p.theme.colors.inkSoft}; }
+  @media (max-width: 850px) { border-left: 0; padding-left: 0; }
+`;
+const TopicSection = styled.article`
+  padding: 26px 0;
+  border-bottom: 1px solid ${p => p.theme.colors.line};
+  &:last-child { padding-bottom: 0; border-bottom: 0; }
+`;
+const SectionMeta = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 13px;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: ${p => p.theme.colors.inkSoft};
+`;
+const ReviewLabel = styled.span`
+  padding-left: 9px;
+  border-left: 2px solid ${p => p.theme.colors.warning};
+`;
+const Expand = styled.details`
+  margin-top: 24px !important;
+  padding: 16px 20px;
+  background: ${p => p.theme.colors.surface};
+  border: 1px solid ${p => p.theme.colors.line};
+  > summary { font-size: 0.9rem; }
+  &[open] > summary { margin-bottom: 22px; }
+  @media (max-width: 440px) { padding: 14px; }
+`;
+const Advice = styled.article`
+  padding: 24px 0;
+  border-top: 1px solid ${p => p.theme.colors.line};
+  > small { display: block; color: ${p => p.theme.colors.inkSoft}; font-size: 0.73rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; }
+  h5 { margin-top: 22px; }
 `;
 const Columns = styled.div`
   display: grid;
@@ -160,7 +253,8 @@ export function readableAssessmentModel(result = {}) {
     approval: guide.approval || { status: 'unknown', label: 'Godkendelse fremgår ikke af denne rapportversion', items: [] },
     recommendations: records(guide.recommendations || result.recommendations),
     recommendationOrigin: guide.recommendation_origin,
-    additionalRisks: Array.isArray(result.additional_risks || result.ai_generation?.additional_risks) ? (result.additional_risks || result.ai_generation?.additional_risks) : [],
+    additionalRisks: (Array.isArray(result.additional_risks || result.ai_generation?.additional_risks) ? (result.additional_risks || result.ai_generation?.additional_risks) : [])
+      .filter(item => (typeof item === 'string' && item.trim()) || (item && typeof item === 'object' && !Array.isArray(item))),
   };
 }
 
@@ -186,6 +280,68 @@ function Findings({ items, empty, name, model, ordered = false, explain = true }
   </>;
 }
 
+function TopicOverview({ result, model, onOpenDetails }) {
+  const topics = buildReadableTopics(result);
+  const [selected, setSelected] = useState(null);
+  const active = topics.find(topic => topic.id === selected) || topics[0];
+  if (!active) return null;
+  return <Section id="readable-topics" aria-label="Vurderingen emne for emne">
+    <h3>Vurderingen, emne for emne</h3>
+    <p>Vælg det, du vil undersøge. Her er vurderingens konkrete oplysninger og forbehold samlet under hvert emne.</p>
+    <Note>Oplysninger fra en aftale beskriver, hvad der er aftalt. De dokumenterer ikke i sig selv, at kravene er opfyldt i praksis.</Note>
+    <TopicLayout>
+      <TopicMenu aria-label="Emner i vurderingen">{topics.map((topic, index) => <button
+        type="button" key={topic.id} aria-pressed={active.id === topic.id} aria-controls="readable-topic-panel"
+        onClick={() => setSelected(topic.id)}
+      ><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{topic.title}</button>)}</TopicMenu>
+      <MobileTopics>Vælg emne<select value={active.id} onChange={event => setSelected(event.target.value)} aria-controls="readable-topic-panel">{topics.map(topic => <option key={topic.id} value={topic.id}>{topic.title}</option>)}</select></MobileTopics>
+      <TopicPanel id="readable-topic-panel" aria-labelledby={`readable-topic-${active.id}`}>
+        <header><h4 id={`readable-topic-${active.id}`}>{active.title}</h4><p>{active.description}</p></header>
+        {active.sections.map((section, index) => <TopicSection key={`${section.id}-${index}`}>
+          <SectionMeta><span>{section.id ? `Rapportafsnit ${section.id}` : 'Rapportafsnit'}</span><ReviewLabel>{section.reviewLabel}</ReviewLabel></SectionMeta>
+          <h5>{section.label}</h5>
+          <StructuredReportText text={modelNote(section.text || 'Der er ikke gemt en beskrivelse. Oplysningerne skal indhentes og vurderes fagligt.', model)} headingLevel={6} />
+          {onOpenDetails && <Action type="button" onClick={() => onOpenDetails('analysis', section.id)}>Se afsnittet og kildegrundlaget →</Action>}
+        </TopicSection>)}
+      </TopicPanel>
+    </TopicLayout>
+  </Section>;
+}
+
+function ReadableRisk({ risk, model }) {
+  const implementation = {
+    not_started: 'Ikke påbegyndt', planned: 'Planlagt', in_progress: 'Under gennemførelse',
+    implemented: 'Registreret som gennemført', verified: 'Registreret som efterprøvet',
+    requires_verification: 'Skal efterprøves', not_implemented: 'Ikke gennemført',
+  }[risk.implementation_status] || 'Gennemførelse er ikke dokumenteret her';
+  return <>
+    <h4>{modelNote(risk.area || risk.title || `Risiko ${risk.originalIndex + 1}`, model)}</h4>
+    <SectionMeta><span>Før tiltag: <strong>{level(risk.inherent_risk)[0]}</strong></span><span>Efter foreslåede tiltag: <strong>{level(risk.residual_risk)[0]}</strong></span></SectionMeta>
+    <h5>Hvad kan gå galt?</h5>
+    <StructuredReportText text={modelNote(risk.scenario || 'Det er ikke beskrevet, hvad der kan gå galt.', model)} headingLevel={6} />
+    <dl>
+      <div><dt>Hvorfor er det en risiko?</dt><dd><StructuredReportText text={modelNote(risk.rationale || 'Begrundelsen skal dokumenteres ved den faglige gennemgang.', model)} headingLevel={6} /></dd></div>
+      <div><dt>Hvem kan blive berørt – og hvordan?</dt><dd><StructuredReportText text={modelNote(risk.consequences || 'Det skal præciseres, hvem der kan blive berørt, og hvad konsekvensen kan være.', model)} headingLevel={6} /></dd></div>
+    </dl>
+    <Notice><h5>Forslag til at begrænse risikoen</h5><StructuredReportText text={modelNote(Array.isArray(risk.measures) ? strings(risk.measures).map(item => `- ${item}`).join('\n') : risk.measures || 'Der mangler konkrete forslag til at begrænse risikoen.', model)} headingLevel={6} /><small>Forslag – gennemførelse og effekt er ikke dokumenteret alene ved denne tekst.</small></Notice>
+    <dl>
+      <div><dt>Ansvar og opfølgning</dt><dd>{modelNote(risk.owner || 'Ansvarlig skal aftales.', model)}{risk.due_date && <small>Frist: {risk.due_date}</small>}</dd></div>
+      <div><dt>Status for tiltag</dt><dd>{implementation}</dd></div>
+    </dl>
+  </>;
+}
+
+function Recommendation({ item, model }) {
+  return <Advice>
+    <small>Anbefaling · forslag til overvejelse</small>
+    <h4>{modelNote(item.title || 'Anbefaling', model)}</h4>
+    <StructuredReportText text={modelNote(item.proposal, model)} headingLevel={5} />
+    {text(item.rationale) && <><h5>Hvorfor overveje dette?</h5><StructuredReportText text={modelNote(item.rationale, model)} headingLevel={6} /></>}
+    <h5>Hvad forudsætter det?</h5><StructuredReportText text={modelNote(item.prerequisites || 'Forudsætningerne skal afklares.', model)} headingLevel={6} />
+    <h5>Hvordan følges der op?</h5><StructuredReportText text={modelNote(item.verification || 'Det skal aftales, hvordan effekten dokumenteres.', model)} headingLevel={6} />
+  </Advice>;
+}
+
 export default function ReadableAssessment({ result = {}, onOpenDetails }) {
   const view = readableAssessmentModel(result);
   const model = result.ai_generation?.model;
@@ -195,7 +351,7 @@ export default function ReadableAssessment({ result = {}, onOpenDetails }) {
     <Introduction>
       <p>Beslutningsgrundlag · kort fortalt</p>
       <h2>Det vigtigste om vurderingen</h2>
-      <Note>Et overblik fra den gemte rapportversion. Du kan åbne punkterne og gå videre til hele vurderingen.</Note>
+      <Note>Start med beslutningen, og gå derefter gennem oplysninger, risici og næste handling. De enkelte emner forklarer grundlaget og de forhold, der stadig er uafklarede.</Note>
       <Conclusion $blocked={view.blocked}>{view.conclusion}</Conclusion>
       <p>{view.explanation}</p>
       <Counts aria-label="Åbne punkter i vurderingen">
@@ -206,7 +362,16 @@ export default function ReadableAssessment({ result = {}, onOpenDetails }) {
       {view.blocked && !view.blockers.length && <Note>Rapportens status er blokeret, men årsagen er ikke gemt som et særskilt punkt. Læs hele vurderingen, og få årsagen afklaret.</Note>}
     </Introduction>
 
-    <Section aria-label="Beslutning om brug">
+    <Contents aria-label="Indhold i den læsevenlige vurdering">
+      <a href="#readable-decision">Beslutning</a>
+      {records(result.sections).length > 0 && <a href="#readable-topics">Oplysninger og aftaler</a>}
+      <a href="#readable-blockers">Mangler og afklaringer</a>
+      <a href="#readable-next-steps">Næste skridt</a>
+      <a href="#readable-risks">Risici og tiltag</a>
+      <a href="#readable-advice">Anbefalinger</a>
+    </Contents>
+
+    <Section id="readable-decision" aria-label="Beslutning om brug">
       <h3>Er løsningen godkendt?</h3>
       <p><strong>{modelNote(view.approval.label || 'Godkendelse skal afklares', model)}</strong></p>
       <Note>Vurderingens status og en menneskelig godkendelse er to forskellige ting. Fravær af blokeringer eller et positivt kvalitetstjek er ikke en godkendelse.</Note>
@@ -219,6 +384,8 @@ export default function ReadableAssessment({ result = {}, onOpenDetails }) {
       {result.editorial_revision && <Notice aria-label="Rapporten er fagligt redigeret"><strong>Rapporten er fagligt redigeret</strong><p>De ændrede formuleringer skal gennemgås igen. En tidligere JEV-kontrol dækker ikke de ændrede formuleringer.</p>{open('analysis', 'Se ændringer og kontrolgrundlag')}</Notice>}
     </Section>
 
+    <TopicOverview result={result} model={model} onOpenDetails={onOpenDetails} />
+
     {view.limitations.length > 0 && <Section aria-label="Forbehold for grundlaget">
       <h3>Forbehold for grundlaget ({view.limitations.length})</h3>
       <p>Disse forbehold beskriver begrænsninger ved materialet eller vurderingen. Tag dem med i den faglige gennemgang, også når de ikke er opført som en særskilt mangel.</p>
@@ -226,37 +393,30 @@ export default function ReadableAssessment({ result = {}, onOpenDetails }) {
       {open('analysis', 'Se forbehold i den fulde vurdering')}
     </Section>}
 
-    {text(result.executive_summary) && <Section aria-label="Vurderingens hovedbudskab"><h3>Hvad siger vurderingen?</h3><BriefText value={result.executive_summary} model={model} limit={520} />{open('analysis', 'Læs hele konsekvensanalysen')}</Section>}
+    {text(result.executive_summary) && <Section aria-label="Vurderingens hovedbudskab"><h3>Vurderingens samlede resumé</h3><StructuredReportText text={modelNote(result.executive_summary, model)} headingLevel={4} />{open('analysis', 'Læs hele konsekvensanalysen')}</Section>}
 
-    <Section aria-label="Blokerende forhold"><h3>Det skal håndteres før godkendelse</h3><Findings items={view.blockers} name="Blokerende forhold" model={model} empty="Der er ingen særskilte blokeringer registreret. En faglig beslutning er stadig nødvendig." /></Section>
+    <Section id="readable-blockers" aria-label="Blokerende forhold"><h3>Det skal håndteres før godkendelse</h3><Findings items={view.blockers} name="Blokerende forhold" model={model} empty="Der er ingen særskilte blokeringer registreret. En faglig beslutning er stadig nødvendig." /></Section>
     <Columns>
       <Section aria-label="Manglende oplysninger"><h3>Det mangler vi at vide</h3><Findings items={view.missing} name="Manglende oplysninger" model={model} empty="Ingen særskilte mangler er registreret i denne version." /></Section>
       <Section aria-label="Spørgsmål til afklaring"><h3>Det skal afklares</h3><Findings items={view.questions} name="Spørgsmål til afklaring" model={model} empty="Ingen yderligere spørgsmål er registreret i denne version." /></Section>
     </Columns>
 
-    <Section aria-label="Næste skridt"><h3>Sådan kommer sagen videre</h3><Findings items={view.nextSteps} name="Næste skridt" ordered explain={false} model={model} empty="Der er ikke gemt en konkret handlingsplan. Aftal med de ansvarlige, hvem der følger op på punkterne, hvilken dokumentation der skal leveres, og hvornår sagen kan gennemgås igen." />{open('followup', 'Åbn opfølgning og alle afklaringer')}</Section>
+    <Section id="readable-next-steps" aria-label="Næste skridt"><h3>Sådan kommer sagen videre</h3><Findings items={view.nextSteps} name="Næste skridt" ordered explain={false} model={model} empty="Der er ikke gemt en konkret handlingsplan. Aftal med de ansvarlige, hvem der følger op på punkterne, hvilken dokumentation der skal leveres, og hvornår sagen kan gennemgås igen." />{open('followup', 'Åbn opfølgning og alle afklaringer')}</Section>
 
-    <Section aria-label="Vigtigste risici"><h3>Risici at tage stilling til</h3><p>Hvad kan gå galt for de mennesker, hvis oplysninger løsningen behandler – og hvad kan begrænse risikoen?</p>
+    <Section id="readable-risks" aria-label="Vigtigste risici"><h3>Risici at tage stilling til</h3><p>Hvad kan gå galt for de mennesker, hvis oplysninger løsningen behandler – og hvad kan begrænse risikoen?</p>
       {view.risks.length > 0 ? <>
-        <Note>Viser {Math.min(3, view.risks.length)} af {view.risks.length} risici. Høj og meget høj risiko efter foreslåede tiltag vises først; risici uden angivet niveau vises før mellem og lav. Tiltagenes effekt skal stadig dokumenteres.</Note>
-        <RiskRows aria-label="Prioriterede risici">{view.risks.slice(0, 3).map((risk, index) => <li key={`${risk.id || index}-${risk.originalIndex}`}>
-          <h4>{modelNote(risk.area || risk.title || `Risiko ${risk.originalIndex + 1}`, model)}</h4>
-          <Note>Risiko efter foreslåede tiltag: <strong>{level(risk.residual_risk)[0]}</strong></Note>
-          <BriefText value={risk.scenario || 'Det er ikke beskrevet, hvad der kan gå galt.'} model={model} />
-          <dl>
-            <div><dt>Hvorfor er det vigtigt?</dt><dd><BriefText value={risk.rationale || 'Begrundelsen skal dokumenteres ved den faglige gennemgang.'} model={model} />{text(risk.consequences) && <details><summary>Hvem kan blive berørt – og hvordan?</summary><StructuredReportText text={modelNote(risk.consequences, model)} /></details>}</dd></div>
-            <div><dt>Forslag til at begrænse risikoen</dt><dd><BriefText value={Array.isArray(risk.measures) ? strings(risk.measures).join('\n') : risk.measures || 'Der mangler konkrete forslag til at begrænse risikoen.'} model={model} /><small>Forslag – gennemførelse og effekt er ikke dokumenteret alene ved denne tekst.</small></dd></div>
-          </dl>
-        </li>)}</RiskRows>
+        <Note>De første {Math.min(3, view.risks.length)} af {view.risks.length} risici vises nedenfor. Høj og meget høj risiko efter foreslåede tiltag vises først; risici uden angivet niveau vises før mellem og lav. Tiltagenes effekt skal stadig dokumenteres.</Note>
+        <RiskRows aria-label="Prioriterede risici">{view.risks.slice(0, 3).map((risk, index) => <li key={`${risk.id || index}-${risk.originalIndex}`}><ReadableRisk risk={risk} model={model} /></li>)}</RiskRows>
+        {view.risks.length > 3 && <Expand><summary>Læs de øvrige {view.risks.length - 3} risici her</summary><RiskRows aria-label="Øvrige risici">{view.risks.slice(3).map((risk, index) => <li key={`${risk.id || index}-${risk.originalIndex}`}><ReadableRisk risk={risk} model={model} /></li>)}</RiskRows></Expand>}
       </> : <Note>Der er ikke gemt særskilte risici i denne version. Det dokumenterer ikke, at løsningen er uden risiko.</Note>}
-      {view.additionalRisks.length > 0 && <Notice><strong>{view.additionalRisks.length} supplerende {view.additionalRisks.length === 1 ? 'risiko er' : 'risici er'} beskrevet uden en særskilt beregnet score</strong><p>De skal også indgå i den faglige gennemgang.</p></Notice>}
+      {view.additionalRisks.length > 0 && <Notice><strong>{view.additionalRisks.length} supplerende {view.additionalRisks.length === 1 ? 'risiko er' : 'risici er'} beskrevet uden en særskilt beregnet score</strong><p>De skal også indgå i den faglige gennemgang.</p><Expand><summary>Læs de supplerende risici</summary><RiskRows aria-label="Supplerende risici">{view.additionalRisks.map((risk, index) => <li key={risk.id || index}><ReadableRisk risk={typeof risk === 'string' ? { scenario: risk, originalIndex: index } : { ...risk, scenario: risk.scenario || risk.description || risk.text, originalIndex: index }} model={model} /></li>)}</RiskRows></Expand></Notice>}
       {open('risks', `Se alle risici og forslag${view.risks.length + view.additionalRisks.length ? ` (${view.risks.length + view.additionalRisks.length})` : ''}`)}
     </Section>
 
-    <Section aria-label="Anbefalinger adskilt fra vurderingen"><h3>Anbefalinger til overvejelse</h3><p>Forslag til den videre dialog. De ændrer ikke vurderingen eller godkendelsen og viser ikke, at en løsning er gennemført.</p>
+    <Section id="readable-advice" aria-label="Anbefalinger adskilt fra vurderingen"><h3>Anbefalinger til overvejelse</h3><p>Forslag til den videre dialog. De ændrer ikke vurderingen eller godkendelsen og viser ikke, at en løsning er gennemført.</p>
       {view.recommendationOrigin === 'rule_based' && <Note>Vejledende forslag ud fra sagens oplysninger. Forslagene er ikke del af rapportens tidligere JEV-kontrol.</Note>}
-      {view.recommendations.length ? <List aria-label="Anbefalinger">{view.recommendations.slice(0, 3).map((item, index) => <li key={item.id || index}><h4>{modelNote(item.title || 'Anbefaling', model)}</h4><BriefText value={item.proposal} model={model} /><details><summary>Forudsætninger og dokumentation</summary><BriefText value={item.prerequisites || 'Forudsætningerne skal afklares.'} model={model} /><BriefText value={item.verification || 'Det skal aftales, hvordan effekten dokumenteres.'} model={model} /></details></li>)}</List> : <Note>Der er ikke gemt særskilte anbefalinger. Forslag til at begrænse de konkrete risici fremgår ovenfor.</Note>}
-      {view.recommendations.length > 3 && <Note>Yderligere {view.recommendations.length - 3} anbefalinger findes i den fulde oversigt.</Note>}
+      {view.recommendations.length ? <div aria-label="Anbefalinger">{view.recommendations.slice(0, 3).map((item, index) => <Recommendation key={item.id || index} item={item} model={model} />)}</div> : <Note>Der er ikke gemt særskilte anbefalinger. Forslag til at begrænse de konkrete risici fremgår ovenfor.</Note>}
+      {view.recommendations.length > 3 && <Expand><summary>Læs de øvrige {view.recommendations.length - 3} anbefalinger her</summary>{view.recommendations.slice(3).map((item, index) => <Recommendation key={item.id || index} item={item} model={model} />)}</Expand>}
       {open('recommendations', `Se anbefalinger med forudsætninger${view.recommendations.length ? ` (${view.recommendations.length})` : ''}`)}
     </Section>
   </Page>;

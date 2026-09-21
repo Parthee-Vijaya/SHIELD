@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { MAX_REPORT_INPUT_CHARS, MAX_REPORT_RAW_INPUT_CHARS, validateDraftIds, validateReportInput } from './generate-report.mts';
+import { MAX_REPORT_INPUT_CHARS, MAX_REPORT_RAW_INPUT_CHARS, PROMPT_VERSION, generateReport, validateDraftIds, validateReportInput } from './generate-report.mts';
 import { largeEvidenceSources } from './large-evidence.fixture.mts';
+import { reviewUnits } from './review.mts';
 
 const expected = { sections: [{ id: '1.1' }, { id: '2.1' }], risks: [{ id: '3.1' }] };
 const sources = [{ id: 'input:purpose' }];
@@ -128,4 +129,65 @@ test('245 document excerpts plus questionnaire and full 39-section 33-risk repor
   assert(JSON.stringify(input).length < MAX_REPORT_INPUT_CHARS);
   assert.equal(input.sources.reduce((sum, source) => sum + source.text.length, 0), 173966);
   assert.deepEqual(validateReportInput(input).sources, input.sources);
+});
+
+
+test('structured prose retains detailed topics, locked text and source references through final JEV review', async () => {
+  const ids = ['document:synthetic-dpa:1'];
+  const locked = 'Manglende aftalegrundlag.\nBevar denne præcise afklaring.';
+  const summary = '## Konklusion\n\nSyntetisk mødeassistent kræver faglig afklaring før beslutning.\n\n## Dokumenteret grundlag\n\n- Aftalen beskriver behandlingsformålet.\n\n## Skal afklares\n\n- Dokumentér den gældende slettefrist.';
+  const topics = ['Personoplysninger', 'Hosting og behandlingssteder', 'Underdatabehandlere', 'Sikkerhed', 'Sletning og opbevaring', 'Aftalevilkår og ansvar', 'AI-funktioner og modelafklaringer'];
+  const sectionText = topics.map(topic => `### ${topic}\n\n${'Syntetisk kildeoplysning med afgrænsning til den beskrevne anvendelse. '.repeat(5)}\n\nAfklaring: kontrollér det konkrete dokumentationsgrundlag.`).join('\n\n');
+  assert(sectionText.length > 2500 && sectionText.length < 4000);
+  const input = {
+    request: { system_name: 'Syntetisk mødeassistent' },
+    result: { executive_summary: 'Faglig afklaring kræves.', scope: 'Kommunens konkrete anvendelse.', status: 'blocked', blockers: ['Slettefrist er uafklaret'],
+      sections: [{ id: '1.1', title: 'Databehandleraftale', text: 'Grundlag for aftalen.', review_status: 'requires_review' },
+        { id: '1.2', title: 'Manglende grundlag', text: locked, review_status: 'missing_information' }],
+      risks: [{ id: '3.1', area: 'Adgang', scenario: 'Uautoriseret adgang til optagelser.', measures: 'Afklar adgangsstyring.', likelihood: 3, impact: 4 }],
+    },
+    sources: [{ id: ids[0], title: 'Syntetisk aftale', text: 'Aftalen beskriver behandling af mødeoptagelser. En slettefrist er ikke dokumenteret i det gennemgåede materiale.' }],
+  };
+  const recommendation = { id: 'synthetic_pilot', title: 'Afprøv sletning', proposal: 'Overvej en afgrænset afprøvning.', rationale: 'Slettefristen skal kunne efterprøves.', prerequisites: 'Afklar aftale og teknisk mulighed.', verification: 'Dokumentér sletning med syntetiske optagelser.', source_ids: ids };
+  const sectionDraft = { executive_summary: summary, scope: 'Kommunens anvendelse af den syntetiske mødeassistent.', summary_source_ids: ids,
+    sections: [{ id: '1.1', text: sectionText, source_ids: ids }, { id: '1.2', text: 'Et forsøg på at omskrive det låste afsnit.', source_ids: ids }],
+    open_questions: ['Hvilken dokumenteret slettefrist gælder?'], recommendations: [recommendation] };
+  const riskDraft = { risks: [{ id: '3.1', scenario: 'Uautoriseret adgang kan blotlægge optagelser.', consequences: 'Deltagere kan miste fortrolighed om deres oplysninger.',
+    measures: '### Forslag til foranstaltninger\n\n- Afklar adgangsstyring.\n\n### Kontrol før ibrugtagning\n\n- Dokumentér en afprøvning.',
+    rationale: 'Adgangskontrollen kræver faglig vurdering.', source_ids: ids }], additional_risks: [] };
+  let generationCalls = 0;
+  const reviewedStates: { draft: { id: string; text: string; source_ids: string[]; locked_values?: Record<string, unknown> }[] }[] = [];
+  const result = await generateReport(input, (units, sourcePool, options) => reviewUnits(units, sourcePool, options, async request => {
+    assert.equal(request.model, 'typesafe-ai/jev');
+    reviewedStates.push(JSON.parse(request.state));
+    return { answers: Object.fromEntries(Object.keys(request.questions).map(id => [id, { probability: .2 }])), usage: {} };
+  }), async request => {
+    generationCalls++;
+    assert.match(request.system, /## Konklusion/);
+    assert.match(request.system, /### mellemoverskrifter/);
+    for (const topic of topics) assert(request.system.includes(topic));
+    assert.match(request.system, /Bevar låste afsnit.*ordret/);
+    assert.match(request.system, /Ingen anbefaling.*fjerner en blokering/);
+    if (generationCalls === 1) {
+      assert(request.schema.safeParse(sectionDraft).success);
+      assert(!request.schema.safeParse({ ...sectionDraft, sections: [{ id: '1.1', text: 'x'.repeat(4001), source_ids: ids }] }).success);
+      return { output: sectionDraft };
+    }
+    return { output: riskDraft };
+  });
+  assert.equal(generationCalls, 2);
+  assert.equal(result.prompt_version, PROMPT_VERSION);
+  assert.match(result.prompt_version, /v5-structured-prose$/);
+  assert.equal(result.draft.executive_summary, summary);
+  assert.equal(result.draft.sections[0].text, sectionText);
+  assert.equal(result.draft.sections[1].text, locked);
+  const reviewed = reviewedStates.flatMap(state => state.draft);
+  assert.equal(reviewed.find(unit => unit.id === 'section:1.1')?.text, sectionText);
+  assert.equal(reviewed.find(unit => unit.id === 'section:1.2')?.text, locked);
+  assert.deepEqual(reviewed.find(unit => unit.id === 'summary')?.locked_values?.blockers, ['Slettefrist er uafklaret']);
+  assert.equal(reviewed.find(unit => unit.id === 'risk:3.1')?.locked_values?.likelihood, 3);
+  assert.deepEqual(reviewed.find(unit => unit.id === 'recommendation:synthetic_pilot')?.locked_values,
+    { role: 'optional_proposal_only', implementation_verified: false, legal_approval: false });
+  assert(reviewed.every(unit => unit.source_ids.every(id => ids.includes(id))));
+  assert.equal(result.review.status, 'requires_human_review');
 });

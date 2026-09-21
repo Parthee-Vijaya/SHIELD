@@ -379,6 +379,23 @@ test('læsevenlig udgave kan deles og skiftes tilbage uden at ændre vurderingen
   view.unmount();
 });
 
+test('emnets kildelink åbner og fokuserer det rigtige afsnit i den fulde rapport', async () => {
+  const scroll = jest.fn();
+  const originalScroll = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = scroll;
+  try {
+    mount('/vurdering?assessment_id=assessment-1&case=case-1&view=readable');
+    fireEvent.click(await screen.findByRole('button', { name: 'Se afsnittet og kildegrundlaget →' }));
+    await waitFor(() => expect(document.getElementById('assessment-section-scope')).toHaveAttribute('open'));
+    expect(document.activeElement).toBe(document.getElementById('assessment-section-scope').querySelector('summary'));
+    expect(scroll).toHaveBeenCalledWith({ block: 'start' });
+    expect(screen.getByLabelText('Aktuel adresse')).not.toHaveTextContent('view=readable');
+    expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+  } finally {
+    Element.prototype.scrollIntoView = originalScroll;
+  }
+});
+
 test('kontrol af et ændret afsnit tælles ikke som aktuel selv om kontrollen har et andet ID', async () => {
   const baseFetch = authFetch.getMockImplementation();
   authFetch.mockImplementation(url => url === '/api/dpia/assessments/assessment-2' ? response({
