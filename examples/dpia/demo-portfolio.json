@@ -1,0 +1,78 @@
+[
+  {
+    "id": "aicom-staff",
+    "vendor_id": "aicom",
+    "case_key": "EKSEMPEL-DEMO-2026-001",
+    "fixture": "examples/dpia/demo-aicom-staff.json",
+    "source_url": "https://aicom.dk/dpa/databehandleraftale-pointtaken.pdf",
+    "source_dir": ".cache/demo-portfolio-sources/aicom",
+    "title": "Medarbejderkommunikation · stop-eksempel",
+    "notes": "Fiktiv demonstrationssag. Viser et tænkt forslag med følsomme medarbejderoplysninger og en begrænsning i leverandørens offentlige aftale. Ingen aftale, godkendelse eller faktisk drift er etableret. Åbn sagen for analyse, kilder, downloads og testkvittering.",
+    "assumptions": [
+      "Organisation, brugere og oplysninger er fiktive. Der oprettes ingen produktkonti og etableres ingen drift. Selve rapporttesten bruger offentlige kilder og syntetiske oplysninger i modelkald til GPT og JEV via Vercel AI Gateway.",
+      "STOP-EKSEMPEL: Undersøg et tænkt ønske om at udarbejde en intern personalemeddelelse om sygefravær med Aicom. Formålet med testen er at vise, hvordan følsomme oplysninger, uafklaret hjemmel og en begrænsning i leverandørens aftale skal behandles som åbne eller blokerende forhold.",
+      "Kun offentlige kilder og den syntetiske spørgeramme bruges i modeltest. Den offentlige aftale er ikke en underskrevet kommunal kontrakt.",
+      "Kontroller, slettefrister og ingen modeltræning er kravforslag og ikke verificerede leverandørfunktioner.",
+      "Hjemmel, overførselsgrundlag og DPO-inddragelse er ikke fastlagt. Rapporten kræver faglig gennemgang.",
+      "Kilden er den offentlige PDF fra leverandøren.",
+      "Teststatus beskriver den registrerede kørsel. Tidligere versioner og kvitteringer bevares."
+    ]
+  },
+  {
+    "id": "openai-meetings",
+    "vendor_id": "openai",
+    "case_key": "EKSEMPEL-DEMO-2026-002",
+    "fixture": "examples/dpia/demo-openai-meetings.json",
+    "source_url": "https://cdn.openai.com/pdf/openai-data-processing-addendum.pdf",
+    "source_dir": ".cache/demo-portfolio-sources/openai",
+    "title": "Interne mødenoter · menneskelig kontrol",
+    "notes": "Fiktiv demonstrationssag. Viser et tænkt referatforløb med fiktive medarbejdere og krav om kontrol af hvert beslutningspunkt. Ingen aftale, godkendelse eller faktisk drift er etableret. Åbn sagen for analyse, kilder, downloads og testkvittering.",
+    "assumptions": [
+      "Organisation, brugere og oplysninger er fiktive. Der oprettes ingen produktkonti og etableres ingen drift. Selve rapporttesten bruger offentlige kilder og syntetiske oplysninger i modelkald til GPT og JEV via Vercel AI Gateway.",
+      "TESTANTAGELSE: Fem medarbejdere ønsker hjælp til første udkast af interne mødereferater på grundlag af skriftlige mødenoter. Eksemplet afprøver dokumentation af arbejdsgang, medarbejderoplysninger, menneskelig kontrol og sletning. Der oprettes ingen konto eller faktisk mødeoptagelse.",
+      "Kun offentlige kilder og den syntetiske spørgeramme bruges i modeltest. Den offentlige aftale er ikke en underskrevet kommunal kontrakt.",
+      "Kontroller, slettefrister og ingen modeltræning er kravforslag og ikke verificerede leverandørfunktioner.",
+      "Hjemmel, overførselsgrundlag og DPO-inddragelse er ikke fastlagt. Rapporten kræver faglig gennemgang.",
+      "Fuld tekst udtrukket fra den officielle PDF, alle 4 sider inklusive Schedule 1. Ingen tekst er bevidst udeladt. DPA version v.010126; officiel webside angiver ikrafttræden 1. januar 2026. Gælder erhvervsaftalens tjenester; ingen kundespecifik aftale, produktkonfiguration eller kommunal godkendelse dokumenteret.",
+      "Teststatus beskriver den registrerede kørsel. Tidligere versioner og kvitteringer bevares."
+    ]
+  },
+  {
+    "id": "anthropic-procurement",
+    "vendor_id": "anthropic",
+    "case_key": "EKSEMPEL-DEMO-2026-003",
+    "fixture": "examples/dpia/demo-anthropic-procurement.json",
+    "source_url": "https://www.anthropic.com/legal/data-processing-addendum",
+    "source_dir": ".cache/demo-portfolio-sources/anthropic",
+    "title": "Indkøbsdokumenter · kilder og afgrænsning",
+    "notes": "Fiktiv demonstrationssag. Viser gennemgang af fiktivt leverandørmateriale og hvorfor kildeudtrækkets afgrænsning skal fremgå. Ingen aftale, godkendelse eller faktisk drift er etableret. Åbn sagen for analyse, kilder, downloads og testkvittering.",
+    "assumptions": [
+      "Organisation, brugere og oplysninger er fiktive. Der oprettes ingen produktkonti og etableres ingen drift. Selve rapporttesten bruger offentlige kilder og syntetiske oplysninger i modelkald til GPT og JEV via Vercel AI Gateway.",
+      "TESTANTAGELSE: En indkøbsmedarbejder ønsker et første overblik over krav og åbne spørgsmål i leverandørmateriale. Outputtet skal gennemgås af en indkøbsfaglig medarbejder og må ikke alene danne grundlag for tilbudsvurdering eller valg af leverandør.",
+      "Kun offentlige kilder og den syntetiske spørgeramme bruges i modeltest. Den offentlige aftale er ikke en underskrevet kommunal kontrakt.",
+      "Kontroller, slettefrister og ingen modeltræning er kravforslag og ikke verificerede leverandørfunktioner.",
+      "Hjemmel, overførselsgrundlag og DPO-inddragelse er ikke fastlagt. Rapporten kræver faglig gennemgang.",
+      "Afgrænset, uoversat tekstudtræk fra den officielle sides MAIN-indhold: indledning, alle afsnit A–I, hele Schedule 1 og hele Schedule 4. Schedule 2 (sikkerhedsforanstaltninger) og Schedule 3 (overførselsbilag) er udeladt fra AI-konteksten og eksplicit markeret i teksten. Fuld tekst og original HTML er bevaret lokalt. Schedule 4 henviser til en separat aktuel underdatabehandlerliste; listen er ikke indeholdt i DPA-teksten. Ingen kundespecifik aftale, konfiguration eller kommunal godkendelse dokumenteret.",
+      "Teststatus beskriver den registrerede kørsel. Tidligere versioner og kvitteringer bevares."
+    ]
+  },
+  {
+    "id": "openai-translation",
+    "vendor_id": "openai",
+    "case_key": "EKSEMPEL-DEMO-2026-004",
+    "fixture": "examples/dpia/demo-openai-translation.json",
+    "source_url": "https://cdn.openai.com/pdf/openai-data-processing-addendum.pdf",
+    "source_dir": ".cache/demo-portfolio-sources/openai",
+    "title": "Borgerinformation · oversættelse og kvalitet",
+    "notes": "Fiktiv demonstrationssag. Viser oversættelse af en fiktiv mødeinvitation med menneskelig sprogkontrol og uden konkrete personsager. Ingen aftale, godkendelse eller faktisk drift er etableret. Åbn sagen for analyse, kilder, downloads og testkvittering.",
+    "assumptions": [
+      "Organisation, brugere og oplysninger er fiktive. Der oprettes ingen produktkonti og etableres ingen drift. Selve rapporttesten bruger offentlige kilder og syntetiske oplysninger i modelkald til GPT og JEV via Vercel AI Gateway.",
+      "TESTANTAGELSE: En kommunikationsmedarbejder ønsker et udkast til en oversat invitation til et informationsmøde. En sprogkyndig medarbejder skal kontrollere betydning, datoer og kontaktvej. Eksemplet omfatter ikke afgørelser, rådgivning om rettigheder eller konkrete personsager.",
+      "Kun offentlige kilder og den syntetiske spørgeramme bruges i modeltest. Den offentlige aftale er ikke en underskrevet kommunal kontrakt.",
+      "Kontroller, slettefrister og ingen modeltræning er kravforslag og ikke verificerede leverandørfunktioner.",
+      "Hjemmel, overførselsgrundlag og DPO-inddragelse er ikke fastlagt. Rapporten kræver faglig gennemgang.",
+      "Fuld tekst udtrukket fra den officielle PDF, alle 4 sider inklusive Schedule 1. Ingen tekst er bevidst udeladt. DPA version v.010126; officiel webside angiver ikrafttræden 1. januar 2026. Gælder erhvervsaftalens tjenester; ingen kundespecifik aftale, produktkonfiguration eller kommunal godkendelse dokumenteret.",
+      "Teststatus beskriver den registrerede kørsel. Tidligere versioner og kvitteringer bevares."
+    ]
+  }
+]

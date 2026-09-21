@@ -1,0 +1,117 @@
+# Regression cases. Each case captures a realistic scenario that the rule
+# engine should handle correctly. Run with:
+#
+#   python -m src.rule_engine.regression tests/regression/cases.yaml
+#
+# Add new cases here whenever you find a real assessment that the engine
+# should be able to reproduce. Don't remove existing cases without a clear
+# reason — they are the safety net.
+
+- name: "Borgerassistent — pension (BETINGET-GO, ingen forbudte praksisser)"
+  signals:
+    system.uses_ai: true
+    system.processes_personal_data: true
+    system.makes_decisions_about_persons: true
+    system.is_used_by_public_authority: true
+    system.makes_administrative_decisions: true
+    system.generates_decision_text: true
+  predicates:
+    anvendelse: intet_af_ovenstaaende
+    medicinsk_eller_sikkerheds_undtagelse: false
+    anvendelsesomraade: vaesentlige_offentlige_tjenester
+    kun_forberedende: false
+    profilering: true
+    retsgrundlag: samfundets_interesse_eller_offentlig_myndighed_e
+    behandler_saerlige_kategorier: false
+    nationalt_retsgrundlag_dokumenteret: true
+    er_helautomatiseret: false
+    har_retsvirkning_eller_betydelig_paavirkning: true
+    retsgrundlag_til_undtagelse: lov
+    omfatter_saerlige_kategorier: false
+    art35_stk3_litra: litra_a_systematisk_omfattende_evaluering_med_retsvirkning
+    paa_datatilsynets_liste: true
+    art35_stk1_hoj_risiko: true
+    dpia_eksisterer: true
+    traeffer_afgoerelse: true
+    bruger_oplysninger_om_part: true
+    parten_kender_oplysningerne: false
+    ufordelagtig_for_parten: true
+    meddeles_skriftligt: true
+    fuld_medhold: false
+    kan_systemet_generere_begrundelse: ja_delvist
+    genererer_begrundelse: true
+    indeholder_lovhenvisning: true
+    angiver_hovedhensyn_ved_skon: ja
+    angiver_faktiske_omstaendigheder: true
+    lovhenvisninger_verificerbare: true
+    laver_sammenstillinger: false
+    enkle_kommandoer: false
+    indeholder_personoplysninger: false
+    anonymiseringskapacitet: true
+  expected:
+    aggregate_status: BETINGET-GO
+    triggered_rule_ids:
+      - ai_act.art6.hojrisiko_klassifikation
+      - gdpr.art22.automatiseret_individuel_afgorelse
+      - forvaltningsloven.par22.begrundelsespligt
+      - forvaltningsloven.par19.partshoring
+    rule_status:
+      ai_act.art5.forbudte_praksisser: GO
+      ai_act.art6.hojrisiko_klassifikation: BETINGET-GO
+
+- name: "Social scoring system (NO-GO under art. 5)"
+  signals:
+    system.uses_ai: true
+    system.processes_personal_data: true
+    system.makes_decisions_about_persons: true
+    system.is_used_by_public_authority: true
+  predicates:
+    anvendelse: social_scoring_offentlig_myndighed
+    medicinsk_eller_sikkerheds_undtagelse: false
+    anvendelsesomraade: vaesentlige_offentlige_tjenester
+    kun_forberedende: false
+    profilering: true
+    retsgrundlag: samfundets_interesse_eller_offentlig_myndighed_e
+    behandler_saerlige_kategorier: false
+    nationalt_retsgrundlag_dokumenteret: true
+    er_helautomatiseret: true
+    har_retsvirkning_eller_betydelig_paavirkning: true
+    retsgrundlag_til_undtagelse: intet
+    omfatter_saerlige_kategorier: false
+    art35_stk3_litra: litra_a_systematisk_omfattende_evaluering_med_retsvirkning
+    paa_datatilsynets_liste: true
+    art35_stk1_hoj_risiko: true
+    dpia_eksisterer: false
+    laver_sammenstillinger: false
+    enkle_kommandoer: false
+    indeholder_personoplysninger: false
+    anonymiseringskapacitet: true
+  expected:
+    aggregate_status: NO-GO
+    triggered_rule_ids:
+      - ai_act.art5.forbudte_praksisser
+    rule_status:
+      ai_act.art5.forbudte_praksisser: NO-GO
+
+- name: "Internt fagsystem uden AI-afgørelser (GO på alt)"
+  signals:
+    system.processes_personal_data: true
+    system.is_used_by_public_authority: true
+  predicates:
+    retsgrundlag: samfundets_interesse_eller_offentlig_myndighed_e
+    behandler_saerlige_kategorier: false
+    nationalt_retsgrundlag_dokumenteret: true
+    art35_stk3_litra: intet_af_de_tre
+    paa_datatilsynets_liste: false
+    art35_stk1_hoj_risiko: false
+    dpia_eksisterer: false
+    laver_sammenstillinger: false
+    enkle_kommandoer: false
+    indeholder_personoplysninger: false
+    anonymiseringskapacitet: true
+  expected:
+    aggregate_status: GO
+    not_triggered_rule_ids:
+      - ai_act.art5.forbudte_praksisser
+      - ai_act.art6.hojrisiko_klassifikation
+      - gdpr.art22.automatiseret_individuel_afgorelse

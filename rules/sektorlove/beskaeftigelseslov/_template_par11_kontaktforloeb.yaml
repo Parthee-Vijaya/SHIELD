@@ -1,0 +1,63 @@
+# TEMPLATE — afventer jurist-input
+# § 11 om kontaktforløbet i jobcenter.
+
+id: beskaeftigelseslov.par11.kontaktforloebet
+
+kilde:
+  lov: "Lov om en aktiv beskæftigelsesindsats (LBK nr. 701 af 22. maj 2024 med senere ændringer)"
+  artikel: "§ 11"
+  citat: "[TODO: jurist udfylder eksakt citat fra § 11 om ret/pligt til samtaler i kontaktforløbet. Min. 10 tegn.]"
+  url: "https://www.retsinformation.dk/eli/lta/2024/701"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_decisions_about_persons
+    - signal: system.classifies_individuals
+    - signal: system.scores_or_ranks_persons
+
+predikater:
+  - id: anvendes_til_jobcenter_kontaktforloeb
+    spørgsmål: "Bruges systemet i jobcenter-sammenhæng til at understøtte eller styre kontaktforløbet med ledige?"
+    type: boolean
+
+  - id: erstatter_eller_supplerer_samtale
+    spørgsmål: "Erstatter systemet den lovpligtige samtale med en chatbot, eller supplerer det den lovpligtige samtale?"
+    type: enum
+    enum_values: [erstatter, supplerer, ikke_relevant]
+    hjælp: "TODO: jurist præciserer grænse. § 11 kræver typisk faktisk personlig samtale."
+
+  - id: profilering_af_ledige
+    spørgsmål: "Profilerer systemet borgere ud fra deres ansøgningsdata, jobsøgningshistorik eller andre signaler?"
+    type: boolean
+
+  - id: paavirker_visitering_til_indsats
+    spørgsmål: "Bruges systemets output til at visitere borgere til konkrete indsatser (mentor, kursus, tilbud)?"
+    type: boolean
+
+afgørelse:
+  hvis: "anvendes_til_jobcenter_kontaktforloeb AND (erstatter_eller_supplerer_samtale == erstatter OR (profilering_af_ledige AND paavirker_visitering_til_indsats))"
+  så:
+    status: BETINGET-GO
+    begrundelse: "[TODO: jurist udfylder. Hovedpunkter: 1) § 11 kræver personlig samtale — chatbot må ikke erstatte. 2) Profilering der påvirker visitering er højrisiko (AI Act Bilag III) og kræver GDPR art. 22-overholdelse hvis afgørelsen er helautomatiseret.]"
+    krav:
+      - "Sikr at den lovpligtige samtale i § 11 finder sted som faktisk samtale (ikke kun chatbot)"
+      - "Hvis profilering: opfyld GDPR art. 22 stk. 3 (menneskelig indgriben + bestridelse)"
+      - "[TODO: jurist tilføjer]"
+    evidens_påkrævet:
+      - kontaktforloeb_proces_dokumentation
+      - menneskelig_indgriben_proces
+  ellers:
+    status: GO
+    begrundelse: "Systemet understøtter kontaktforløbet uden at erstatte lovpligtige elementer."
+    krav: []
+    evidens_påkrævet: []
+
+metadata:
+  forfatter: "TODO: jurist navn"
+  version: "0.1.0-draft"
+  tags:
+    - beskaeftigelseslov
+    - jobcenter
+    - kontaktforloeb
+    - draft-template

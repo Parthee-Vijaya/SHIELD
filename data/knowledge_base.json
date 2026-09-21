@@ -1,0 +1,838 @@
+[
+  {
+    "id": 1,
+    "term": "Risikoklassificering",
+    "category": "legal",
+    "iconKey": "FaGavel",
+    "definition": "Systematisk proces til at kategorisere AI-systemer baseret på deres potentielle risiko for rettigheder, sikkerhed og samfund.",
+    "context": "AI Act opdeler systemer i uacceptabel, høj, begrænset og minimal risiko. Klassificeringen styrer hvilke kontrolkrav, dokumentation og tilsyn der gælder.",
+    "tags": [
+      "AI Act",
+      "Risikovurdering",
+      "Juridisk"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 6-7",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "term": "Konformitetsvurdering",
+    "category": "compliance",
+    "iconKey": "FaShieldAlt",
+    "definition": "Formel proces der dokumenterer, at et AI-system opfylder alle relevante lovkrav og standarder før idriftsættelse.",
+    "context": "For højrisiko-systemer kræver AI Act CE-mærkning, kvalitetsledelse, teknisk dokumentation og post-market overvågning.",
+    "tags": [
+      "CE-mærkning",
+      "Dokumentation",
+      "Quality Management"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 43",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "term": "Databeskyttelse ved Design",
+    "category": "legal",
+    "iconKey": "FaLock",
+    "definition": "Princip om at indbygge databeskyttelse i arkitektur og governance fra starten af et AI-projekt.",
+    "context": "GDPR artikel 25 kræver dokumenterede kontroller for dataminimering, adgangsstyring og sporbarhed når AI-systemer behandler persondata.",
+    "tags": [
+      "GDPR",
+      "Privacy",
+      "Design"
+    ],
+    "references": [
+      {
+        "text": "GDPR Art. 25",
+        "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "term": "Behandlingsgrundlag",
+    "category": "legal",
+    "iconKey": "FaBalanceScale",
+    "definition": "Juridisk hjemmel som giver ret til at behandle personoplysninger i AI-systemer.",
+    "context": "Organisationer skal dokumentere hvilket GDPR-grundlag (samtykke, kontrakt, offentlig interesse m.m.) der anvendes og hvordan brugere informeres.",
+    "tags": [
+      "GDPR",
+      "Personoplysninger",
+      "Compliance"
+    ],
+    "references": [
+      {
+        "text": "GDPR Art. 6",
+        "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "term": "RAG (Retrieval Augmented Generation)",
+    "category": "ai",
+    "iconKey": "FaDatabase",
+    "definition": "Arkitektur hvor et AI-system henter kontekst fra en vidensbase før det genererer svar.",
+    "context": "Reducerer hallucinationer og gør compliance-dokumentation mere faktuel. Kombinationen kræver styr på datakilder og kildeangivelser.",
+    "tags": [
+      "Semantisk søgning",
+      "Vidensbase",
+      "LLM"
+    ],
+    "references": [
+      {
+        "text": "RAG Paper",
+        "url": "https://arxiv.org/abs/2005.11401"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "term": "LLM (Large Language Model)",
+    "category": "ai",
+    "iconKey": "FaBrain",
+    "definition": "Stor sprogmodel trænet på store mængder tekstdata til at forstå og generere naturligt sprog.",
+    "context": "Foundation-modeller med høj compute falder under AI Act's GPAI-krav og kræver risikostyring, dokumentation og overvågning.",
+    "tags": [
+      "Foundation Models",
+      "Sprogmodeller",
+      "AI Act"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 51",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "term": "Algoritmisk Gennemsigtighed",
+    "category": "compliance",
+    "iconKey": "FaEye",
+    "definition": "Kravet om at AI-systemer skal kunne forklare beslutninger for brugere og myndigheder.",
+    "context": "GDPR Art. 22 og AI Act Art. 13 kræver beskrivelser af modellens logik, menneskelig oversight og mulighed for indsigelser.",
+    "tags": [
+      "Transparens",
+      "Forklarbarhed",
+      "Brugerrettigheder"
+    ],
+    "references": [
+      {
+        "text": "GDPR Art. 22",
+        "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+      },
+      {
+        "text": "AI Act Art. 13",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "term": "DPIA (Data Protection Impact Assessment)",
+    "category": "legal",
+    "iconKey": "FaFileAlt",
+    "definition": "Konsekvensanalyse der måler persondatarisici ved nye systemer og definerer mitigering.",
+    "context": "Påkrævet når AI-systemer behandler følsomme data, bruger omfattende profilering eller indgår i automatiske afgørelser.",
+    "tags": [
+      "GDPR",
+      "Risk Management",
+      "Assessments"
+    ],
+    "references": [
+      {
+        "text": "GDPR Art. 35",
+        "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "term": "Model Governance",
+    "category": "compliance",
+    "iconKey": "FaCog",
+    "definition": "Kontrolramme for monitorering, versionering og dokumentation af AI-modeller gennem hele livscyklussen.",
+    "context": "Indeholder processer for modelkataloger, ansvarlige personer, sign-offs og alarmer ved driftsafvigelser.",
+    "tags": [
+      "Governance",
+      "Livscyklus",
+      "Kontrol"
+    ],
+    "references": [
+      {
+        "text": "NIST AI RMF",
+        "url": "https://www.nist.gov/itl/ai-risk-management-framework"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "term": "AI Sag (Case Management)",
+    "category": "operations",
+    "iconKey": "FaFolderOpen",
+    "definition": "Registrering af AI-projekter med status, ansvarlige og compliance-artefakter.",
+    "context": "Understøtter revisionsspor og gør det nemt at dele dokumentation med Datatilsynet eller interne styregrupper.",
+    "tags": [
+      "Workflow",
+      "Dokumentation",
+      "Audit"
+    ],
+    "references": [
+      {
+        "text": "Kalundborg Governance",
+        "url": "https://www.kalundborg.dk/"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "term": "System Health Monitor",
+    "category": "operations",
+    "iconKey": "FaHeartbeat",
+    "definition": "Dashboard der viser status på backend, databaser, agenter og eksterne integrationer.",
+    "context": "Giver driftsfolk mulighed for hurtigt at validere API-responstider og eskalere fejl, især ved compliance-deadlines.",
+    "tags": [
+      "Observability",
+      "Monitoring",
+      "Drift"
+    ],
+    "references": [
+      {
+        "text": "Platform Status",
+        "url": "/drift"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "term": "Knowledge Base Sync",
+    "category": "operations",
+    "iconKey": "FaSync",
+    "definition": "Automatiseret proces der udtrækker termer fra research og opdaterer vidensbasen hver uge.",
+    "context": "Tyr-platformen bruger LM Studio og lokal LLM-syntese til at holde termer friske og sporbare. Kører mandag morgen kl. 03:00.",
+    "tags": [
+      "Automation",
+      "Knowledge",
+      "Scheduler"
+    ],
+    "references": [
+      {
+        "text": "Scheduler Overview",
+        "url": "docs/operations/scheduler.md"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "term": "Legal Research Agent",
+    "category": "ai",
+    "iconKey": "FaLightbulb",
+    "definition": "LangGraph-agent der kombinerer flertrins webresearch, kildevurdering og LLM-syntese.",
+    "context": "Bruges til at samle juridiske kilder om AI Act og GDPR. Agenten returnerer summary, anbefalinger og citerede kilder.",
+    "tags": [
+      "Agent",
+      "Research",
+      "LangGraph"
+    ],
+    "references": [
+      {
+        "text": "Research Workflow",
+        "url": "docs/research/agent_overview.md"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "term": "Compliance Dashboard",
+    "category": "operations",
+    "iconKey": "FaTachometerAlt",
+    "definition": "Visualt overblik over risikoklasser, vurderingstrin og igangværende remediation-planer.",
+    "context": "Dashboardet trækker data fra assesments, cases og knowledge base for at vise prioriterede handlinger til ledelsen.",
+    "tags": [
+      "Dashboard",
+      "Risk",
+      "Reporting"
+    ],
+    "references": [
+      {
+        "text": "Dashboard Design",
+        "url": "docs/design/dashboard.md"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "term": "Kvalitetsledelsessystem",
+    "category": "compliance",
+    "iconKey": "FaClipboardCheck",
+    "definition": "Styringssystem der sikrer dokumenterede processer, roller og audits for AI-løsninger.",
+    "context": "Et dokumenteret QMS er et krav for udbydere af højrisiko AI-systemer. Det omfatter politikker, træning og kontinuerlige forbedringer.",
+    "tags": [
+      "QMS",
+      "Proces",
+      "Audit"
+    ],
+    "references": [
+      {
+        "text": "ISO/IEC 42001",
+        "url": "https://www.iso.org/standard/81230.html"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "term": "GPAI (General-Purpose AI Model)",
+    "category": "legal",
+    "iconKey": "FaCubes",
+    "definition": "Generelle AI-modeller med bred anvendelighed der kan bruges på tværs af mange forskellige opgaver — typisk store sprog- eller multimodale modeller.",
+    "context": "AI Act introducerede en separat regulering af GPAI fra 2. august 2025. Krav inkluderer teknisk dokumentation, copyright-policy og resumé af træningsdata. Modeller med 'systemic risk' (>10^25 FLOPs træningscompute) har skærpede krav om red-teaming, cybersikkerhed og incident-rapportering.",
+    "tags": [
+      "GPAI",
+      "AI Act",
+      "Foundation Models",
+      "2025"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 51-55",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      },
+      {
+        "text": "AI Office GPAI guidance",
+        "url": "https://digital-strategy.ec.europa.eu/en/policies/ai-office"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "term": "GPAI Code of Practice",
+    "category": "legal",
+    "iconKey": "FaScroll",
+    "definition": "Frivillig adfærdskodeks udarbejdet af EU AI Office og industrirepræsentanter, der specificerer hvordan GPAI-leverandører kan dokumentere AI Act-compliance i praksis.",
+    "context": "Tredje udkast publiceret marts 2025, færdiggjort sommeren 2025. Dækker transparens, copyright-overholdelse, og systemic-risk-management. Er det primære compliance-vejledningsdokument indtil harmoniserede standarder foreligger.",
+    "tags": [
+      "GPAI",
+      "Code of Practice",
+      "AI Office",
+      "2025"
+    ],
+    "references": [
+      {
+        "text": "GPAI Code of Practice",
+        "url": "https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "term": "EU AI Office",
+    "category": "legal",
+    "iconKey": "FaUniversity",
+    "definition": "Centralt EU-organ etableret februar 2024 under DG CNECT der koordinerer håndhævelse af AI Act, særligt GPAI-bestemmelser.",
+    "context": "AI Office udvikler retningslinjer, fører tilsyn med GPAI-modeller, faciliterer Code of Practice, og koordinerer mellem nationale tilsynsmyndigheder. For Danmark er det Datatilsynet der er udpeget national kompetent myndighed.",
+    "tags": [
+      "AI Office",
+      "Tilsyn",
+      "EU",
+      "Håndhævelse"
+    ],
+    "references": [
+      {
+        "text": "European AI Office",
+        "url": "https://digital-strategy.ec.europa.eu/en/policies/ai-office"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "term": "AI Act forbudte praksisser (Art. 5)",
+    "category": "legal",
+    "iconKey": "FaBan",
+    "definition": "Otte kategorier af AI-anvendelser der er forbudt i EU fra 2. februar 2025: subliminal manipulation, udnyttelse af sårbarhed, social scoring, prædiktiv politianvendelse, ansigtsgenkendelse-databaser via web-scraping, følelsesgenkendelse på arbejdsplads/uddannelse, biometrisk kategorisering på tværs af følsomme træk, og live remote biometric identification i offentligt rum (med snævre undtagelser).",
+    "context": "Førte direkte til at fx social-scoring-AI til borgerprofilering ikke kan idriftsættes i kommunen. AI literacy-krav i Art. 4 trådte også i kraft 2. februar 2025 — alle der bruger AI på vegne af en organisation skal have grundlæggende AI-forståelse.",
+    "tags": [
+      "AI Act",
+      "Forbudt praksis",
+      "2025",
+      "Februar 2025"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 5",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "term": "AI literacy (Art. 4)",
+    "category": "compliance",
+    "iconKey": "FaGraduationCap",
+    "definition": "AI Act Art. 4-krav om at organisationer skal sikre tilstrækkelig AI-forståelse hos personer der opererer eller anvender AI på organisationens vegne.",
+    "context": "Trådte i kraft 2. februar 2025 sammen med forbuddene i Art. 5. Konkret kommunal implementering: dokumenteret onboarding-program, rollebaseret AI-træning, og test af forståelse. Ingen specifik certificering kræves endnu, men dokumentation er forventet ved tilsyn.",
+    "tags": [
+      "AI Act",
+      "Træning",
+      "Compliance",
+      "2025"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 4",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "term": "AI agent / agentic AI",
+    "category": "ai",
+    "iconKey": "FaRobot",
+    "definition": "AI-system der selvstændigt planlægger, tager beslutninger og udfører handlinger over flere trin med adgang til værktøjer (web-søg, kode-kørsel, eksterne API'er) — i modsætning til en chat-model der kun returnerer tekst.",
+    "context": "2025 var året hvor agentic AI flyttede fra forskning til produktion (Claude Computer Use, OpenAI Operator, Anthropic Skills). Compliance-implikation: agenters handlinger skal logges revisionsklart, agent-grænser dokumenteres (hvilke værktøjer + data har de adgang til), og kill-switch + menneskelig override skal være muligt. AI Act behandler dem som AI-systemer på linje med andre — risiko vurderes per use case.",
+    "tags": [
+      "Agents",
+      "AI Architecture",
+      "2025",
+      "Tool Use"
+    ],
+    "references": [
+      {
+        "text": "Anthropic Agents",
+        "url": "https://www.anthropic.com/research/building-effective-agents"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "term": "MCP (Model Context Protocol)",
+    "category": "ai",
+    "iconKey": "FaPlug",
+    "definition": "Åben protokol introduceret af Anthropic i november 2024 og bredt adopteret i 2025, der standardiserer hvordan AI-modeller forbinder til eksterne datakilder, værktøjer og services.",
+    "context": "MCP løser 'M×N integration-problem' — i stedet for at hver AI-klient skal kode integrationer mod hver datakilde, taler alle samme protokol. Compliance-implikation: forenkler dokumentation af hvilke datakilder en AI-løsning faktisk forbinder til, men kræver styring af MCP-server-tilladelser og audit af tool-kald.",
+    "tags": [
+      "MCP",
+      "Protocol",
+      "Integration",
+      "2025"
+    ],
+    "references": [
+      {
+        "text": "MCP Specification",
+        "url": "https://modelcontextprotocol.io"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "term": "AI Act håndhævelses-tidslinje",
+    "category": "legal",
+    "iconKey": "FaCalendarAlt",
+    "definition": "AI Act trådte i kraft 1. august 2024 men har trinvis ikrafttræden frem til 2027.",
+    "context": "Kritiske milepæle for kommunen: (1) 2. februar 2025 — forbudte praksisser + AI literacy. (2) 2. august 2025 — GPAI-leverandørkrav + national tilsynsmyndighed udpeget. (3) 2. august 2026 — højrisiko-systemer fuldt regulerede (de fleste AI-løsninger en kommune typisk anvender). (4) 2. august 2027 — højrisiko-systemer i Annex I (MDR osv.) fuldt regulerede.",
+    "tags": [
+      "AI Act",
+      "Tidslinje",
+      "Compliance",
+      "Milepæle"
+    ],
+    "references": [
+      {
+        "text": "AI Act ikrafttrædelse",
+        "url": "https://artificialintelligenceact.eu/implementation-timeline/"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "term": "FRIA (Fundamental Rights Impact Assessment)",
+    "category": "legal",
+    "iconKey": "FaUserShield",
+    "definition": "Konsekvensanalyse der vurderer hvordan et højrisiko AI-system påvirker fysiske personers grundlæggende rettigheder — krav for offentlige myndigheder og udvalgte private aktører jf. AI Act Art. 27.",
+    "context": "FRIA er forskellig fra DPIA: DPIA fokuserer på persondata, FRIA på bredere rettigheder (lighed, ikke-diskrimination, ytringsfrihed, retfærdig rettergang). Skal udføres FØR ibrugtagning af et højrisiko-system og opdateres ved væsentlige ændringer. AI Office udgiver FRIA-template i 2025.",
+    "tags": [
+      "FRIA",
+      "AI Act",
+      "Grundlæggende rettigheder",
+      "Højrisiko"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 27",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "term": "AI inventory / AI register",
+    "category": "compliance",
+    "iconKey": "FaListAlt",
+    "definition": "Centralt register over alle AI-systemer i organisationen — produkter, projekter og indkøbte løsninger — med metadata om risikoklasse, leverandør, formål, datakilder og ansvarlig.",
+    "context": "Forudsætning for compliance med AI Act: man kan ikke regulere det man ikke kender. Kommunens AI-register bør indeholde både vedtagne systemer (idriftsat) og kandidater (POC, indkøb). Tyrs Sager-modul er Kalundborgs implementering.",
+    "tags": [
+      "AI Inventory",
+      "Governance",
+      "Register"
+    ],
+    "references": [
+      {
+        "text": "EU AI Pact",
+        "url": "https://digital-strategy.ec.europa.eu/en/policies/ai-pact"
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "term": "Prompt injection",
+    "category": "operations",
+    "iconKey": "FaBug",
+    "definition": "Angrebsteknik hvor en angriber skjuler instruktioner i input til en AI (fx i et uploadet dokument eller en email) så modellen udfører handlinger ud over det tilsigtede.",
+    "context": "Den primære sikkerhedstrussel mod LLM-drevne systemer i 2024-2025. Konkret risiko for kommunal AI: en borger kan skjule instruktioner i en ansøgning der manipulerer AI-vurderingen. Mitigering: input-sanitisering, separation mellem 'system-prompt' og 'data-input', og altid menneskelig review af afgørelser. OWASP LLM Top 10 #1.",
+    "tags": [
+      "Sikkerhed",
+      "OWASP",
+      "LLM",
+      "Trussel"
+    ],
+    "references": [
+      {
+        "text": "OWASP LLM Top 10",
+        "url": "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "term": "Watermarking / AI-content disclosure",
+    "category": "compliance",
+    "iconKey": "FaSignature",
+    "definition": "Teknisk markering af AI-genereret indhold (tekst, billede, lyd, video) så det kan identificeres som syntetisk — og oplysningskrav om at indhold er AI-genereret.",
+    "context": "AI Act Art. 50 kræver disclosure ved deepfakes (i kraft fra 2026), syntetisk lyd/video, og AI-genereret tekst om offentlige spørgsmål. EU C2PA-standarden er forventet teknisk implementation. Kommunens kommunikation der bruger AI-genereret indhold (illustrationer, oversættelser) skal markeres tydeligt.",
+    "tags": [
+      "AI Act",
+      "Disclosure",
+      "Deepfake",
+      "Art. 50"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 50",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      },
+      {
+        "text": "C2PA Standard",
+        "url": "https://c2pa.org/"
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "term": "NIS2 (Network and Information Security Directive)",
+    "category": "legal",
+    "iconKey": "FaNetworkWired",
+    "definition": "Revideret EU-direktiv om cybersikkerhed der trådte i kraft i Danmark 1. januar 2025, og udvider sektor-coverage og skærper rapporteringskrav væsentligt over NIS1.",
+    "context": "Kommuner er omfattet som 'væsentlige enheder' i offentlig forvaltning. Krav: dokumenteret risikostyring, hændelsesrapportering inden 24-72 timer, leverandør-supply-chain-sikkerhed, og ledelsesansvar. Påvirker AI-systemer: leverandørvurdering, hændelseshåndtering, og redundans-design er nu ikke valgfrit.",
+    "tags": [
+      "NIS2",
+      "Cybersikkerhed",
+      "Direktiv",
+      "2025"
+    ],
+    "references": [
+      {
+        "text": "NIS2-direktivet",
+        "url": "https://eur-lex.europa.eu/eli/dir/2022/2555/oj"
+      },
+      {
+        "text": "DK NIS2-bekendtgørelse",
+        "url": "https://www.retsinformation.dk/"
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "term": "DORA (Digital Operational Resilience Act)",
+    "category": "legal",
+    "iconKey": "FaLandmark",
+    "definition": "EU-forordning om digital operationel modstandsdygtighed der trådte i kraft 17. januar 2025, gældende for finansielle enheder og deres ICT-leverandører.",
+    "context": "Selvom kommunen ikke er en finansiel enhed, påvirker DORA leverandører kommunen bruger: bank-, betalings- og forsikringspartnere skal nu opfylde DORA. Indirekte påvirkning af AI-projekter: krav til ICT-leverandørstyring, tredjeparts-AI-modeller, og operationel redundans.",
+    "tags": [
+      "DORA",
+      "Finans",
+      "Leverandørstyring",
+      "2025"
+    ],
+    "references": [
+      {
+        "text": "DORA-forordningen",
+        "url": "https://eur-lex.europa.eu/eli/reg/2022/2554/oj"
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "term": "AI Liability Directive (AILD)",
+    "category": "legal",
+    "iconKey": "FaShieldAlt",
+    "definition": "EU-direktiv-forslag om civilretligt erstatningsansvar når AI-systemer forårsager skade — letter bevisbyrden for borgere ved at indføre formodninger om årsagssammenhæng.",
+    "context": "Status: Kommissionen trak forslaget tilbage i februar 2025 efter modstand. Diskussionen om AI-ansvar fortsætter via revideret Product Liability Directive (gældende fra december 2026), der eksplicit dækker AI-systemer som 'produkter'. Kommuner bør orientere sig om PLD'en — den medfører erstatningsansvar for defekte AI-systemer.",
+    "tags": [
+      "AI Liability",
+      "Erstatning",
+      "Direktiv",
+      "PLD"
+    ],
+    "references": [
+      {
+        "text": "Updated Product Liability Directive",
+        "url": "https://eur-lex.europa.eu/eli/dir/2024/2853/oj"
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "term": "EU AI Pact",
+    "category": "compliance",
+    "iconKey": "FaHandshake",
+    "definition": "Frivillig forpligtelses-rammeværk fra EU AI Office hvor organisationer forpligter sig på AI Act-compliance før de juridisk bindende deadlines.",
+    "context": "Lanceret september 2024, 100+ organisationer underskrev første runde. To pilars: (1) governance — skitsér AI-strategi og udnævn AI lead, (2) commitments — eksplicit forpligtelse på 3+ konkrete handlinger fx AI inventory, FRIA-pilot, AI literacy. Kalundborg Kommune kunne overveje at signere som signal til borgere om proaktiv compliance.",
+    "tags": [
+      "AI Pact",
+      "Frivillig",
+      "Compliance",
+      "AI Office"
+    ],
+    "references": [
+      {
+        "text": "AI Pact",
+        "url": "https://digital-strategy.ec.europa.eu/en/policies/ai-pact"
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "term": "Højrisiko AI-system (Annex III)",
+    "category": "legal",
+    "iconKey": "FaExclamationTriangle",
+    "definition": "Otte kategorier af AI-anvendelser der per AI Act Annex III er klassificeret som højrisiko — inkluderer kritisk infrastruktur, uddannelse, beskæftigelse, essential services (inkl. social, sundhed), retshåndhævelse, migration, retspleje, og demokratiske processer.",
+    "context": "De fleste kommunale AI-anvendelser falder i kategori 5 'access to essential public services and benefits'. Eksempler: AI til prioritering af sociale ydelser, automatiseret indstilling til pension, AI-screening i sygedagpengesager. Krav: konformitetsvurdering, EU-database registrering, FRIA, post-market monitoring, og logging.",
+    "tags": [
+      "Højrisiko",
+      "AI Act",
+      "Annex III",
+      "Kommunal"
+    ],
+    "references": [
+      {
+        "text": "AI Act Annex III",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "term": "Datatilsynets AI-vejledninger 2024-2025",
+    "category": "legal",
+    "iconKey": "FaBookOpen",
+    "definition": "Serie af tematiske vejledninger fra Datatilsynet om GDPR-compliance ved AI-anvendelse i offentlig sektor — opdateres løbende.",
+    "context": "Centrale vejledninger 2024-2025: (1) AI og persondata (november 2024), (2) automatiserede afgørelser i forvaltningen, (3) DPIA for AI-systemer, (4) brug af generativ AI i offentlige myndigheder. Læses som forventning til hvordan Datatilsynet vil føre tilsyn.",
+    "tags": [
+      "Datatilsynet",
+      "GDPR",
+      "Offentlig sektor",
+      "Vejledning"
+    ],
+    "references": [
+      {
+        "text": "Datatilsynet AI",
+        "url": "https://www.datatilsynet.dk/temaer/kunstig-intelligens"
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "term": "Red teaming / AI safety evaluation",
+    "category": "operations",
+    "iconKey": "FaUserSecret",
+    "definition": "Struktureret proces hvor et team aktivt forsøger at fremprovokere fejl, bias, jailbreaks eller misbrug af et AI-system før idriftsættelse.",
+    "context": "Krav i AI Act for GPAI med systemic risk (Art. 55). For kommunal compliance: red teaming er en del af due diligence ved indkøb af AI — kan kræves af leverandøren, eller udføres internt på indkøbte modeller. Resultater dokumenteres i FRIA + post-market plan.",
+    "tags": [
+      "Red Team",
+      "AI Safety",
+      "Evaluering",
+      "GPAI"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 55",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "term": "Shadow AI",
+    "category": "operations",
+    "iconKey": "FaUserSlash",
+    "definition": "AI-løsninger som medarbejdere bruger uden organisationens viden, godkendelse eller registrering — typisk SaaS-værktøjer som ChatGPT, Copilot eller Claude tilgået med privat-konto.",
+    "context": "Største governance-risiko i 2024-2025 ifølge Gartner og Forrester. Konkret: en sagsbehandler limer borgerens fritekst-ansøgning ind i en gratis ChatGPT for at omformulere — og deler dermed potentielt persondata til en data-controller udenfor EU uden hjemmel. Tyrs AI inventory + AI literacy-træning er primær mitigering.",
+    "tags": [
+      "Shadow AI",
+      "Governance",
+      "Risiko",
+      "GDPR"
+    ],
+    "references": [
+      {
+        "text": "Gartner Shadow AI",
+        "url": "https://www.gartner.com/"
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "term": "AI Bill of Materials (AI BOM)",
+    "category": "compliance",
+    "iconKey": "FaList",
+    "definition": "Komplet inventarliste over et AI-systems komponenter: træningsdata, modeller, datasæt, embeddings, retrieval-kilder, fine-tuning-trin, evalueringsdatasæt og afhængigheder.",
+    "context": "Modstykke til Software BOM (SBOM). Krav i AI Act for højrisiko-systemer er reelt en AI BOM — Art. 11 om teknisk dokumentation. ISO/IEC 42001 specificerer struktur. Vigtigt ved tilsyn og incident-håndtering: hvilken data fodrede modellen, hvor er sårbarheder?",
+    "tags": [
+      "AI BOM",
+      "SBOM",
+      "Dokumentation",
+      "ISO 42001"
+    ],
+    "references": [
+      {
+        "text": "AI Act Art. 11",
+        "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "term": "Synthetic data",
+    "category": "ai",
+    "iconKey": "FaCopy",
+    "definition": "Kunstigt genereret data der efterligner statistiske egenskaber af rigtig data uden at være knyttet til faktiske borgere — bruges til træning og test af AI når rigtig data ikke kan tilgås.",
+    "context": "Stærkt voksende GDPR-mitigation 2024-2025 i offentlig sektor: hvis modellen kan trænes på syntetisk data der ikke er persondata, undgår man artikel 6/9-debat. Skal valideres for utility (giver modellen samme accuracy?) og privacy (kan original-data re-konstrueres?). Datatilsynet har vejledning.",
+    "tags": [
+      "Synthetic data",
+      "GDPR",
+      "Træning",
+      "Privacy"
+    ],
+    "references": [
+      {
+        "text": "EDPS guidelines synthetic data",
+        "url": "https://edps.europa.eu/"
+      }
+    ]
+  },
+  {
+    "id": 38,
+    "term": "Forvaltningsret + AI: begrundelse og partshøring",
+    "category": "legal",
+    "iconKey": "FaGavel",
+    "definition": "Forvaltningslovens §§ 19-22 (partshøring + begrundelse) gælder uændret når AI bruges som beslutningsstøtte — borgeren har ret til at vide hvilke faktiske oplysninger der har dannet grundlag.",
+    "context": "Konkret implication: hvis en kommunal AI flagger 'forhøjet risiko' i en sag, skal afgørelsen kunne forklares juridisk. AI'ens output er en faktisk oplysning der skal partshøres. Tyrs regelmotor er designet så hver afgørelse hjemles i konkrete lovartikler — netop for at gøre forvaltningsrettens krav mulige at opfylde.",
+    "tags": [
+      "Forvaltningsret",
+      "Partshøring",
+      "Begrundelse",
+      "Kommunal"
+    ],
+    "references": [
+      {
+        "text": "Forvaltningsloven § 19",
+        "url": "https://www.retsinformation.dk/eli/lta/2014/433"
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "term": "Vibe coding",
+    "category": "ai",
+    "iconKey": "FaKeyboard",
+    "definition": "Programmerings-praksis (term myntet af Andrej Karpathy februar 2025) hvor en udvikler beskriver hvad de vil have i naturligt sprog, lader AI generere koden, og accepterer outputtet uden at forstå det fuldt.",
+    "context": "Compliance-risiko når kommunal IT bygges via vibe coding: koden virker måske, men kan ikke vedligeholdes, har skjulte sikkerhedsfejl, eller forstår ikke domænet. Tyr selv er bygget med massiv AI-assistance — men hver gang reviewes architecture, sikkerhed og forretningslogik manuelt. Vibe coding er fint for prototyping, ikke for produktionssystemer der behandler persondata.",
+    "tags": [
+      "Vibe coding",
+      "AI-assisted development",
+      "2025",
+      "Risiko"
+    ],
+    "references": [
+      {
+        "text": "Andrej Karpathy original tweet",
+        "url": "https://twitter.com/karpathy/status/1886192184808149383"
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "term": "ISO/IEC 42001 (AI Management System)",
+    "category": "compliance",
+    "iconKey": "FaCheckSquare",
+    "definition": "Verdens første internationale standard for AI Management Systems (AIMS), publiceret december 2023. Tilbyder certificerbar struktur for ansvarlig AI-styring.",
+    "context": "Kan bruges som en del af AI Act-compliance for højrisiko-systemer (CE-mærkning). For kommunen: ikke krav, men signal til borgere og tilsyn om systematisk governance. Kalundborg kunne overveje 42001-pilotforløb i 2026 hvis Tyr-platformen modnes til produktiv drift.",
+    "tags": [
+      "ISO 42001",
+      "AIMS",
+      "Standard",
+      "Certificering"
+    ],
+    "references": [
+      {
+        "text": "ISO/IEC 42001",
+        "url": "https://www.iso.org/standard/81230.html"
+      }
+    ]
+  },
+  {
+    "term": "AI red teaming",
+    "category": "compliance",
+    "iconKey": "FaShieldAlt",
+    "definition": "AI red teaming er en systematisk, proaktiv testproces, hvor man simulerer angribere eller kritiske scenarier for at identificere svagheder i en AI‑løsning.",
+    "context": "I kommunal AI‑compliance er red teaming afgørende for at afdække sikkerheds- og etiske risici, før systemet rulles ud. Sagsbehandlere skal sikre, at red team‑aktiviteter er dokumenteret, udført af kvalificerede eksperter og integreret i beslutningsprocessen.",
+    "tags": [
+      "AI",
+      "red team",
+      "sikkerhed",
+      "risikovurdering",
+      "compliance"
+    ],
+    "references": [],
+    "auto_generated": true,
+    "added_at": "2026-05-08T20:33:19.254981+00:00",
+    "id": 41
+  },
+  {
+    "term": "AI watermarking",
+    "category": "ai",
+    "iconKey": "FaBrain",
+    "definition": "AI watermarking er en teknisk metode til at indlejre digitale, ofte usynlige, mærker i AI-genererede data (tekst, billede eller lyd) for at identificere oprindelse og sikre sporbarhed.",
+    "context": "I kommunal AI-compliance er det afgørende at kunne dokumentere, hvornår og af hvem AI-systemer har produceret indhold. Watermarking muliggør sporing af materiale, beskytter mod misbrug og understøtter overholdelse af EU's AI Act (2024) samt danske regler om databeskyttelse og ophavsret. Sagsbehandlere skal sikre, at AI-modeller anvender pålidelige watermarking-løsninger og kan verificere mærkerne.",
+    "tags": [
+      "AI watermarking",
+      "sporbarhed",
+      "databeskyttelse",
+      "EU AI Act",
+      "digitalt mærke"
+    ],
+    "references": [],
+    "auto_generated": true,
+    "added_at": "2026-05-08T20:33:28.717667+00:00",
+    "id": 42
+  }
+]

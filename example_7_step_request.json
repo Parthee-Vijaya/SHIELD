@@ -1,0 +1,22 @@
+{
+  "system_navn": "SmartRecruit AI",
+  "system_beskrivelse": "AI-baseret rekrutteringssystem der bruger machine learning til at analysere CV'er og forudsige kandidaternes egnethed for stillinger. Systemet behandler ansøgerdata og laver automatiske anbefalinger til HR-afdelingen.",
+  "organisation": "TechCorp Denmark A/S",
+  "kontaktperson": "Lars Nielsen, HR Director",
+
+  "system_type": "software",
+  "automatisering_grad": "semi-automatisk",
+  "beslutningstagning": "støttende",
+
+  "behandler_data": true,
+  "data_typer": ["navn", "email", "telefon", "uddannelse", "arbejdserfaring", "cv-tekst"],
+  "personoplysninger": true,
+  "særlige_kategorier": false,
+
+  "sektor": "beskæftigelse",
+  "målgruppe": ["jobansøgere", "hr-medarbejdere"],
+  "geografisk_område": ["Danmark", "EU"],
+
+  "nuværende_status": "udvikling",
+  "tidslinje": "Planned deployment Q2 2024"
+}

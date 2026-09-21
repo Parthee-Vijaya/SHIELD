@@ -1,0 +1,78 @@
+id: gdpr.art6.retsgrundlag_for_behandling
+kilde:
+  lov: "Databeskyttelsesforordningen (Forordning 2016/679 - GDPR)"
+  artikel: "Artikel 6, stk. 1"
+  citat: "Behandling er kun lovlig, hvis og i det omfang mindst ét af følgende forhold gør sig gældende: a) den registrerede har givet samtykke; b) behandling er nødvendig af hensyn til opfyldelse af en kontrakt; c) behandling er nødvendig for at overholde en retlig forpligtelse; d) behandling er nødvendig for at beskytte den registreredes eller en anden fysisk persons vitale interesser; e) behandling er nødvendig af hensyn til udførelse af en opgave i samfundets interesse eller henhørende under offentlig myndighedsudøvelse; f) behandling er nødvendig for, at den dataansvarlige eller en tredjemand kan forfølge en legitim interesse..."
+  url: "https://eur-lex.europa.eu/eli/reg/2016/679/oj/dan#art_6"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.processes_personal_data
+
+predikater:
+  - id: retsgrundlag
+    spørgsmål: "Hvilket retsgrundlag i art. 6, stk. 1 hjemler behandlingen?"
+    type: enum
+    enum_values:
+      - samtykke_a
+      - kontrakt_b
+      - retlig_forpligtelse_c
+      - vitale_interesser_d
+      - samfundets_interesse_eller_offentlig_myndighed_e
+      - legitim_interesse_f
+      - intet_retsgrundlag
+    hjælp: |
+      For en kommune er det typiske retsgrundlag (e) - opgave i samfundets
+      interesse / offentlig myndighedsudøvelse. Husk at art. 6, stk. 1, litra f
+      (legitim interesse) IKKE er tilgængeligt for behandling foretaget af
+      offentlige myndigheder under udførelse af deres opgaver.
+
+  - id: behandler_saerlige_kategorier
+    spørgsmål: "Behandles særlige kategorier af personoplysninger (art. 9: race, sundhed, religion, fagforening, biometri, genetik, seksualitet, politiske overbevisninger)?"
+    type: boolean
+    hjælp: "Hvis ja, kræves desuden hjemmel i art. 9 — alm. retsgrundlag i art. 6 er ikke tilstrækkeligt."
+
+  - id: nationalt_retsgrundlag_dokumenteret
+    spørgsmål: "Er det nationale retsgrundlag (særligt for litra c og e) konkret identificeret og dokumenteret?"
+    type: boolean
+    hjælp: "Litra c og e kræver supplerende national/EU-lov der opfylder kravene i art. 6, stk. 3 (formål, behandlingsbetingelser, sletning m.m.). For kommuner ofte serviceloven, beskæftigelseslov, sundhedslov osv."
+
+afgørelse:
+  hvis: "retsgrundlag == intet_retsgrundlag OR (behandler_saerlige_kategorier AND retsgrundlag == legitim_interesse_f) OR ((retsgrundlag == retlig_forpligtelse_c OR retsgrundlag == samfundets_interesse_eller_offentlig_myndighed_e) AND NOT nationalt_retsgrundlag_dokumenteret)"
+  så:
+    status: NO-GO
+    begrundelse: "Der mangler gyldigt retsgrundlag i art. 6 (og evt. art. 9) til den ønskede behandling."
+    krav:
+      - "Identificér og dokumentér konkret retsgrundlag iht. art. 6, stk. 1"
+      - "For litra c/e: identificér det specifikke nationale retsgrundlag (servicelov §, beskæftigelseslov §, etc.) der opfylder art. 6, stk. 3"
+      - "Hvis særlige kategorier behandles: identificér tillige hjemmel i art. 9, stk. 2"
+      - "Behandling må ikke påbegyndes/fortsætte uden gyldigt retsgrundlag"
+    evidens_påkrævet:
+      - retsgrundlags_notat
+      - henvisning_til_national_lovgivning
+  ellers:
+    status: GO
+    begrundelse: "Retsgrundlaget er identificeret. Almindelige GDPR-krav (oplysningspligt, opbevaringsbegrænsning, sikkerhedsforanstaltninger) gælder fortsat."
+    krav:
+      - "Sikr at oplysningspligt iht. art. 13/14 er opfyldt"
+      - "Dokumentér behandlingsaktiviteten i fortegnelsen (art. 30)"
+    evidens_påkrævet:
+      - oplysningstekst
+      - fortegnelses_post
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE selv vælge retsgrundlag — det er sagsbehandlerens svar der afgør det."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["gdpr", "art6", "retsgrundlag"]

@@ -1,0 +1,76 @@
+id: ai_act.art13.transparens_og_brugerinformation
+kilde:
+  lov: "EU AI-forordningen (Forordning 2024/1689)"
+  artikel: "Artikel 13"
+  citat: "Højrisiko-AI-systemer udformes og udvikles på en sådan måde, at deres drift er tilstrækkelig gennemsigtig til, at idriftsættere kan fortolke et systems output og anvende det korrekt. Der skal sikres en passende form og grad af gennemsigtighed."
+  url: "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/dan"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  all_of:
+    - signal: system.uses_ai
+
+predikater:
+  - id: er_hojrisiko
+    spørgsmål: "Er systemet klassificeret som højrisiko under art. 6?"
+    type: boolean
+    hjælp: "Art. 13's krav gælder kun højrisiko-systemer. Hvis ikke højrisiko, anvend art. 50 transparenskrav i stedet."
+
+  - id: brugsanvisning_eksisterer
+    spørgsmål: "Findes der en brugsanvisning der opfylder art. 13(3) (udbyder-info, kapabiliteter/begrænsninger, performance, ressourcekrav, vedligehold, log)?"
+    type: boolean
+    hjælp: |
+      Brugsanvisningen skal indeholde:
+      - Udbyderens identitet/kontakt
+      - Systemets formål, kapabiliteter, begrænsninger
+      - Performance-niveau under tilsigtede betingelser, inkl. nøjagtighed
+      - Forventede tekniske krav, ressourcer og data
+      - Foranstaltninger til menneskelig overvågning (link til art. 14)
+      - Forventet levetid og vedligeholdelses-/opdateringsforanstaltninger
+      - Beskrivelse af logging-mekanismer
+
+  - id: kapabiliteter_og_begraensninger_dokumenteret
+    spørgsmål: "Er systemets kapabiliteter OG kendte begrænsninger eksplicit dokumenteret (også i edge-cases / sårbare grupper)?"
+    type: boolean
+
+  - id: brugsanvisning_paa_dansk
+    spørgsmål: "Er brugsanvisningen tilgængelig på dansk (eller på det sprog idriftsætteren ønsker, jf. medlemsstatens valg)?"
+    type: boolean
+    hjælp: "Art. 13(2): brugsanvisningen skal være på et sprog der er let forståeligt for idriftsættere — for kommunal brug i Danmark = dansk."
+
+afgørelse:
+  hvis: "er_hojrisiko AND (NOT brugsanvisning_eksisterer OR NOT kapabiliteter_og_begraensninger_dokumenteret OR NOT brugsanvisning_paa_dansk)"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Højrisiko-AI-system uden komplet brugsanvisning. Art. 13's transparenskrav skal opfyldes inden idriftsættelse."
+    krav:
+      - "Etablér brugsanvisning med alle elementer i art. 13(3)"
+      - "Dokumentér eksplicit kendte begrænsninger og edge-cases"
+      - "Sikr at brugsanvisningen er på dansk"
+      - "Inkludér logging-specifikation (link til art. 12)"
+      - "Inkludér menneskelig overvågning (link til art. 14)"
+    evidens_påkrævet:
+      - brugsanvisning_dansk
+      - kapabiliteter_og_begraensninger_dokument
+      - logging_specifikation
+  ellers:
+    status: GO
+    begrundelse: "Enten ikke-højrisiko (anvend evt. art. 50 i stedet), eller komplet brugsanvisning er på plads."
+    krav: []
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE selv vurdere om brugsanvisningen er tilstrækkelig."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["ai_act", "art13", "transparens", "hojrisiko"]

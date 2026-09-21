@@ -1,0 +1,78 @@
+id: gdpr.art5.principper_for_behandling
+kilde:
+  lov: "Databeskyttelsesforordningen (Forordning 2016/679 - GDPR)"
+  artikel: "Artikel 5, stk. 1"
+  citat: "Personoplysninger skal: a) behandles lovligt, rimeligt og på en gennemsigtig måde; b) indsamles til udtrykkeligt angivne og legitime formål og må ikke viderebehandles på en måde, der er uforenelig med disse formål; c) være tilstrækkelige, relevante og begrænset til, hvad der er nødvendigt; d) være korrekte og om nødvendigt ajourførte; e) opbevares på en sådan måde, at det ikke er muligt at identificere de registrerede i et længere tidsrum end det, der er nødvendigt; f) behandles på en måde, der sikrer tilstrækkelig sikkerhed."
+  url: "https://eur-lex.europa.eu/eli/reg/2016/679/oj/dan#art_5"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.processes_personal_data
+
+predikater:
+  - id: formaal_dokumenteret
+    spørgsmål: "Er behandlingens formål udtrykkeligt angivet og dokumenteret før behandling?"
+    type: boolean
+    hjælp: "Art. 5, stk. 1, litra b — formålsbegrænsning."
+
+  - id: dataminimering_vurderet
+    spørgsmål: "Er det vurderet og dokumenteret at de behandlede oplysninger er begrænset til det nødvendige?"
+    type: boolean
+    hjælp: "Art. 5, stk. 1, litra c — dataminimering. AI-træning på 'alt vi har' er ofte i strid hermed."
+
+  - id: opbevaringsfrist_fastsat
+    spørgsmål: "Er der fastsat en konkret opbevaringsfrist (slet/anonymiser efter X år/måneder)?"
+    type: boolean
+    hjælp: "Art. 5, stk. 1, litra e — opbevaringsbegrænsning. 'Vi gemmer for evigt' er ikke gyldigt."
+
+  - id: korrekthedsproces
+    spørgsmål: "Er der en proces til at korrigere/slette urigtige oplysninger og holde data ajourførte?"
+    type: boolean
+    hjælp: "Art. 5, stk. 1, litra d — rigtighed."
+
+  - id: sikkerhedsforanstaltninger
+    spørgsmål: "Er der etableret tekniske og organisatoriske sikkerhedsforanstaltninger (kryptering, adgangskontrol, logging)?"
+    type: boolean
+    hjælp: "Art. 5, stk. 1, litra f — integritet og fortrolighed (uddybes i art. 32)."
+
+afgørelse:
+  hvis: "NOT formaal_dokumenteret OR NOT dataminimering_vurderet OR NOT opbevaringsfrist_fastsat OR NOT korrekthedsproces OR NOT sikkerhedsforanstaltninger"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Et eller flere principper i GDPR art. 5, stk. 1 er ikke opfyldt eller ikke dokumenteret. Den dataansvarlige har bevisbyrden (art. 5, stk. 2)."
+    krav:
+      - "Dokumentér formålet med behandlingen før den påbegyndes"
+      - "Vurder og dokumentér at oplysningsmængden er begrænset til det nødvendige"
+      - "Fastsæt konkret opbevaringsfrist med slettedato eller anonymisering"
+      - "Implementér proces til berigtigelse af urigtige oplysninger"
+      - "Etablér tekniske og organisatoriske sikkerhedsforanstaltninger (se art. 32)"
+      - "Husk ansvarlighedsprincippet (art. 5, stk. 2): dokumentation skal kunne fremvises"
+    evidens_påkrævet:
+      - formaalsbeskrivelse
+      - dataminimerings_vurdering
+      - opbevaringspolitik
+      - rettelsesproces
+      - sikkerhedspolitik
+  ellers:
+    status: GO
+    begrundelse: "Alle fem principper i art. 5 er adresseret. Husk løbende vedligehold (data ajourføres, sletning faktisk udføres, sikkerhed evalueres)."
+    krav:
+      - "Stikprøvekontrol af at sletning faktisk udføres iht. opbevaringsfrist"
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["gdpr", "art5", "principper"]

@@ -1,0 +1,74 @@
+id: forvaltningsloven.par3.inhabilitet
+kilde:
+  lov: "Forvaltningsloven (lovbekendtgørelse nr. 433 af 22. april 2014 med senere ændringer)"
+  artikel: "§ 3, stk. 1"
+  citat: "Den, der virker inden for den offentlige forvaltning, er inhabil i forhold til en bestemt sag, hvis 1) vedkommende selv har en særlig personlig eller økonomisk interesse i sagens udfald eller er eller tidligere i samme sag har været repræsentant for nogen, der har en sådan interesse..."
+  url: "https://www.retsinformation.dk/eli/lta/2014/433"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_administrative_decisions
+    - signal: system.is_used_by_public_authority
+
+predikater:
+  - id: ai_traeffer_eller_paavirker_afgoerelse
+    spørgsmål: "Træffer eller påvirker AI-systemet konkrete afgørelser i sager om navngivne borgere/virksomheder?"
+    type: boolean
+
+  - id: udvikler_eller_leverandoer_har_interesse
+    spørgsmål: "Har systemets udvikler/leverandør en særlig økonomisk eller personlig interesse i sagens udfald?"
+    type: boolean
+    hjælp: |
+      Eksempler hvor inhabilitet kan opstå indirekte gennem AI:
+      - Leverandøren har incitament til en bestemt afgørelses-distribution (fx KPI'er knyttet til antal afslag)
+      - Træningsdata er biased af partiske annotatorer
+      - Modellen er trænet til at favorisere én kategori
+      Husk: § 3 dækker den menneskelige sagsbehandler, men AI-systemet kan formelt eller reelt påvirke beslutningen og dermed udløse spørgsmål om habilitet.
+
+  - id: bias_audit_udfoert
+    spørgsmål: "Er der gennemført bias-audit der dokumenterer at systemet ikke systematisk favoriserer/diskriminerer bestemte grupper?"
+    type: boolean
+    hjælp: "Selvom § 3 ikke direkte kræver bias-audit, kan systematisk bias rejse spørgsmål om habilitet på systemniveau. Også relevant ift. AI Act art. 10 om datasæt-kvalitet."
+
+  - id: leverandoer_uafhaengighed_dokumenteret
+    spørgsmål: "Er det dokumenteret at leverandøren ikke kan påvirke individuelle afgørelser efter idriftsættelse (fx ingen ad hoc-tuning baseret på sagsudfald)?"
+    type: boolean
+
+afgørelse:
+  hvis: "ai_traeffer_eller_paavirker_afgoerelse AND (udvikler_eller_leverandoer_har_interesse OR NOT bias_audit_udfoert OR NOT leverandoer_uafhaengighed_dokumenteret)"
+  så:
+    status: BETINGET-GO
+    begrundelse: "AI-systemet kan rejse spørgsmål om habilitet — enten gennem leverandørens incitamentsstruktur, manglende bias-audit eller leverandørens fortsatte påvirkningsmulighed."
+    krav:
+      - "Gennemfør bias-audit på output for relevante demografiske grupper"
+      - "Dokumentér leverandørens forretningsmodel og evt. interesse i sagsudfald"
+      - "Sikr at leverandøren ikke kan påvirke individuelle afgørelser efter idriftsættelse"
+      - "Etablér forretningsgang hvor sagsbehandler tager selvstændig stilling og kan fravige AI-forslag"
+      - "Inkludér habilitets-vurdering i indkøbsproces (jf. udbudslovens regler)"
+    evidens_påkrævet:
+      - bias_audit_rapport
+      - leverandor_uafhaengigheds_erklaering
+      - sagsbehandler_forretningsgang
+  ellers:
+    status: GO
+    begrundelse: "Enten påvirker systemet ikke konkrete afgørelser, eller habilitet er adresseret gennem bias-audit + leverandør-uafhængighed + interesse-erklæring."
+    krav:
+      - "Genvurder ved leverandør-skift eller væsentlige model-opdateringer"
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE selv vurdere habilitet — det er sagsbehandler/leder."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["forvaltningsloven", "habilitet", "bias"]

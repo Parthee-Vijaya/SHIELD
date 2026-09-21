@@ -1,0 +1,4 @@
+- Foreslåede kilder logges i serverloggen (INFO-niveau).
+- API fejlkoder fra Mistral outputtes med response body.
+- LLM-svar ignoreres hvis JSON parsing fejler eller domænet ikke er whitelisted.
+- Environment variabler som MISTRAL_MODEL kan bruges til at styre model-varianten.

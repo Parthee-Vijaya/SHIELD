@@ -1,0 +1,134 @@
+[
+  {
+    "id": 1,
+    "title": "+PrioKritisk",
+    "description": "Signaturprojektet, \"+PrioKritisk\", er en AI-baseret algoritme udviklet til at forudsige opståen og forværring af akut kritisk sygdom hos indlagte patienter. Projektet sigter mod at forbedre tidlig opsporing og behandling af tilstande som blodforgiftning, akut nyre- og lungesygdom.",
+    "isSignature": true,
+    "category": "Beslutningsstøttende værktøj",
+    "scope": "Kommunalt",
+    "status": "Planlægges taget i brug",
+    "imageUrl": "https://offentlig-ai.dk/files/styles/landscape_thin_01/public/media/image/AI934%20-%20Opsporing%20af%20kritisk%20sygdom.png",
+    "externalUrl": "https://offentlig-ai.dk/projekter/priokritisk"
+  },
+  {
+    "id": 2,
+    "title": "aEye",
+    "description": "Signaturprojektet, \"aEye\", har til formål at styrke behandlingen af borgere med øjensygdommen, aldersrelateret makuladegeneration (AMD), ved hjælp af kunstig intelligens.",
+    "isSignature": true,
+    "category": "Beslutningsstøttende værktøj",
+    "scope": "Danmark",
+    "status": "",
+    "imageUrl": "https://offentlig-ai.dk/files/styles/landscape_thin_01/public/media/image/AI959%20-%20aEye.jpg",
+    "externalUrl": "https://offentlig-ai.dk/projekter/aeye"
+  },
+  {
+    "id": 3,
+    "title": "AI aktindsigt",
+    "description": "Signaturprojektet, \"AI-aktindsigt\" eller \"Beslutningsstøtte til behandling af kommunale aktindsigtssager\", var et tværkommunalt projekt, som blev bevilliget 5,3 mio. kr. og havde til hovedformål at udvikle sprogmodeller til brug i kommunal sagsbehandling.",
+    "isSignature": true,
+    "category": "Beslutningsstøttende værktøj",
+    "scope": "Kommunalt",
+    "status": "I brug",
+    "imageUrl": "https://offentlig-ai.dk/files/styles/landscape_thin_01/public/media/image/vk80tcm3.png",
+    "externalUrl": "https://offentlig-ai.dk/projekter/ai-aktindsigt"
+  },
+  {
+    "id": 4,
+    "title": "AI Databaseret Process Mining",
+    "description": "Signaturprojektet, \"AI Databaseret Process Mining\" eller \"En effektiv og helhedsorienteret beskæftigelsesindsats gennem kunstig intelligens teknologien Process Mining\", gik efter at skabe en platform til alle de deltagende kommuner, som kunne levere databaserede analyser af borgerens vej til beskæftigelse.",
+    "isSignature": true,
+    "category": "Predikativ monitorering",
+    "scope": "Kommunalt",
+    "status": "Planlægges taget i brug",
+    "imageUrl": "https://offentlig-ai.dk/files/styles/landscape_thin_01/public/media/image/AI123%20-%20AI%20databaseret%20Process%20Mining.png",
+    "externalUrl": "https://offentlig-ai.dk/projekter/ai-databaseret-process-mining"
+  },
+  {
+    "id": 5,
+    "title": "AI Mammo",
+    "description": "AI Mammo er et AI-system, der anvender mønstergenkendelse til at analysere mammografibilleder. Ved at træne på store datamængder kan det identificere unormale vævmønstre, hvilket hjælper med at opdage potentielle tumorer i brystvævet.",
+    "isSignature": false,
+    "category": "Diagnosticering",
+    "scope": "Regionalt",
+    "status": "I brug",
+    "imageUrl": "https://offentlig-ai.dk/files/styles/landscape_thin_01/public/media/image/AI%20Mammo.png",
+    "externalUrl": "https://offentlig-ai.dk/projekter/ai-mammo"
+  },
+  {
+    "id": 6,
+    "title": "Øget identifikation af hjertestop",
+    "description": "Region Hovedstadens Akutberedskab har i samarbejde med virksomheden Corti udviklet en løsning, der ved at lytte med, når en borger ringer til akutnummeret 112, kan hjælpe de sundhedsfaglige medarbejdere med at identificere symptomer på hjertestop, som måske ellers ikke opdages i telefonen.",
+    "isSignature": false,
+    "category": "Beslutningsstøttende værktøj, Diagnosticering",
+    "scope": "Regionalt",
+    "status": "I brug",
+    "imageUrl": "",
+    "externalUrl": "https://offentlig-ai.dk/projekter/oget-identifikation-af-hjertestop"
+  },
+  {
+    "id": 7,
+    "title": "SmartMail",
+    "description": "Signaturprojektet, \"SmartMail\", bruges i en række danske kommuner til at sortere og journalisere indkomne mails. Systemet har væsentligt nedsat den tid, de kommunale medarbejdere bruger på at læse, videresende og journalisere mails.",
+    "isSignature": true,
+    "category": "Klassificering, Sagsbehandling",
+    "scope": "Kommunalt",
+    "status": "I brug",
+    "imageUrl": "",
+    "externalUrl": "https://offentlig-ai.dk/projekter/smartmail"
+  },
+  {
+    "id": 8,
+    "title": "Tidlig opsporing af begyndende sygdom",
+    "description": "Signaturprojektet \"Tidlig opsporing af begyndende sygdom med data fra eksisterende systemer\" blev udviklet i Køge Kommune. Formålet var at skabe et beslutningsstøtteværktøj til tidlig opsporing af sygdom hos ældre i den kommunale pleje ved hjælp af kunstig intelligens.",
+    "isSignature": true,
+    "category": "Beslutningsstøttende værktøj",
+    "scope": "Kommunalt",
+    "status": "I brug",
+    "imageUrl": "",
+    "externalUrl": "https://offentlig-ai.dk/projekter/tidlig-opsporing-af-begyndende-sygdom"
+  },
+  {
+    "id": 9,
+    "title": "Bedre diagnostik af gravide",
+    "description": "Signaturprojektet \"Bedre diagnostik af gravide ved hjælp af kunstig intelligens\" har til formål at udvikle en løsning, som skal forbedre kvaliteten af ultralydsskanninger af gravide for derved at øge evnen til at forudsige komplikationer.",
+    "isSignature": true,
+    "category": "Beslutningsstøttende værktøj, Billedegenkendelse, Diagnosticering",
+    "scope": "Regionalt, Danmark",
+    "status": "I brug",
+    "imageUrl": "",
+    "externalUrl": "https://offentlig-ai.dk/projekter/bedre-diagnostik-af-gravide"
+  },
+  {
+    "id": 10,
+    "title": "Kommune Kiri",
+    "description": "Signaturprojektet, \"Kommune Kiri\" eller \"Digital inklusion og support ved talegenkendelse\", omhandlede udviklingen af en AI-drevet chat- og voicebot, der ved brug af stemmegenkendelse og tekstbaserede svar kan hjælpe borgere i Roskilde og Rødovre Kommune med deres henvendelser.",
+    "isSignature": true,
+    "category": "Anbefaling",
+    "scope": "Kommunalt",
+    "status": "I brug",
+    "imageUrl": "",
+    "externalUrl": "https://offentlig-ai.dk/projekter/kommune-kiri"
+  },
+  {
+    "id": 11,
+    "title": "FleetOptimiser",
+    "description": "Signaturprojektet omhandler optimering af drift og styring af en flåde af køretøjer eller enheder i den offentlige sektor. Ved at analysere data og køre simuleringer på allerede kørte ruter, kan systemet hjælpe med at spare tid, penge og CO2-udledning.",
+    "isSignature": true,
+    "category": "Anbefaling, Beslutningsstøttende værktøj",
+    "scope": "Kommunalt, Regionalt",
+    "status": "I brug",
+    "imageUrl": "",
+    "externalUrl": "https://offentlig-ai.dk/projekter/fleetoptimiser"
+  },
+  {
+    "id": 12,
+    "title": "RefCase",
+    "description": "Signaturprojektet, RefCase, omhandler et beslutningsstøttende værktøj til optimering af ansøgning- og sagsbehandlingsprocesserne omkring kropsbårne hjælpemidler efter servicelovens § 112.",
+    "isSignature": true,
+    "category": "Beslutningsstøttende værktøj",
+    "scope": "Kommunalt",
+    "status": "I brug",
+    "imageUrl": "",
+    "externalUrl": "https://offentlig-ai.dk/projekter/refcase"
+  }
+]

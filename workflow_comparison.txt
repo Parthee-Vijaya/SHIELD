@@ -1,0 +1,246 @@
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     COMPLIANCE WORKFLOW COMPARISON                       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                    SEQUENTIAL EXECUTION (Legacy)                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+    START
+      │
+      ▼
+┌───────────┐
+│Initialize │ (Setup state, timing)
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐
+│ AI Act    │ (2-4 seconds)
+│  Check    │
+└─────┬─────┘
+      │ (wait for AI Act to finish)
+      ▼
+┌───────────┐
+│   GDPR    │ (2-4 seconds)
+│  Check    │
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐
+│  Legal    │
+│ Research  │
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐
+│   Risk    │
+│Assessment │
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐
+│    Gap    │
+│ Analysis  │
+└─────┬─────┘
+      │
+      ▼
+┌───────────┐
+│ Generate  │
+│  Report   │
+└─────┬─────┘
+      │
+      ▼
+     END
+
+TOTAL TIME: T_ai_act + T_gdpr + T_rest
+           ≈ 2s + 2s + 3s = 7s
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                    PARALLEL EXECUTION (New)                            ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+    START
+      │
+      ▼
+┌───────────┐
+│Initialize │ (Setup state, timing, enable parallel flag)
+└─────┬─────┘
+      │
+      │    ┌─────────────────────┐
+      ├───→│   AI Act Check      │ (2-4 seconds)
+      │    │  (starts immediately)│
+      │    └─────────┬───────────┘
+      │              │
+      │              │ Both checks run
+      │              │ simultaneously!
+      │              │
+      │    ┌─────────▼───────────┐
+      └───→│   GDPR Check        │ (2-4 seconds)
+           │  (starts immediately)│
+           └─────────┬───────────┘
+                     │
+                     ▼
+           ┌─────────────────┐
+           │  Merge Checks   │ (Waits for both, combines results)
+           │                 │ • Validates both completed
+           │                 │ • Calculates time saved
+           │                 │ • Handles partial failures
+           └────────┬────────┘
+                    │
+                    ▼
+           ┌───────────┐
+           │  Legal    │
+           │ Research  │
+           └─────┬─────┘
+                 │
+                 ▼
+           ┌───────────┐
+           │   Risk    │
+           │Assessment │
+           └─────┬─────┘
+                 │
+                 ▼
+           ┌───────────┐
+           │    Gap    │
+           │ Analysis  │
+           └─────┬─────┘
+                 │
+                 ▼
+           ┌───────────┐
+           │ Generate  │
+           │  Report   │ (includes performance metrics)
+           └─────┬─────┘
+                 │
+                 ▼
+                END
+
+TOTAL TIME: max(T_ai_act, T_gdpr) + T_rest
+           ≈ max(2s, 2s) + 3s = 5s
+
+TIME SAVED: (2s + 2s) - max(2s, 2s) = 2s (≈40% improvement!)
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                      MERGE NODE LOGIC                                  ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+The merge node is the key component that enables parallel execution:
+
+┌──────────────────────────────────────────────────────────────────┐
+│                       MERGE CHECKS NODE                           │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  Input: State with both AI Act and GDPR results                  │
+│                                                                   │
+│  1. VALIDATION                                                    │
+│     ✓ Check if AI Act analysis exists                            │
+│     ✓ Check if GDPR analysis exists                              │
+│     ✓ Handle cases where one or both failed                      │
+│                                                                   │
+│  2. TIMING CALCULATION                                            │
+│     • Get AI Act execution time                                   │
+│     • Get GDPR execution time                                     │
+│     • Sequential time = T_ai + T_gdpr                            │
+│     • Parallel time = max(T_ai, T_gdpr)                          │
+│     • Time saved = Sequential - Parallel                          │
+│     • Efficiency = (Time saved / Sequential) × 100%              │
+│                                                                   │
+│  3. ERROR HANDLING                                                │
+│     Case A: Both checks succeeded → Combine results              │
+│     Case B: AI Act failed → Use GDPR only + log warning          │
+│     Case C: GDPR failed → Use AI Act only + log warning          │
+│     Case D: Both failed → Log error, continue with empty results │
+│                                                                   │
+│  4. LOGGING                                                       │
+│     • Log completion status                                       │
+│     • Log timing metrics                                          │
+│     • Log performance improvement                                 │
+│                                                                   │
+│  Output: Merged state ready for next workflow step               │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                    PERFORMANCE METRICS TRACKED                         ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+timing_metrics = {
+    "workflow_start": <timestamp>,              // When workflow began
+    "ai_act_check": <seconds>,                  // AI Act execution time
+    "gdpr_check": <seconds>,                    // GDPR execution time
+    "checks_parallel_time": max(ai_act, gdpr),  // Actual parallel time
+    "checks_sequential_time": ai_act + gdpr,    // What it would have taken
+    "time_saved_by_parallel": <seconds>,        // Time saved
+    "total_workflow_time": <seconds>            // End-to-end time
+}
+
+Performance report includes:
+• Total workflow time
+• Individual check times
+• Parallel vs sequential comparison
+• Efficiency gain percentage
+• Execution mode used
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                       ERROR SCENARIOS                                  ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+Scenario 1: AI Act Check Fails
+┌────────────┐     ┌────────────┐     ┌────────────┐
+│ Initialize │────→│ AI Act ✗   │────→│   Merge    │
+└────────────┘  ┌─→│ (error)    │     │  • Warning │
+                │  └────────────┘     │  • Use GDPR│
+                │  ┌────────────┐     │    only    │
+                └─→│ GDPR ✓     │────→│  • Continue│
+                   └────────────┘     └────────────┘
+
+Scenario 2: GDPR Check Fails
+┌────────────┐     ┌────────────┐     ┌────────────┐
+│ Initialize │────→│ AI Act ✓   │────→│   Merge    │
+└────────────┘  ┌─→│ (success)  │     │  • Warning │
+                │  └────────────┘     │  • Use AI  │
+                │  ┌────────────┐     │    Act only│
+                └─→│ GDPR ✗     │────→│  • Continue│
+                   │ (error)    │     └────────────┘
+                   └────────────┘
+
+Scenario 3: Both Checks Fail
+┌────────────┐     ┌────────────┐     ┌────────────┐
+│ Initialize │────→│ AI Act ✗   │────→│   Merge    │
+└────────────┘  ┌─→│ (error)    │     │  • Error   │
+                │  └────────────┘     │  • Empty   │
+                │  ┌────────────┐     │    results │
+                └─→│ GDPR ✗     │────→│  • Continue│
+                   │ (error)    │     └────────────┘
+                   └────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                    CONFIGURATION OPTIONS                               ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+# Enable parallel execution (default)
+orchestrator = ComplianceOrchestrator(enable_parallel_execution=True)
+
+# Disable parallel execution (legacy mode)
+orchestrator = ComplianceOrchestrator(enable_parallel_execution=False)
+
+# Both modes produce identical output format
+# Both modes include timing metrics in reports
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                         KEY BENEFITS                                   ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+✓ 40-50% faster execution for typical workflows
+✓ No changes to API or output format
+✓ Graceful error handling (partial failures don't stop workflow)
+✓ Comprehensive timing metrics for monitoring
+✓ Backward compatible (can disable parallel mode)
+✓ Clean implementation using LangGraph's native parallelism
+✓ No complex concurrency management required
+✓ State management handled automatically by LangGraph

@@ -1,0 +1,22 @@
+{
+  "short_name": "SHIELD",
+  "name": "S.H.I.E.L.D. — konsekvensanalyse for AI og persondata",
+  "description": "Struktureret konsekvensanalyse med dokumenterbare risici, mangler og næste skridt.",
+  "icons": [
+    {
+      "src": "shield-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#C94416",
+  "background_color": "#f5f5f1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["business", "legal", "privacy"],
+  "lang": "da",
+  "dir": "ltr"
+}

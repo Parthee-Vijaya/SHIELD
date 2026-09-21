@@ -1,0 +1,12 @@
+{
+  "system_navn": "Test Chatbot",
+  "system_beskrivelse": "En simpel chatbot til kundeservice",
+  "fagomraade": "Kundeservice",
+  "organisation": "Test Org",
+  "team": "IT",
+  "kontaktperson": "Test Person",
+  "bruger_ml": false,
+  "autonome_beslutninger": false,
+  "behandler_persondata": false,
+  "ai_risiko_kategori": "minimal"
+}

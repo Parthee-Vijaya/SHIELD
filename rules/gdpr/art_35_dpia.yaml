@@ -1,0 +1,82 @@
+id: gdpr.art35.dpia_pligt
+kilde:
+  lov: "Databeskyttelsesforordningen (Forordning 2016/679 - GDPR)"
+  artikel: "Artikel 35, stk. 1 + stk. 3"
+  citat: "Hvis en type behandling, navnlig ved brug af nye teknologier og i medfør af sin karakter, omfang, sammenhæng og formål, sandsynligvis vil indebære en høj risiko for fysiske personers rettigheder og frihedsrettigheder, foretager den dataansvarlige forud for behandlingen en analyse af de planlagte behandlingsaktiviteters konsekvenser for beskyttelse af personoplysninger."
+  url: "https://eur-lex.europa.eu/eli/reg/2016/679/oj/dan#art_35"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.processes_personal_data
+
+predikater:
+  - id: art35_stk3_litra
+    spørgsmål: "Falder behandlingen ind under art. 35, stk. 3 (DPIA-pligt 'altid')?"
+    type: enum
+    enum_values:
+      - litra_a_systematisk_omfattende_evaluering_med_retsvirkning
+      - litra_b_omfattende_behandling_af_saerlige_kategorier
+      - litra_c_systematisk_omfattende_overvaagning_af_offentligt_tilgaengelig_omraade
+      - intet_af_de_tre
+    hjælp: |
+      Art. 35, stk. 3 nævner tre situationer hvor DPIA er obligatorisk:
+      (a) systematisk og omfattende vurdering af personlige forhold via automatiseret behandling med retsvirkning
+      (b) omfattende behandling af særlige kategorier (art. 9) eller straffedomme (art. 10)
+      (c) systematisk og omfattende overvågning af et offentligt tilgængeligt område
+
+  - id: paa_datatilsynets_liste
+    spørgsmål: "Er behandlingen på Datatilsynets liste over typer der kræver DPIA?"
+    type: boolean
+    hjælp: |
+      Datatilsynet har offentliggjort en liste over typer af behandling der kræver DPIA — bl.a.:
+      - Profilering med retsvirkning eller betydelig påvirkning
+      - Behandling der involverer ny teknologi (herunder AI)
+      - Storskalabehandling af særlige kategorier
+      - Sammenstilling af datasæt
+      Se: datatilsynet.dk → vejledninger.
+
+  - id: art35_stk1_hoj_risiko
+    spørgsmål: "Er behandlingen sandsynligvis 'høj risiko' efter en konkret vurdering (ny teknologi, omfang, sammenhæng, formål)?"
+    type: boolean
+    hjælp: "Selv hvis ikke på Datatilsynets liste eller i art. 35, stk. 3, kræver art. 35, stk. 1 DPIA hvis behandlingen sandsynligvis indebærer høj risiko for rettigheder og friheder."
+
+  - id: dpia_eksisterer
+    spørgsmål: "Er der allerede gennemført en DPIA for denne behandling (eller en lignende behandling der dækker)?"
+    type: boolean
+
+afgørelse:
+  hvis: "(art35_stk3_litra != intet_af_de_tre OR paa_datatilsynets_liste OR art35_stk1_hoj_risiko) AND NOT dpia_eksisterer"
+  så:
+    status: BETINGET-GO
+    begrundelse: "DPIA er påkrævet før behandlingen påbegyndes (art. 35, stk. 1)."
+    krav:
+      - "Gennemfør DPIA før behandlingen påbegyndes"
+      - "DPIA skal indeholde de elementer der er nævnt i art. 35, stk. 7 (beskrivelse, vurdering af nødvendighed/proportionalitet, risikovurdering, foranstaltninger)"
+      - "Hør databeskyttelsesrådgiver (DPO) iht. art. 35, stk. 2"
+      - "Hvis DPIA viser uacceptabel risiko: forhør Datatilsynet (art. 36)"
+    evidens_påkrævet:
+      - dpia_dokument
+      - dpo_udtalelse
+  ellers:
+    status: GO
+    begrundelse: "Enten er behandlingen ikke DPIA-pligtig, eller en gyldig DPIA findes allerede."
+    krav:
+      - "Hvis DPIA findes: kontrollér at den dækker den faktiske behandling og er opdateret"
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE selv vurdere om DPIA er påkrævet — det afgør reglen baseret på sagsbehandlerens svar."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["gdpr", "art35", "dpia"]

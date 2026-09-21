@@ -1,0 +1,93 @@
+id: ai_act.art6.hojrisiko_klassifikation
+kilde:
+  lov: "EU AI-forordningen (Forordning 2024/1689)"
+  artikel: "Artikel 6, stk. 2 + Bilag III"
+  citat: "Ud over de højrisiko-AI-systemer, der er omhandlet i stk. 1, anses AI-systemer, der er omhandlet i bilag III, som højrisiko."
+  url: "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/dan"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  all_of:
+    - signal: system.uses_ai
+
+predikater:
+  - id: anvendelsesomraade
+    spørgsmål: "I hvilket Bilag III-område anvendes systemet?"
+    type: enum
+    enum_values:
+      - biometri
+      - kritisk_infrastruktur
+      - uddannelse
+      - beskaeftigelse_arbejdsledelse
+      - vaesentlige_offentlige_tjenester
+      - retshaandhaevelse
+      - migration_asyl
+      - retspleje_demokrati
+      - intet_af_ovenstaaende
+    hjælp: |
+      Bilag III-områder (forkortet):
+      - biometri: fjernidentifikation, kategorisering, følelsesgenkendelse
+      - kritisk_infrastruktur: trafik, vand, gas, varme, el
+      - uddannelse: optag, eksamen, læringsevaluering
+      - beskaeftigelse_arbejdsledelse: rekruttering, performance, opsigelse
+      - vaesentlige_offentlige_tjenester: sociale ydelser, sundhed, kreditværdighed, ulykkesforsikring, alarm-prioritering
+      - retshaandhaevelse: profilering, bevisvurdering, recidivvurdering
+      - migration_asyl: risikovurdering, dokumentverifikation
+      - retspleje_demokrati: domstolsstøtte, valgpåvirkning
+
+  - id: kun_forberedende
+    spørgsmål: "Udfører systemet kun snæver, forberedende opgave (fx omformatering, simpel forbedring) uden at påvirke selve afgørelsen?"
+    type: boolean
+    hjælp: "Art. 6, stk. 3: Et AI-system er IKKE højrisiko hvis det kun udfører snæver, forberedende opgave til en menneskelig vurdering."
+
+  - id: profilering
+    spørgsmål: "Foretager systemet profilering af fysiske personer?"
+    type: boolean
+    hjælp: "Profilering = enhver form for automatisk behandling der vurderer personlige aspekter (GDPR art. 4, nr. 4). Profilering = altid højrisiko under AI Act art. 6, stk. 3, sidste afsnit."
+
+afgørelse:
+  hvis: "anvendelsesomraade != intet_af_ovenstaaende AND (NOT kun_forberedende OR profilering)"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Systemet falder ind under Bilag III og opfylder ikke undtagelsen for snæver forberedende opgave, eller foretager profilering. Det klassificeres som højrisiko."
+    krav:
+      - "Etabler risikostyringssystem (art. 9)"
+      - "Sikr datasæt-kvalitet (art. 10)"
+      - "Lav teknisk dokumentation (art. 11) inden idriftsættelse"
+      - "Implementer logning (art. 12)"
+      - "Sikr transparens og brugerinformation (art. 13)"
+      - "Sikr menneskelig overvågning (art. 14)"
+      - "Sikr nøjagtighed, robusthed og cybersikkerhed (art. 15)"
+      - "Registrér i EU-databasen for højrisikosystemer (art. 49)"
+    evidens_påkrævet:
+      - risikostyringsplan
+      - datasaet_dokumentation
+      - teknisk_dokumentation_art11
+      - logningsspecifikation
+      - human_oversight_protokol
+      - eu_database_registrering
+  ellers:
+    status: GO
+    begrundelse: "Systemet falder ikke ind under Bilag III, eller udfører kun snæver forberedende opgave uden profilering. Klassificeres som ikke-højrisiko under AI Act art. 6."
+    krav:
+      - "Vurder om transparenskrav i art. 50 gælder (chatbots, syntetisk indhold)"
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse af et AI-system og foreslår hvilke trigger-signaler der matcher. Du må IKKE selv klassificere systemet som højrisiko eller ej — det gør reglen."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    - system.processes_personal_data
+    - system.makes_decisions_about_persons
+    - system.affects_public_services
+
+    Returnér KUN gyldig JSON i formatet:
+    {"system.processes_personal_data": true|false|"usikker", ...}
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["ai_act", "hojrisiko", "bilag_iii"]

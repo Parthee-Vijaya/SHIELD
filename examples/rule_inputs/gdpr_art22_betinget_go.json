@@ -1,0 +1,11 @@
+{
+  "signals": {
+    "system.makes_decisions_about_persons": true
+  },
+  "predicates": {
+    "er_helautomatiseret": true,
+    "har_retsvirkning_eller_betydelig_paavirkning": true,
+    "retsgrundlag_til_undtagelse": "samtykke",
+    "omfatter_saerlige_kategorier": false
+  }
+}

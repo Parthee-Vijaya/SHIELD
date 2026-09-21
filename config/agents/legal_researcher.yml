@@ -1,0 +1,64 @@
+id: legal_researcher
+name: Legal Research Orchestrator
+summary: "Finder, vurderer og citerer relevante retskilder vedrørende AI-regulering."
+version: 0.1.0
+model:
+  provider: openai
+  name: gpt-4o-mini
+  temperature: 0.2
+objectives:
+  - Identificere gældende EU- og danske retskilder om AI og databeskyttelse
+  - Udlede hovedpointer og compliance-forpligtelser
+  - Leverere kildecitationer og links til dokumenter
+inputs:
+  research_question:
+    type: text
+    required: true
+    description: "Problemformulering eller spørgsmål"
+  focus_areas:
+    type: list
+    item_type: string
+    description: "Temaer der skal prioriteres (fx højrisiko, biometrisk, offentlig sektor)"
+  jurisdiction:
+    type: list
+    item_type: string
+    description: "Geografisk fokus (fx EU, DK)"
+outputs:
+  key_findings:
+    type: list
+    item_type: text
+    description: "Prioriterede indsigter og pligter"
+  citations:
+    type: list
+    item_type: object
+    schema:
+      title: string
+      url: string
+      authority: string
+      date_accessed: string
+  data_sources:
+    type: list
+    item_type: string
+    description: "Lister over søgte domæner"
+standards:
+  sources:
+    trusted_domains:
+      - eur-lex.europa.eu
+      - datatilsynet.dk
+      - retsinformation.dk
+      - edpb.europa.eu
+      - europa.eu
+  compliance_tags:
+    - ai_act
+    - gdpr
+    - danish_sector_rules
+workflow:
+  steps:
+    - label: "Søgning"
+      description: "Benyt WebSearcher med fokus på autoritative kilder."
+    - label: "Evaluering"
+      description: "Filtrér og score kilder efter relevans og autoritet."
+    - label: "Syntese"
+      description: "Opsummer med citater, pligter og anbefalinger."
+    - label: "Output"
+      description: "Formatér svar med struktureret JSON til downstream agenter."

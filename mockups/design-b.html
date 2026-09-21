@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>Hjemmel · Design B — Kommandocenter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0b;
+    --bg-elevated: #111114;
+    --bg-hover: #18181b;
+    --line: #27272a;
+    --line-soft: #1f1f23;
+    --ink: #f4f4f5;
+    --ink-muted: #a1a1aa;
+    --ink-faded: #71717a;
+    --teglrod: #ff5d2e;
+    --teglrod-soft: rgba(255,93,46,0.12);
+    --teglrod-glow: rgba(255,93,46,0.35);
+    --green: #22c55e;
+    --green-soft: rgba(34,197,94,0.12);
+    --amber: #f59e0b;
+    --amber-soft: rgba(245,158,11,0.12);
+  }
+  html, body {
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: "ss01", "cv11";
+  }
+  /* Layout */
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+  /* Sidebar */
+  .sidebar {
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--line);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 8px;
+    margin-bottom: 24px;
+  }
+  .brand-mark {
+    width: 22px; height: 22px;
+    background: var(--teglrod);
+    border-radius: 5px;
+    box-shadow: 0 0 16px var(--teglrod-glow);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
+    color: white;
+  }
+  .brand-name {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+  .nav-section {
+    margin-bottom: 16px;
+  }
+  .nav-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faded);
+    padding: 4px 8px;
+    margin-bottom: 4px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 5px;
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 13px;
+    margin-bottom: 1px;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--ink); }
+  .nav-item.active {
+    background: var(--bg-hover);
+    color: var(--ink);
+  }
+  .nav-item .left { display: flex; align-items: center; gap: 8px; }
+  .nav-icon {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    background: var(--ink-faded);
+    opacity: 0.7;
+  }
+  .nav-item.active .nav-icon { background: var(--teglrod); opacity: 1; }
+  .kbd {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-faded);
+  }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 8px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teglrod), #c94416);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+  }
+  /* Main */
+  main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .topbar {
+    border-bottom: 1px solid var(--line);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg);
+  }
+  .crumb {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .crumb a { color: var(--ink-muted); text-decoration: none; }
+  .crumb a:hover { color: var(--ink); }
+  .crumb-sep { color: var(--ink-faded); }
+  .cmdk-trigger {
+    margin-left: auto;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--ink-faded);
+    cursor: pointer;
+  }
+  .cmdk-trigger:hover { border-color: var(--ink-faded); }
+  /* Content */
+  .content {
+    padding: 24px 32px 64px;
+    max-width: 1200px;
+    width: 100%;
+  }
+  .case-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faded);
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .case-meta {
+    color: var(--ink-muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  /* Verdict bar */
+  .verdict-bar {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teglrod);
+    box-shadow: 0 0 12px var(--teglrod-glow);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .verdict-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teglrod);
+    letter-spacing: 0.06em;
+  }
+  .verdict-text {
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+  .verdict-text b { color: var(--ink); font-weight: 500; }
+  .stat-strip {
+    margin-left: auto;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .stat {
+    display: flex; flex-direction: column; align-items: flex-end;
+  }
+  .stat-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faded);
+  }
+  /* Section header */
+  .sect-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 32px 0 12px;
+  }
+  h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+    color: var(--ink-faded);
+  }
+  /* Rule table */
+  .rules {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .rule-row {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    display: grid;
+    grid-template-columns: 80px 1fr 110px 80px;
+    gap: 16px;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .rule-row:hover { background: var(--bg-elevated); }
+  .rule-row:last-child { border-bottom: none; }
+  .rule-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faded);
+    text-transform: lowercase;
+  }
+  .rule-name {
+    font-size: 13.5px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .rule-cite {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 3px;
+  }
+  .pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-align: center;
+    background: var(--teglrod-soft);
+    color: var(--teglrod);
+    border: 1px solid var(--teglrod);
+  }
+  .pill-go {
+    background: var(--green-soft);
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .req-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-muted);
+    text-align: right;
+  }
+  /* Selected rule detail */
+  .rule-detail {
+    border: 1px solid var(--teglrod);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 16px 0;
+    background: var(--bg-elevated);
+  }
+  .rule-detail-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 16px;
+  }
+  .rule-detail-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .rule-detail-cite {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+  .rule-detail-cite a { color: var(--teglrod); text-decoration: none; }
+  .quote {
+    background: var(--bg);
+    border-left: 2px solid var(--teglrod);
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.55;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .req-list {
+    list-style: none;
+    margin-top: 12px;
+  }
+  .req-list li {
+    padding: 8px 0 8px 22px;
+    position: relative;
+    font-size: 13px;
+    color: var(--ink-muted);
+    border-bottom: 1px dashed var(--line-soft);
+  }
+  .req-list li:last-child { border-bottom: none; }
+  .req-list li::before {
+    content: "▸";
+    position: absolute; left: 0;
+    color: var(--teglrod);
+    font-size: 11px;
+    top: 9px;
+  }
+  /* Evidence */
+  .evidence {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .ev-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: center;
+    font-size: 13px;
+  }
+  .ev-row:last-child { border-bottom: none; }
+  .ev-check {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ev-check.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .ev-check.done::after {
+    content: "✓";
+    color: var(--bg);
+    font-size: 11px; font-weight: 700;
+  }
+  .ev-name.done { color: var(--ink-faded); }
+  .ev-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-faded);
+    letter-spacing: 0.04em;
+  }
+  .ev-status.done { color: var(--green); }
+  .ev-status.pending { color: var(--amber); }
+  /* Audit log */
+  .audit {
+    margin-top: 32px;
+    padding: 14px 18px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.7;
+  }
+  .audit-key { color: var(--ink-faded); }
+  .audit-val { color: var(--ink); }
+  /* Back link */
+  .back {
+    display: inline-block;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--ink-faded);
+    text-decoration: none;
+  }
+  .back:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">H</div>
+      <div class="brand-name">Hjemmel</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <a class="nav-item active" href="#">
+        <span class="left"><span class="nav-icon"></span>Sager</span>
+        <span class="kbd">G S</span>
+      </a>
+      <a class="nav-item" href="#">
+        <span class="left"><span class="nav-icon"></span>Vurdering</span>
+        <span class="kbd">G V</span>
+      </a>
+      <a class="nav-item" href="#">
+        <span class="left"><span class="nav-icon"></span>Videnbase</span>
+        <span class="kbd">G K</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Værktøjer</div>
+      <a class="nav-item" href="#"><span class="left"><span class="nav-icon"></span>Lov-assistent</span></a>
+      <a class="nav-item" href="#"><span class="left"><span class="nav-icon"></span>Research</span></a>
+      <a class="nav-item" href="#"><span class="left"><span class="nav-icon"></span>Rapporter</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Aktive sager</div>
+      <a class="nav-item" href="#">Borgerassistent</a>
+      <a class="nav-item" href="#">Sagsforberedelse</a>
+      <a class="nav-item" href="#">Beskæftigelsesscoring</a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="avatar">PV</div>
+      <div style="font-size:12px;color:var(--ink-muted);">parti.vijaya</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div class="crumb">
+        <a href="#">Sager</a>
+        <span class="crumb-sep">/</span>
+        <a href="#">Borgerassistent — Pension</a>
+        <span class="crumb-sep">/</span>
+        <span style="color:var(--ink);">Quick Check</span>
+      </div>
+      <div class="cmdk-trigger">
+        <span>Søg eller kommando…</span>
+        <span class="kbd">⌘ K</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <a class="back" href="index.html">← Tilbage til oversigt</a>
+
+      <div class="case-id">K-2026-0184 · created 2026-04-29 · last_eval 2026-05-07</div>
+      <h1>Borgerassistent — Pensionsansøgning</h1>
+      <p class="case-meta">Mette Nielsen · Center for Borgerservice</p>
+
+      <div class="verdict-bar">
+        <div class="pulse-dot"></div>
+        <div class="verdict-status">BETINGET-GO</div>
+        <div class="verdict-text"><b>3 regler</b> udløser krav før idriftsættelse</div>
+        <div class="stat-strip">
+          <div class="stat"><div class="stat-num">8</div><div class="stat-label">Krav</div></div>
+          <div class="stat"><div class="stat-num">3/8</div><div class="stat-label">Evidens</div></div>
+          <div class="stat"><div class="stat-num">42</div><div class="stat-label">Risk score</div></div>
+        </div>
+      </div>
+
+      <div class="sect-h"><h2>Ramte regler</h2></div>
+      <div class="rules">
+
+        <div class="rule-row" style="background:var(--bg-elevated);">
+          <span class="rule-id">ai_act<br>art6</span>
+          <div>
+            <div class="rule-name">Klassificeret som højrisiko-AI-system</div>
+            <div class="rule-cite">eur-lex.europa.eu/.../oj/dan · art. 6, stk. 2 + Bilag III</div>
+          </div>
+          <span class="pill">BETINGET-GO</span>
+          <span class="req-count">5 krav</span>
+        </div>
+
+        <div class="rule-row">
+          <span class="rule-id">gdpr<br>art22</span>
+          <div>
+            <div class="rule-name">Helautomatiseret afgørelse med retsvirkning</div>
+            <div class="rule-cite">eur-lex.europa.eu/.../2016/679#art_22</div>
+          </div>
+          <span class="pill">BETINGET-GO</span>
+          <span class="req-count">3 krav</span>
+        </div>
+
+        <div class="rule-row">
+          <span class="rule-id">forvltn<br>par22</span>
+          <div>
+            <div class="rule-name">Begrundelsespligt ved skriftlig forvaltningsafgørelse</div>
+            <div class="rule-cite">retsinformation.dk/eli/lta/2014/433 · § 22</div>
+          </div>
+          <span class="pill">BETINGET-GO</span>
+          <span class="req-count">3 krav</span>
+        </div>
+
+      </div>
+
+      <div class="rule-detail">
+        <div class="rule-detail-head">
+          <div>
+            <div class="rule-detail-name">Klassificeret som højrisiko-AI-system</div>
+            <div class="rule-detail-cite"><a href="https://eur-lex.europa.eu/eli/reg/2024/1689/oj/dan">EU AI Act art. 6, stk. 2 + Bilag III</a> · sidst_verificeret=2026-05-07</div>
+          </div>
+          <span class="pill">BETINGET-GO</span>
+        </div>
+        <div class="quote">
+          "Ud over de højrisiko-AI-systemer, der er omhandlet i stk. 1, anses AI-systemer, der er omhandlet i bilag III, som højrisiko."
+        </div>
+        <div style="color:var(--ink-muted);font-size:13px;margin-top:8px;">
+          Anvendelsesområde: <span style="color:var(--teglrod);font-family:'JetBrains Mono',monospace;font-size:12px;">vaesentlige_offentlige_tjenester</span> · profilering: <span style="color:var(--teglrod);font-family:'JetBrains Mono',monospace;font-size:12px;">true</span>
+        </div>
+        <ul class="req-list">
+          <li>Etabler risikostyringssystem (art. 9)</li>
+          <li>Sikr datasæt-kvalitet (art. 10)</li>
+          <li>Lav teknisk dokumentation (art. 11) inden idriftsættelse</li>
+          <li>Sikr menneskelig overvågning (art. 14)</li>
+          <li>Registrér i EU-databasen for højrisikosystemer (art. 49)</li>
+        </ul>
+      </div>
+
+      <div class="sect-h"><h2>Evidens-checkliste</h2></div>
+      <div class="evidence">
+        <div class="ev-row"><div class="ev-check done"></div><div class="ev-name done">risikostyringsplan</div><div class="ev-status done">DONE 2026-05-02</div></div>
+        <div class="ev-row"><div class="ev-check done"></div><div class="ev-name done">datasaet_dokumentation</div><div class="ev-status done">DONE 2026-05-04</div></div>
+        <div class="ev-row"><div class="ev-check done"></div><div class="ev-name done">dpia_dokument</div><div class="ev-status done">DONE 2026-04-30</div></div>
+        <div class="ev-row"><div class="ev-check"></div><div class="ev-name">teknisk_dokumentation_art11</div><div class="ev-status">PENDING</div></div>
+        <div class="ev-row"><div class="ev-check"></div><div class="ev-name">logningsspecifikation</div><div class="ev-status">PENDING</div></div>
+        <div class="ev-row"><div class="ev-check"></div><div class="ev-name">human_oversight_protokol</div><div class="ev-status pending">IN PROGRESS</div></div>
+        <div class="ev-row"><div class="ev-check"></div><div class="ev-name">menneskelig_indgriben_proces</div><div class="ev-status">PENDING</div></div>
+        <div class="ev-row"><div class="ev-check"></div><div class="ev-name">eu_database_registrering</div><div class="ev-status">BLOCKED</div></div>
+      </div>
+
+      <div class="audit">
+        <span class="audit-key">$ rule_engine</span> evaluate K-2026-0184 --rules rules/<br>
+        <span class="audit-key">version</span>          <span class="audit-val">v3.0.0-alpha.1</span><br>
+        <span class="audit-key">timestamp</span>        <span class="audit-val">2026-05-07T11:42:18+02:00</span><br>
+        <span class="audit-key">rules_loaded</span>     <span class="audit-val">3</span><br>
+        <span class="audit-key">triggered</span>        <span class="audit-val">3</span><br>
+        <span class="audit-key">aggregate</span>        <span style="color:var(--teglrod);">BETINGET-GO</span><br>
+        <span class="audit-key">precedence</span>       <span class="audit-val">NO-GO &gt; BETINGET-GO &gt; GO</span><br>
+        <span class="audit-key">llm_used_for_decision</span>  <span style="color:var(--green);">false</span>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+</body>
+</html>

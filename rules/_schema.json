@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hjemmel.kalundborg.dk/schemas/rule.json",
+  "title": "Tyr Rule",
+  "description": "Deklarativ compliance-regel forankret i en konkret lovartikel. Hver afgørelse spores tilbage til kilden via 'kilde'-objektet.",
+  "type": "object",
+  "required": ["id", "kilde", "trigger", "predikater", "afgørelse"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+){2,}$",
+      "description": "Dotted identifier på formen <lov>.<artikel>.<emne>, fx 'gdpr.art22.automated_decision'."
+    },
+    "kilde": {
+      "type": "object",
+      "required": ["lov", "artikel", "citat", "url", "sidst_verificeret"],
+      "additionalProperties": false,
+      "properties": {
+        "lov": { "type": "string", "minLength": 3, "description": "Lovens fulde navn med eventuel forordnings-/lov-nummer." },
+        "artikel": { "type": "string", "minLength": 1, "description": "Artikel-/paragraf-reference, fx 'Artikel 22, stk. 1' eller '§22'." },
+        "citat": { "type": "string", "minLength": 10, "description": "Direkte citat fra lovteksten der hjemler reglen." },
+        "url": { "type": "string", "format": "uri", "description": "URL til officiel lovtekst (EUR-Lex, Retsinformation eller tilsvarende)." },
+        "sidst_verificeret": { "type": "string", "format": "date", "description": "ISO-dato (YYYY-MM-DD) for hvornår citatet sidst blev verificeret mod kilden." }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "description": "Hvornår skal denne regel evalueres? Mindst én af any_of/all_of skal være sat.",
+      "additionalProperties": false,
+      "properties": {
+        "any_of": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/triggerCondition" }
+        },
+        "all_of": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/triggerCondition" }
+        }
+      },
+      "anyOf": [
+        { "required": ["any_of"] },
+        { "required": ["all_of"] }
+      ]
+    },
+    "predikater": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "spørgsmål", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Lokal identifier brugt i 'afgørelse.hvis'-udtrykket."
+          },
+          "spørgsmål": { "type": "string", "minLength": 5 },
+          "type": {
+            "type": "string",
+            "enum": ["boolean", "enum", "text", "number"]
+          },
+          "enum_values": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "description": "Påkrævet hvis type='enum'."
+          },
+          "hjælp": { "type": "string", "description": "Hjælpetekst til sagsbehandleren — fx EDPB- eller Datatilsynsvejledning." }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "enum" } } },
+            "then": { "required": ["enum_values"] }
+          }
+        ]
+      }
+    },
+    "afgørelse": {
+      "type": "object",
+      "required": ["hvis", "så"],
+      "additionalProperties": false,
+      "properties": {
+        "hvis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Boolean-udtryk over predikat-id'er. Tilladte operatorer: AND, OR, NOT, parenteser. Predikater af type=enum sammenlignes med == eller !=, fx 'risk_level == hoj'."
+        },
+        "så": { "$ref": "#/$defs/outcome" },
+        "ellers": { "$ref": "#/$defs/outcome" }
+      }
+    },
+    "llm_fortolkning": {
+      "type": "object",
+      "description": "Valgfri LLM-assistance til at fortolke fritekst-input til signal-værdier. LLM må aldrig ændre selve afgørelsen.",
+      "required": ["rolle", "prompt_template"],
+      "additionalProperties": false,
+      "properties": {
+        "rolle": { "type": "string", "minLength": 10 },
+        "prompt_template": { "type": "string", "minLength": 10 }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Valgfri metadata: forfatter, version, tags. Påvirker ikke evaluering.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "triggerCondition": {
+      "type": "object",
+      "required": ["signal"],
+      "additionalProperties": false,
+      "properties": {
+        "signal": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+          "description": "Dotted signal-name, fx 'system.outputs_decision_about_person'."
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["GO", "BETINGET-GO", "NO-GO"]
+        },
+        "krav": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 5 },
+          "description": "Konkrete krav der skal opfyldes for compliance."
+        },
+        "evidens_påkrævet": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 3 },
+          "description": "Dokumenter/artefakter der skal være på plads."
+        },
+        "begrundelse": {
+          "type": "string",
+          "description": "Forklaring der vises til brugeren når denne afgørelse rammes."
+        }
+      }
+    }
+  }
+}

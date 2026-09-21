@@ -1,0 +1,59 @@
+# TEMPLATE — afventer jurist-input
+# § 23 om patientinformation.
+
+id: sundhedslov.par23.patientinformation
+
+kilde:
+  lov: "Sundhedsloven (LBK nr. 248 af 8. marts 2024 med senere ændringer)"
+  artikel: "§ 23"
+  citat: "[TODO: jurist udfylder eksakt citat fra § 23 om information til patienten. Min. 10 tegn.]"
+  url: "https://www.retsinformation.dk/eli/lta/2024/248"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.generates_decision_text
+    - signal: system.processes_personal_data
+
+predikater:
+  - id: anvendes_i_sundhedskontekst
+    spørgsmål: "Anvendes systemet i kommunal sundhedsmyndighed eller hjemmepleje (sundhedsloven dækker)?"
+    type: boolean
+
+  - id: ai_genererer_patient_information
+    spørgsmål: "Genererer systemet faktisk patient-information (breve, beskrivelser af behandling, indkaldelser)?"
+    type: boolean
+
+  - id: information_er_patient_forstaaelig
+    spørgsmål: "Er den genererede information vurderet for letforståelighed (laveste fællesnævner — § 23 stk. 1)?"
+    type: boolean
+
+  - id: sundhedsfaglig_godkender
+    spørgsmål: "Verificerer en sundhedsperson AI-genereret patient-information inden afsendelse?"
+    type: boolean
+
+afgørelse:
+  hvis: "anvendes_i_sundhedskontekst AND ai_genererer_patient_information AND (NOT information_er_patient_forstaaelig OR NOT sundhedsfaglig_godkender)"
+  så:
+    status: BETINGET-GO
+    begrundelse: "[TODO: jurist udfylder. § 23 stiller letforståeligheds-krav til patientinformation, og sundhedsfaglig godkendelse er nødvendig for faktisk information.]"
+    krav:
+      - "Etabler proces hvor sundhedsperson kvalitetssikrer AI-genereret patient-information inden afsendelse"
+      - "Test informations-forståelighed (læsbarhedsindeks eller test med pilot-patienter)"
+      - "[TODO: jurist tilføjer]"
+    evidens_påkrævet:
+      - kvalitetssikring_proces_sundhedsfaglig
+      - laesbarhedsindeks_test
+  ellers:
+    status: GO
+    begrundelse: "Patientinformation kvalitetssikres tilstrækkeligt."
+    krav: []
+    evidens_påkrævet: []
+
+metadata:
+  forfatter: "TODO: jurist navn"
+  version: "0.1.0-draft"
+  tags:
+    - sundhedslov
+    - patientinformation
+    - draft-template

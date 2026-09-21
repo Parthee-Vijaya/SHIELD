@@ -1,0 +1,510 @@
+import React, { useState, useRef } from 'react';
+import styled from 'styled-components';
+import { motion } from 'framer-motion';
+import {
+  FaCog,
+  FaPalette,
+  FaBell,
+  FaChartBar,
+  FaSearch,
+  FaDesktop,
+  FaShieldAlt,
+  FaUniversalAccess,
+  FaDownload,
+  FaUpload,
+  FaRedo,
+  FaSave,
+  FaCheck,
+  FaTimes,
+  FaToggleOn,
+  FaToggleOff
+} from 'react-icons/fa';
+import { useUserPreferences } from '../contexts/UserPreferencesContext';
+import { useTutorial } from '../contexts/TutorialContext';
+
+const SettingsContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+`;
+
+const PageHeader = styled.div`
+  margin-bottom: 2rem;
+
+  h1 {
+    color: ${props => props.theme.colors.gray[800]};
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  p {
+    color: ${props => props.theme.colors.gray[600]};
+    font-size: 1.1rem;
+  }
+`;
+
+const SettingsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 300px 1fr;
+  }
+`;
+
+const SettingsNav = styled.nav`
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border-radius: ${props => props.theme.borderRadiusLarge};
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: ${props => props.theme.shadows.glass};
+  height: fit-content;
+  position: sticky;
+  top: 2rem;
+`;
+
+const NavItem = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: ${props => props.active ? props.theme.colors.primary : 'transparent'};
+  color: ${props => props.active ? 'white' : props.theme.colors.gray[700]};
+  border-radius: ${props => props.theme.borderRadius};
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: ${props => props.theme.animations.transition};
+  margin-bottom: 0.5rem;
+
+  &:hover {
+    background: ${props => props.active ? props.theme.colors.primary : props.theme.colors.gray[100]};
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const SettingsContent = styled.div`
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: ${props => props.theme.borderRadiusLarge};
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: ${props => props.theme.shadows.glass};
+`;
+
+const SectionTitle = styled.h2`
+  color: ${props => props.theme.colors.gray[800]};
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const SettingGroup = styled.div`
+  margin-bottom: 2rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const SettingRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: ${props => props.theme.colors.gray[50]};
+  border-radius: ${props => props.theme.borderRadius};
+  margin-bottom: 1rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const SettingInfo = styled.div`
+  flex: 1;
+
+  h4 {
+    margin: 0 0 0.25rem 0;
+    color: ${props => props.theme.colors.gray[800]};
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  p {
+    margin: 0;
+    color: ${props => props.theme.colors.gray[600]};
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+`;
+
+const Toggle = styled.button`
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: ${props => props.active ? props.theme.colors.success : props.theme.colors.gray[400]};
+  font-size: 1.5rem;
+  transition: ${props => props.theme.animations.transition};
+
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const Select = styled.select`
+  padding: 0.5rem;
+  border: 1px solid ${props => props.theme.colors.gray[300]};
+  border-radius: ${props => props.theme.borderRadius};
+  background: white;
+  font-size: 0.875rem;
+  min-width: 120px;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid ${props => props.theme.colors.gray[200]};
+`;
+
+const Button = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: ${props => props.theme.borderRadius};
+  font-weight: 600;
+  cursor: pointer;
+  transition: ${props => props.theme.animations.transition};
+
+  &.primary {
+    background: ${props => props.theme.colors.primary};
+    color: white;
+
+    &:hover {
+      background: ${props => props.theme.colors.primaryDark || '#A03612'};
+    }
+  }
+
+  &.secondary {
+    background: transparent;
+    color: ${props => props.theme.colors.primary};
+    border: 2px solid ${props => props.theme.colors.primary};
+
+    &:hover {
+      background: ${props => props.theme.colors.primary};
+      color: white;
+    }
+  }
+
+  &.danger {
+    background: ${props => props.theme.colors.danger};
+    color: white;
+
+    &:hover {
+      background: ${props => props.theme.colors.dangerDark || '#991b1b'};
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const FileInput = styled.input`
+  display: none;
+`;
+
+const SaveStatus = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: ${props => props.theme.borderRadius};
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  &.success {
+    background: ${props => props.theme.colors.successLight};
+    color: ${props => props.theme.colors.success};
+  }
+
+  &.error {
+    background: ${props => props.theme.colors.dangerLight};
+    color: ${props => props.theme.colors.danger};
+  }
+`;
+
+const SettingsPage = () => {
+  const { restart: restartTutorial, canStart: canStartTutorial, saving: savingTutorial } = useTutorial();
+  const {
+    preferences,
+    loading,
+    saving,
+    updatePreference,
+    resetPreferences,
+    exportPreferences,
+    importPreferences
+  } = useUserPreferences();
+
+  const [activeSection, setActiveSection] = useState('appearance');
+  const [saveStatus, setSaveStatus] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const sections = [
+    { id: 'appearance', label: 'Udseende', icon: FaPalette },
+    { id: 'notifications', label: 'Notifikationer', icon: FaBell },
+    { id: 'dashboard', label: 'Dashboard', icon: FaChartBar },
+    { id: 'search', label: 'Søgning', icon: FaSearch },
+    { id: 'display', label: 'Display', icon: FaDesktop },
+    { id: 'privacy', label: 'Privatliv', icon: FaShieldAlt },
+    { id: 'accessibility', label: 'Tilgængelighed', icon: FaUniversalAccess }
+  ];
+
+  const handleUpdatePreference = async (path, value) => {
+    const result = await updatePreference(path, value);
+    if (result.success) {
+      setSaveStatus({ type: 'success', message: 'Indstilling gemt' });
+    } else {
+      setSaveStatus({ type: 'error', message: 'Fejl ved gem af indstilling' });
+    }
+
+    setTimeout(() => setSaveStatus(null), 3000);
+  };
+
+  const handleReset = async () => {
+    if (window.confirm('Er du sikker på, at du vil nulstille alle indstillinger?')) {
+      const result = await resetPreferences();
+      if (result.success) {
+        setSaveStatus({ type: 'success', message: 'Indstillinger nulstillet' });
+      } else {
+        setSaveStatus({ type: 'error', message: 'Fejl ved nulstilling' });
+      }
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const result = await importPreferences(file);
+      if (result.success) {
+        setSaveStatus({ type: 'success', message: 'Indstillinger importeret' });
+      } else {
+        setSaveStatus({ type: 'error', message: result.error || 'Fejl ved import' });
+      }
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
+    event.target.value = '';
+  };
+
+  const renderAppearanceSettings = () => (
+    <SettingGroup>
+      <SectionTitle><FaPalette /> Udseende</SectionTitle>
+
+      <SettingRow>
+        <SettingInfo>
+          <h4>Tema</h4>
+          <p>Vælg lyst eller mørkt tema for applikationen</p>
+        </SettingInfo>
+        <Select
+          value={preferences.theme}
+          onChange={(e) => handleUpdatePreference('theme', e.target.value)}
+        >
+          <option value="light">Lyst</option>
+          <option value="dark">Mørkt</option>
+          <option value="auto">Automatisk</option>
+        </Select>
+      </SettingRow>
+
+      <SettingRow>
+        <SettingInfo>
+          <h4>Sprog</h4>
+          <p>Vælg sproget for brugergrænsefladen</p>
+        </SettingInfo>
+        <Select
+          value={preferences.language}
+          onChange={(e) => handleUpdatePreference('language', e.target.value)}
+        >
+          <option value="da">Dansk</option>
+          <option value="en">English</option>
+        </Select>
+      </SettingRow>
+    </SettingGroup>
+  );
+
+  const renderNotificationSettings = () => (
+    <SettingGroup>
+      <SectionTitle><FaBell /> Notifikationer</SectionTitle>
+
+      {Object.entries(preferences.notifications).map(([key, value]) => (
+        <SettingRow key={key}>
+          <SettingInfo>
+            <h4>{getNotificationLabel(key)}</h4>
+            <p>{getNotificationDescription(key)}</p>
+          </SettingInfo>
+          <Toggle
+            active={value}
+            onClick={() => handleUpdatePreference(`notifications.${key}`, !value)}
+          >
+            {value ? <FaToggleOn /> : <FaToggleOff />}
+          </Toggle>
+        </SettingRow>
+      ))}
+    </SettingGroup>
+  );
+
+  const getNotificationLabel = (key) => {
+    const labels = {
+      browser: 'Browser notifikationer',
+      email: 'Email notifikationer',
+      desktop: 'Desktop notifikationer',
+      newsUpdates: 'Nyhedsopdateringer',
+      complianceAlerts: 'Compliance alerts',
+      systemUpdates: 'Systemopdateringer'
+    };
+    return labels[key] || key;
+  };
+
+  const getNotificationDescription = (key) => {
+    const descriptions = {
+      browser: 'Modtag notifikationer i browseren',
+      email: 'Modtag notifikationer via email',
+      desktop: 'Vis desktop notifikationer',
+      newsUpdates: 'Få besked om nye nyheder',
+      complianceAlerts: 'Få besked om vigtige compliance opdateringer',
+      systemUpdates: 'Få besked om system vedligeholdelse'
+    };
+    return descriptions[key] || '';
+  };
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'appearance':
+        return renderAppearanceSettings();
+      case 'notifications':
+        return renderNotificationSettings();
+      default:
+        return renderAppearanceSettings();
+    }
+  };
+
+  if (loading) {
+    return (
+      <SettingsContainer>
+        <PageHeader>
+          <h1><FaCog /> Indstillinger</h1>
+          <p>Indlæser brugerindstillinger...</p>
+        </PageHeader>
+      </SettingsContainer>
+    );
+  }
+
+  return (
+    <SettingsContainer>
+      <PageHeader>
+        <h1><FaCog /> Indstillinger</h1>
+        <p>Tilpas din oplevelse af S.H.I.E.L.D.</p>
+        {canStartTutorial && <Button className="secondary" type="button" disabled={savingTutorial} onClick={restartTutorial}>Start introduktionsguide igen</Button>}
+      </PageHeader>
+
+      <SettingsGrid>
+        <SettingsNav>
+          {sections.map(section => {
+            const IconComponent = section.icon;
+            return (
+              <NavItem
+                key={section.id}
+                active={activeSection === section.id}
+                onClick={() => setActiveSection(section.id)}
+              >
+                <IconComponent />
+                {section.label}
+              </NavItem>
+            );
+          })}
+        </SettingsNav>
+
+        <SettingsContent>
+          {renderContent()}
+
+          <ButtonGroup>
+            <Button
+              className="primary"
+              disabled={saving}
+            >
+              <FaSave />
+              {saving ? 'Gemmer...' : 'Gem ændringer'}
+            </Button>
+
+            <Button
+              className="secondary"
+              onClick={exportPreferences}
+            >
+              <FaDownload />
+              Eksporter
+            </Button>
+
+            <Button
+              className="secondary"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <FaUpload />
+              Importer
+            </Button>
+
+            <Button
+              className="danger"
+              onClick={handleReset}
+            >
+              <FaRedo />
+              Nulstil
+            </Button>
+          </ButtonGroup>
+
+          {saveStatus && (
+            <SaveStatus
+              className={saveStatus.type}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+            >
+              {saveStatus.type === 'success' ? <FaCheck /> : <FaTimes />}
+              {saveStatus.message}
+            </SaveStatus>
+          )}
+
+          <FileInput
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImport}
+          />
+        </SettingsContent>
+      </SettingsGrid>
+    </SettingsContainer>
+  );
+};
+
+export default SettingsPage;

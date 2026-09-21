@@ -1,0 +1,36 @@
+{
+  "name": "shield",
+  "version": "0.7.9",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "python3 main.py",
+    "dev:frontend": "cd frontend && PORT=8090 BROWSER=none npm start",
+    "install:all": "npm install && pip install -r requirements.txt",
+    "install:frontend": "cd frontend && npm install",
+    "clean": "npm run clean:frontend && rm -rf node_modules package-lock.json",
+    "clean:frontend": "rm -rf frontend/node_modules frontend/package-lock.json",
+    "test": "npm run test:frontend",
+    "test:frontend": "cd frontend && npm test",
+    "build:frontend": "cd frontend && npm run build",
+    "ai:example": "node --env-file=.env.local index.ts",
+    "ai:jev-example": "node --env-file=.env.local ai-gateway/jev-example.mts",
+    "ai:typecheck": "node node_modules/typescript-ai/bin/tsc -p ai-gateway/tsconfig.json",
+    "ai:test": "node --test ai-gateway/*.test.mts"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript-ai": "npm:typescript@7.0.2"
+  },
+  "engines": {
+    "node": ">=22.18.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "ai": "7.0.107",
+    "zod": "4.6.5"
+  }
+}

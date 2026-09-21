@@ -1,0 +1,84 @@
+id: gdpr.art32.sikkerhed_ved_behandling
+kilde:
+  lov: "Databeskyttelsesforordningen (Forordning 2016/679 - GDPR)"
+  artikel: "Artikel 32, stk. 1"
+  citat: "Under hensyntagen til det aktuelle tekniske niveau, implementeringsomkostningerne og den pågældende behandlings karakter, omfang, sammenhæng og formål samt risiciene af varierende sandsynlighed og alvor for fysiske personers rettigheder og frihedsrettigheder gennemfører den dataansvarlige og databehandleren passende tekniske og organisatoriske foranstaltninger for at sikre et sikkerhedsniveau, der passer til disse risici."
+  url: "https://eur-lex.europa.eu/eli/reg/2016/679/oj/dan#art_32"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.processes_personal_data
+
+predikater:
+  - id: pseudonymisering_kryptering
+    spørgsmål: "Er pseudonymisering og/eller kryptering af personoplysninger implementeret hvor relevant (transit + at rest)?"
+    type: boolean
+    hjælp: "Art. 32, stk. 1, litra a. Eksempel: TLS i transit, AES-256 at rest, pseudonymisering af træningsdata."
+
+  - id: integritet_og_fortrolighed
+    spørgsmål: "Er der etableret kontroller til at sikre løbende fortrolighed, integritet, tilgængelighed og robusthed (adgangskontrol, logging, backups)?"
+    type: boolean
+    hjælp: "Art. 32, stk. 1, litra b."
+
+  - id: gendannelse_efter_haendelse
+    spørgsmål: "Er der etableret evne til hurtigt at genoprette tilgængeligheden af og adgangen til personoplysninger efter en hændelse?"
+    type: boolean
+    hjælp: "Art. 32, stk. 1, litra c. Backup + tested restore procedure."
+
+  - id: regelmaessig_test
+    spørgsmål: "Er der en proces til regelmæssig test, vurdering og evaluering af sikkerhedsforanstaltningernes effektivitet?"
+    type: boolean
+    hjælp: "Art. 32, stk. 1, litra d. Penetrationstest, sårbarhedsscanning, audit."
+
+  - id: behandler_saerlige_kategorier
+    spørgsmål: "Behandles særlige kategorier af personoplysninger (art. 9) eller straffedomme (art. 10)?"
+    type: boolean
+    hjælp: "Højere risikoniveau → strengere krav til foranstaltninger."
+
+  - id: brud_anmeldelses_proces
+    spørgsmål: "Er der en dokumenteret proces til at anmelde brud på persondatasikkerheden inden for 72 timer (art. 33)?"
+    type: boolean
+    hjælp: "Brud-anmeldelse er ikke art. 32 men art. 33. Vi tjekker det her som en del af det samlede sikkerheds-setup."
+
+afgørelse:
+  hvis: "NOT pseudonymisering_kryptering OR NOT integritet_og_fortrolighed OR NOT gendannelse_efter_haendelse OR NOT regelmaessig_test OR NOT brud_anmeldelses_proces OR (behandler_saerlige_kategorier AND NOT pseudonymisering_kryptering)"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Sikkerhedsforanstaltningerne i art. 32 er ikke fuldt implementeret. Risikoen kan være forhøjet ved særlige kategorier af oplysninger."
+    krav:
+      - "Implementér pseudonymisering/kryptering af personoplysninger (transit og at rest)"
+      - "Sikr fortrolighed, integritet og tilgængelighed via adgangskontrol + logging"
+      - "Etablér backup + restore-procedure med dokumenteret test"
+      - "Indfør regelmæssig sikkerhedstest (sårbarhedsscan, pen-test, audit)"
+      - "Etablér 72-timers brud-anmeldelses-proces (art. 33) til Datatilsynet"
+      - "Hvis særlige kategorier behandles: hæv kryptering og adgangskontrol-niveau"
+    evidens_påkrævet:
+      - krypteringspolitik
+      - adgangskontrol_specifikation
+      - backup_test_log
+      - sikkerhedstest_rapport
+      - brud_anmeldelses_proces
+  ellers:
+    status: GO
+    begrundelse: "Sikkerhedsforanstaltningerne i art. 32 og brud-anmeldelse er på plads. Vedligehold løbende — risikobillede ændrer sig."
+    krav:
+      - "Genevaluer årligt eller ved væsentlige systemændringer"
+    evidens_påkrævet:
+      - aarlig_evaluering
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["gdpr", "art32", "sikkerhed"]

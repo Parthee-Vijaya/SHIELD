@@ -1,0 +1,75 @@
+id: ai_act.art5.forbudte_praksisser
+kilde:
+  lov: "EU AI-forordningen (Forordning 2024/1689)"
+  artikel: "Artikel 5"
+  citat: "Følgende praksisser inden for kunstig intelligens er forbudt: (a) bringe i omsætning, idriftsætte eller anvende et AI-system, der gør brug af subliminale teknikker, der er uden for en persons bevidsthed, eller bevidst manipulerende eller vildledende teknikker..."
+  url: "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/dan"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  all_of:
+    - signal: system.uses_ai
+
+predikater:
+  - id: anvendelse
+    spørgsmål: "Anvender systemet en af de forbudte praksisser i art. 5?"
+    type: enum
+    enum_values:
+      - subliminale_eller_manipulerende_teknikker
+      - udnyttelse_af_saarbarhed_alder_handicap
+      - social_scoring_offentlig_myndighed
+      - kriminalitetsrisikovurdering_alene_paa_profilering
+      - opbygning_af_ansigtsgenkendelses_databaser_via_scraping
+      - foelelsesgenkendelse_paa_arbejdsplads_eller_uddannelse
+      - biometrisk_kategorisering_paa_saerlige_kategorier
+      - realtids_fjern_biometrisk_id_i_offentlige_rum_til_retshaandhaevelse
+      - intet_af_ovenstaaende
+    hjælp: |
+      Art. 5, stk. 1 forbyder bl.a.:
+      (a) subliminale/manipulerende/vildledende teknikker der forvansker beslutninger
+      (b) udnyttelse af sårbarhed (alder, handicap, social/økonomisk situation)
+      (c) social scoring der fører til ugunstig/uberettiget behandling
+      (d) kriminalitetsrisiko-vurdering alene baseret på profilering eller personlighed
+      (e) opbygning af ansigtsgenkendelses-databaser via untargeted scraping
+      (f) følelsesgenkendelse i arbejds- eller uddannelseskontekst (undtagelser for medicinsk/sikkerhed)
+      (g) biometrisk kategorisering til at udlede race, politiske holdninger, fagforening, religion, seksuel orientering m.fl.
+      (h) realtids-fjern-biometrisk-identifikation i offentligt tilgængelige rum til retshåndhævelse (med snævre undtagelser)
+
+  - id: medicinsk_eller_sikkerheds_undtagelse
+    spørgsmål: "Hvis følelsesgenkendelse: gælder undtagelsen for medicinske/sikkerhedsmæssige formål (art. 5, stk. 1, litra f, sidste punktum)?"
+    type: boolean
+    hjælp: "Følelsesgenkendelse er TILLADT hvis det indføres af medicinske eller sikkerhedsmæssige grunde. Vurder strengt — bekvemmeligheds-formål kvalificerer ikke."
+
+afgørelse:
+  hvis: "anvendelse != intet_af_ovenstaaende AND NOT medicinsk_eller_sikkerheds_undtagelse"
+  så:
+    status: NO-GO
+    begrundelse: "Systemet anvender en praksis der er forbudt under EU AI Act art. 5. Forbuddet trådte i kraft 2. februar 2025 og kan ikke afhjælpes ved tekniske eller organisatoriske foranstaltninger."
+    krav:
+      - "Systemet må ikke bringes i omsætning, idriftsættes eller anvendes"
+      - "Hvis allerede i drift: udfas inden for kortest mulig frist"
+      - "Dokumentér beslutningen og kommuniker til ledelsen"
+    evidens_påkrævet:
+      - udfasningsplan
+      - ledelsesnotat
+  ellers:
+    status: GO
+    begrundelse: "Systemets anvendelse er ikke omfattet af art. 5's forbudsliste. Andre regler (særligt art. 6 om højrisiko, art. 50 om transparens) kan stadig være relevante."
+    krav: []
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE selv vurdere om systemet er forbudt — det er sagsbehandlerens svar på predikaterne der afgør det."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["ai_act", "forbudte_praksisser", "no_go"]

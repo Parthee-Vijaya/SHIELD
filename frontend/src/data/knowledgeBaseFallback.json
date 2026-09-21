@@ -1,0 +1,183 @@
+[
+  {
+    "id": 1,
+    "term": "Risikoklassificering",
+    "category": "legal",
+    "iconKey": "FaGavel",
+    "definition": "Systematisk proces til at kategorisere AI-systemer baseret på deres potentielle risiko for rettigheder, sikkerhed og samfund.",
+    "context": "AI Act opdeler systemer i uacceptabel, høj, begrænset og minimal risiko. Klassificeringen styrer hvilke kontrolkrav, dokumentation og tilsyn der gælder.",
+    "tags": ["AI Act", "Risikovurdering", "Juridisk"],
+    "references": [
+      { "text": "AI Act Art. 6-7", "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj" }
+    ]
+  },
+  {
+    "id": 2,
+    "term": "Konformitetsvurdering",
+    "category": "compliance",
+    "iconKey": "FaShieldAlt",
+    "definition": "Formel proces der dokumenterer, at et AI-system opfylder alle relevante lovkrav og standarder før idriftsættelse.",
+    "context": "For højrisiko-systemer kræver AI Act CE-mærkning, kvalitetsledelse, teknisk dokumentation og post-market overvågning.",
+    "tags": ["CE-mærkning", "Dokumentation", "Quality Management"],
+    "references": [
+      { "text": "AI Act Art. 43", "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj" }
+    ]
+  },
+  {
+    "id": 3,
+    "term": "Databeskyttelse ved Design",
+    "category": "legal",
+    "iconKey": "FaLock",
+    "definition": "Princip om at indbygge databeskyttelse i arkitektur og governance fra starten af et AI-projekt.",
+    "context": "GDPR artikel 25 kræver dokumenterede kontroller for dataminimering, adgangsstyring og sporbarhed når AI-systemer behandler persondata.",
+    "tags": ["GDPR", "Privacy", "Design"],
+    "references": [
+      { "text": "GDPR Art. 25", "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj" }
+    ]
+  },
+  {
+    "id": 4,
+    "term": "Behandlingsgrundlag",
+    "category": "legal",
+    "iconKey": "FaBalanceScale",
+    "definition": "Juridisk hjemmel som giver ret til at behandle personoplysninger i AI-systemer.",
+    "context": "Organisationer skal dokumentere hvilket GDPR-grundlag (samtykke, kontrakt, offentlig interesse m.m.) der anvendes og hvordan brugere informeres.",
+    "tags": ["GDPR", "Personoplysninger", "Compliance"],
+    "references": [
+      { "text": "GDPR Art. 6", "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj" }
+    ]
+  },
+  {
+    "id": 5,
+    "term": "RAG (Retrieval Augmented Generation)",
+    "category": "ai",
+    "iconKey": "FaDatabase",
+    "definition": "Arkitektur hvor et AI-system henter kontekst fra en vidensbase før det genererer svar.",
+    "context": "Reducerer hallucinationer og gør compliance-dokumentation mere faktuel. Kombinationen kræver styr på datakilder og kildeangivelser.",
+    "tags": ["Semantisk søgning", "Vidensbase", "LLM"],
+    "references": [
+      { "text": "RAG Paper", "url": "https://arxiv.org/abs/2005.11401" }
+    ]
+  },
+  {
+    "id": 6,
+    "term": "LLM (Large Language Model)",
+    "category": "ai",
+    "iconKey": "FaBrain",
+    "definition": "Stor sprogmodel trænet på store mængder tekstdata til at forstå og generere naturligt sprog.",
+    "context": "Foundation-modeller med høj compute falder under AI Act's GPAI-krav og kræver risikostyring, dokumentation og overvågning.",
+    "tags": ["Foundation Models", "Sprogmodeller", "AI Act"],
+    "references": [
+      { "text": "AI Act Art. 51", "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj" }
+    ]
+  },
+  {
+    "id": 7,
+    "term": "Algoritmisk Gennemsigtighed",
+    "category": "compliance",
+    "iconKey": "FaEye",
+    "definition": "Kravet om at AI-systemer skal kunne forklare beslutninger for brugere og myndigheder.",
+    "context": "GDPR Art. 22 og AI Act Art. 13 kræver beskrivelser af modellens logik, menneskelig oversight og mulighed for indsigelser.",
+    "tags": ["Transparens", "Forklarbarhed", "Brugerrettigheder"],
+    "references": [
+      { "text": "GDPR Art. 22", "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj" },
+      { "text": "AI Act Art. 13", "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj" }
+    ]
+  },
+  {
+    "id": 8,
+    "term": "DPIA (Data Protection Impact Assessment)",
+    "category": "legal",
+    "iconKey": "FaFileAlt",
+    "definition": "Konsekvensanalyse der måler persondatarisici ved nye systemer og definerer mitigering.",
+    "context": "Påkrævet når AI-systemer behandler følsomme data, bruger omfattende profilering eller indgår i automatiske afgørelser.",
+    "tags": ["GDPR", "Risk Management", "Assessments"],
+    "references": [
+      { "text": "GDPR Art. 35", "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj" }
+    ]
+  },
+  {
+    "id": 9,
+    "term": "Model Governance",
+    "category": "compliance",
+    "iconKey": "FaCog",
+    "definition": "Kontrolramme for monitorering, versionering og dokumentation af AI-modeller gennem hele livscyklussen.",
+    "context": "Indeholder processer for modelkataloger, ansvarlige personer, sign-offs og alarmer ved driftsafvigelser.",
+    "tags": ["Governance", "Livscyklus", "Kontrol"],
+    "references": [
+      { "text": "NIST AI RMF", "url": "https://www.nist.gov/itl/ai-risk-management-framework" }
+    ]
+  },
+  {
+    "id": 10,
+    "term": "AI Sag (Case Management)",
+    "category": "operations",
+    "iconKey": "FaFolderOpen",
+    "definition": "Registrering af AI-projekter med status, ansvarlige og compliance-artefakter.",
+    "context": "Understøtter revisionsspor og gør det nemt at dele dokumentation med Datatilsynet eller interne styregrupper.",
+    "tags": ["Workflow", "Dokumentation", "Audit"],
+    "references": [
+      { "text": "Kalundborg Governance", "url": "https://www.kalundborg.dk/" }
+    ]
+  },
+  {
+    "id": 11,
+    "term": "System Health Monitor",
+    "category": "operations",
+    "iconKey": "FaHeartbeat",
+    "definition": "Dashboard der viser status på backend, databaser, agenter og eksterne integrationer.",
+    "context": "Giver driftsfolk mulighed for hurtigt at validere API-responstider og eskalere fejl, især ved compliance-deadlines.",
+    "tags": ["Observability", "Monitoring", "Drift"],
+    "references": [
+      { "text": "Platform Status", "url": "http://localhost:8501" }
+    ]
+  },
+  {
+    "id": 12,
+    "term": "Knowledge Base Sync",
+    "category": "operations",
+    "iconKey": "FaSync",
+    "definition": "Automatiseret proces der udtrækker termer fra research og opdaterer vidensbasen hver nat.",
+    "context": "Kalundborg-platformen bruger WebSearcher, Qdrant og LLM-sammenfatninger til at holde termer friske og sporbare.",
+    "tags": ["Automation", "Knowledge", "Scheduler"],
+    "references": [
+      { "text": "Scheduler Overview", "url": "docs/operations/scheduler.md" }
+    ]
+  },
+  {
+    "id": 13,
+    "term": "Legal Research Agent",
+    "category": "ai",
+    "iconKey": "FaLightbulb",
+    "definition": "LangGraph-agent der kombinerer flertrins webresearch, kildevurdering og LLM-syntese.",
+    "context": "Bruges til at samle juridiske kilder om AI Act og GDPR. Agenten returnerer summary, anbefalinger og citerede kilder.",
+    "tags": ["Agent", "Research", "LangGraph"],
+    "references": [
+      { "text": "Research Workflow", "url": "docs/research/agent_overview.md" }
+    ]
+  },
+  {
+    "id": 14,
+    "term": "Compliance Dashboard",
+    "category": "operations",
+    "iconKey": "FaTachometerAlt",
+    "definition": "Visualt overblik over risikoklasser, vurderingstrin og igangværende remediation-planer.",
+    "context": "Dashboardet trækker data fra assesments, cases og knowledge base for at vise prioriterede handlinger til ledelsen.",
+    "tags": ["Dashboard", "Risk", "Reporting"],
+    "references": [
+      { "text": "Dashboard Design", "url": "docs/design/dashboard.md" }
+    ]
+  },
+  {
+    "id": 15,
+    "term": "Kvalitetsledelsessystem",
+    "category": "compliance",
+    "iconKey": "FaClipboardCheck",
+    "definition": "Styringssystem der sikrer dokumenterede processer, roller og audits for AI-løsninger.",
+    "context": "Et dokumenteret QMS er et krav for udbydere af højrisiko AI-systemer. Det omfatter politikker, træning og kontinuerlige forbedringer.",
+    "tags": ["QMS", "Proces", "Audit"],
+    "references": [
+      { "text": "ISO/IEC 42001", "url": "https://www.iso.org/standard/81230.html" }
+    ]
+  }
+]

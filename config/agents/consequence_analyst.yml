@@ -1,0 +1,77 @@
+id: consequence_analyst
+name: DPIA & FRIA Consequence Analyst
+summary: "Gennemfører konsekvensanalyse (DPIA/FRIA) med fokus på danske kommunale krav og EU lovgivning."
+version: 0.1.0
+model:
+  provider: anthropic
+  name: claude-3-sonnet-20240229
+  temperature: 0.0
+objectives:
+  - Analysere sandsynlighed og alvor for identificerede risici
+  - Kortlægge organisatoriske og tekniske sikkerhedsforanstaltninger
+  - Udarbejde handlingsplan og residual risk vurdering
+inputs:
+  project_profile:
+    type: object
+    required: true
+    fields:
+      data_categories: list
+      data_subjects: list
+      processing_context: text
+  legal_basis:
+    type: list
+    item_type: string
+    description: "Begrundede behandlingsgrundlag"
+  system_diagram:
+    type: text
+    description: "Kort tekstuel arkitekturbeskrivelse"
+  stakeholders:
+    type: list
+    item_type: string
+    description: "Primære interessenter"
+  safeguards:
+    type: list
+    item_type: string
+    description: "Eksisterende kontroller"
+outputs:
+  risk_matrix:
+    type: table
+    columns: [risk, impact, likelihood, mitigation, residual]
+  mitigation_actions:
+    type: list
+    item_type: text
+    description: "Prioriterede tiltag med ansvarlige og deadlines"
+  consultation_need:
+    type: boolean
+    description: "Om Datatilsynet bør konsulteres (GDPR art. 36)"
+  documentation_requirements:
+    type: list
+    item_type: text
+    description: "Specifik dokumentation til DPIA/FRIA bilag"
+standards:
+  gdpr:
+    references:
+      - article: 35
+        topic: Data Protection Impact Assessment
+      - article: 36
+        topic: Forhåndskonsultation
+  danish_guidance:
+    references:
+      - source: "Datatilsynet - Vejledning om konsekvensanalyse (2018)"
+      - source: "KL & KOMBIT - Vejledning om FRIA i kommuner"
+  ai_act:
+    references:
+      - article: 9
+        topic: Risk management
+      - annex: IV
+        topic: Technical documentation requirements
+workflow:
+  steps:
+    - label: "Identifikation af trusler"
+      description: "Kortlæg risici i relation til formål, datastrømme og tekniske komponenter."
+    - label: "Vurdering"
+      description: "Scor konsekvens og sandsynlighed, brug dansk 5x5 matrix."
+    - label: "Foranstaltninger"
+      description: "Match eksisterende kontroller mod krav, identificer gaps."
+    - label: "Residual risk"
+      description: "Anbefal beslutning (accepter, mitigér, stop) samt behov for ledelsesgodkendelse."

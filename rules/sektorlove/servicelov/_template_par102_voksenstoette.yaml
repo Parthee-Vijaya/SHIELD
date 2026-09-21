@@ -1,0 +1,62 @@
+# TEMPLATE — afventer jurist-input
+# § 102 om særlig støtte til voksne med betydeligt nedsat funktionsevne.
+
+id: servicelov.par102.saerlig_stoette_til_voksne
+
+kilde:
+  lov: "Lov om social service (LBK nr. 1089 af 18. august 2025 med senere ændringer)"
+  artikel: "§ 102"
+  citat: "[TODO: jurist udfylder eksakt citat fra § 102 om særlig støtte til voksne. Min. 10 tegn.]"
+  url: "https://www.retsinformation.dk/eli/lta/2025/1089"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_decisions_about_persons
+    - signal: system.classifies_individuals
+    - signal: system.makes_administrative_decisions
+
+predikater:
+  - id: anvendes_til_visitation_af_voksenstoette
+    spørgsmål: "Bruges systemet til at vurdere visitering til særlig støtte efter § 102 (eller relateret)?"
+    type: boolean
+
+  - id: behandler_helbredsoplysninger
+    spørgsmål: "Behandler systemet helbredsoplysninger eller oplysninger om funktionsevne (særlige kategorier efter GDPR art. 9)?"
+    type: boolean
+
+  - id: faglig_vurdering_uafhaengig_af_AI
+    spørgsmål: "Træffer den faglige vurdering af funktionsevne af en kompetent fagperson uafhængigt af AI?"
+    type: boolean
+    hjælp: "AI må gerne assistere, men § 102-vurderingen er en kerneforvaltningsmæssig opgave."
+
+  - id: borgerens_oenske_indhentet
+    spørgsmål: "Indhentes borgerens egen vurdering af støttebehovet (§ 102 stk. 2 hvis relevant)?"
+    type: boolean
+
+afgørelse:
+  hvis: "anvendes_til_visitation_af_voksenstoette AND NOT faglig_vurdering_uafhaengig_af_AI"
+  så:
+    status: BETINGET-GO
+    begrundelse: "[TODO: jurist udfylder. Hovedpunkt: § 102 kræver konkret faglig vurdering. AI kan understøtte men ikke erstatte fagperson.]"
+    krav:
+      - "Etabler proces hvor fagperson træffer den endelige vurdering uafhængigt"
+      - "Hvis særlige kategorier behandles: opfyld GDPR art. 9 + DPIA"
+      - "[TODO: jurist tilføjer flere]"
+    evidens_påkrævet:
+      - faglig_vurderingsproces
+      - dpia_hvis_helbredsdata
+  ellers:
+    status: GO
+    begrundelse: "Anvendelsen ligger uden for § 102's kerneområde."
+    krav: []
+    evidens_påkrævet: []
+
+metadata:
+  forfatter: "TODO: jurist navn"
+  version: "0.1.0-draft"
+  tags:
+    - servicelov
+    - voksen
+    - visitation
+    - draft-template

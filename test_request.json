@@ -1,0 +1,8 @@
+{
+  "beskrivelse": "Test AI system til healthcare",
+  "ai_type": "generative_ai",
+  "sektor": "Healthcare",
+  "behandler_persondata": true,
+  "automatiserede_beslutninger": false,
+  "enable_web_search": false
+}

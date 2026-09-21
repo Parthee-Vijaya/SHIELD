@@ -1,0 +1,95 @@
+id: gdpr.art22.automatiseret_individuel_afgorelse
+kilde:
+  lov: "Databeskyttelsesforordningen (Forordning 2016/679 - GDPR)"
+  artikel: "Artikel 22, stk. 1"
+  citat: "Den registrerede har ret til ikke at være genstand for en afgørelse, der alene er baseret på automatisk behandling, herunder profilering, som har retsvirkning eller på tilsvarende vis betydeligt påvirker den pågældende."
+  url: "https://eur-lex.europa.eu/eli/reg/2016/679/oj/dan#art_22"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_decisions_about_persons
+    - signal: system.classifies_individuals
+    - signal: system.scores_or_ranks_persons
+
+predikater:
+  - id: er_helautomatiseret
+    spørgsmål: "Træffes afgørelsen alene baseret på automatisk behandling, uden meningsfuld menneskelig involvering?"
+    type: boolean
+    hjælp: |
+      Meningsfuld menneskelig involvering kræver at en person:
+      (1) har autoritet og kompetence til at ændre afgørelsen,
+      (2) faktisk overvejer det relevante grundlag, ikke bare 'rubber-stamper'.
+      Reference: EDPB Guidelines 1/2018 om automatiserede individuelle afgørelser.
+
+  - id: har_retsvirkning_eller_betydelig_paavirkning
+    spørgsmål: "Har afgørelsen retsvirkning eller på tilsvarende vis betydeligt påvirker den registrerede?"
+    type: boolean
+    hjælp: |
+      Eksempler på 'betydelig påvirkning':
+      - Afslag på online lån, sociale ydelser, jobansøgning
+      - Indplacering i risikokategori
+      - Adgangsspærring til vigtige tjenester
+      Eksempler på 'ikke betydelig':
+      - Reklametargeting (medmindre meget snæver/sårbar)
+
+  - id: retsgrundlag_til_undtagelse
+    spørgsmål: "Findes der retsgrundlag iht. art. 22, stk. 2 (aftale, EU/national lov, eller udtrykkeligt samtykke)?"
+    type: enum
+    enum_values: [aftale, lov, samtykke, intet]
+    hjælp: |
+      Art. 22, stk. 2 tillader automatiseret afgørelse hvis:
+      (a) nødvendig for indgåelse/opfyldelse af aftale,
+      (b) hjemlet i EU- eller medlemsstatslov med passende foranstaltninger,
+      (c) udtrykkeligt samtykke fra registrerede.
+
+  - id: omfatter_saerlige_kategorier
+    spørgsmål: "Behandles særlige kategorier af personoplysninger (art. 9), fx race, sundhed, religion, fagforening?"
+    type: boolean
+    hjælp: "Hvis ja, gælder art. 22, stk. 4: helautomatiserede afgørelser om særlige kategorier kræver enten udtrykkeligt samtykke ELLER væsentlig samfundsinteresse-hjemmel."
+
+afgørelse:
+  hvis: "er_helautomatiseret AND har_retsvirkning_eller_betydelig_paavirkning"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Afgørelsen er omfattet af GDPR art. 22, stk. 1. Helautomatiserede afgørelser med retsvirkning kræver retsgrundlag og passende sikkerhedsforanstaltninger."
+    krav:
+      - "Etabler retsgrundlag iht. art. 22, stk. 2: aftale, EU/national lov eller udtrykkeligt samtykke"
+      - "Implementér ret til menneskelig indgriben (art. 22, stk. 3)"
+      - "Implementér ret for den registrerede til at fremsætte sine synspunkter"
+      - "Implementér ret til at bestride afgørelsen"
+      - "Informér registrerede om logikken bag afgørelsen og forventede konsekvenser (art. 13(2)(f) / art. 14(2)(g))"
+      - "Lav DPIA hvis ikke allerede gjort (art. 35)"
+      - "Hvis særlige kategorier behandles: opfyld art. 22, stk. 4 (udtrykkeligt samtykke ELLER væsentlig samfundsinteresse-hjemmel)"
+    evidens_påkrævet:
+      - retsgrundlag_dokumentation
+      - menneskelig_indgriben_proces
+      - bestridelsesproces
+      - transparenstekst_til_registrerede
+      - dpia_dokument
+  ellers:
+    status: GO
+    begrundelse: "Afgørelsen er ikke omfattet af art. 22, enten fordi den ikke er helautomatiseret eller ikke har retsvirkning/betydelig påvirkning. Almindelige GDPR-krav (retsgrundlag, oplysningspligt) gælder fortsat."
+    krav:
+      - "Sikr almindeligt retsgrundlag iht. art. 6"
+      - "Opfyld oplysningspligt (art. 13/14)"
+    evidens_påkrævet:
+      - retsgrundlag_dokumentation
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE selv vurdere om afgørelsen er omfattet af art. 22 — det er sagsbehandlerens svar på predikaterne der afgør det."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    - system.makes_decisions_about_persons
+    - system.classifies_individuals
+    - system.scores_or_ranks_persons
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["gdpr", "art22", "automatiseret_afgorelse", "profilering"]

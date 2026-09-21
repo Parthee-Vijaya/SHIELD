@@ -1,0 +1,68 @@
+id: offentlighedsloven.par13.dataudtraek_og_sammenstilling
+kilde:
+  lov: "Offentlighedsloven (lov nr. 606 af 12. juni 2013 med senere ændringer)"
+  artikel: "§ 11"
+  citat: "Enhver kan forlange, at en forvaltningsmyndighed foretager og udleverer en sammenstilling af foreliggende oplysninger i myndighedens databaser, hvis sammenstillingen kan foretages ved enkle kommandoer."
+  url: "https://www.retsinformation.dk/eli/lta/2013/606"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.is_used_by_public_authority
+    - signal: system.aggregates_or_combines_databases
+
+predikater:
+  - id: laver_sammenstillinger
+    spørgsmål: "Laver systemet sammenstillinger af oplysninger fra forskellige databaser?"
+    type: boolean
+    hjælp: "Eksempler: kombinere borgerdata fra fagsystem med ydelsesregister, sammenligne sundhedsdata med beskæftigelsesdata."
+
+  - id: enkle_kommandoer
+    spørgsmål: "Kan sammenstillingen foretages ved 'enkle kommandoer' (ikke kræve omfattende programmeringsarbejde)?"
+    type: boolean
+    hjælp: "§ 11 gælder kun sammenstillinger der kan foretages enkelt — komplekse, manuelt programmerede analyser er uden for retten."
+
+  - id: indeholder_personoplysninger
+    spørgsmål: "Indeholder sammenstillingen personoplysninger der ville kræve anonymisering før udlevering?"
+    type: boolean
+
+  - id: anonymiseringskapacitet
+    spørgsmål: "Kan systemet (eller sagsbehandleren via systemet) anonymisere sammenstillingen forsvarligt før udlevering?"
+    type: boolean
+    hjælp: "Bemærk: anonymisering skal være effektiv — pseudonymisering eller simpel maskering er ofte ikke nok."
+
+afgørelse:
+  hvis: "laver_sammenstillinger AND enkle_kommandoer AND indeholder_personoplysninger AND NOT anonymiseringskapacitet"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Systemet kan blive bedt om dataudtræk efter offentlighedslovens § 11. Borgere har ret til sammenstillinger ved enkle kommandoer — men personoplysninger må ikke udleveres uanonymiseret uden gyldigt retsgrundlag."
+    krav:
+      - "Implementér anonymiserings-procedure før udlevering af sammenstillinger"
+      - "Dokumentér hvilke datasæt systemet kan kombinere — også som hjælp ved aktindsigtsanmodninger"
+      - "Sikr at sagsbehandler kan vurdere om udlevering kan ske helt/delvist (offentlighedslovens § 13 om undtagelser)"
+      - "Etablér procedure for behandling af aktindsigtsanmodninger inden for fristen i § 36 (7 arbejdsdage / 14 arbejdsdage)"
+    evidens_påkrævet:
+      - anonymiseringsprocedure
+      - datasammenstillings_katalog
+      - aktindsigt_procedure
+  ellers:
+    status: GO
+    begrundelse: "Systemet er enten ikke omfattet af § 11 (ingen sammenstillinger / ikke enkle kommandoer / ingen personoplysninger), eller anonymiseringskapaciteten er på plads."
+    krav: []
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE vurdere aktindsigts-pligten — den afgøres af reglen og evt. konkret aktindsigtsbegæring."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["offentlighedsloven", "aktindsigt", "dataudtraek"]

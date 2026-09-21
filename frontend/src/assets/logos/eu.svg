@@ -1,0 +1,5 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <rect width="48" height="48" rx="12" fill="#0B3D91"/>
+  <circle cx="24" cy="24" r="12" fill="none" stroke="#FFD700" stroke-width="2"/>
+  <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-family="'Inter', sans-serif" font-size="16" font-weight="700" fill="#FFD700">EU</text>
+</svg>

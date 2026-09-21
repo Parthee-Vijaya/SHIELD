@@ -1,0 +1,77 @@
+id: ai_act.art14.menneskelig_overvaagning
+kilde:
+  lov: "EU AI-forordningen (Forordning 2024/1689)"
+  artikel: "Artikel 14, stk. 1 og stk. 4"
+  citat: "Højrisiko-AI-systemer udformes og udvikles på en sådan måde, herunder med passende grænseflademedie til menneske/maskine-interaktion, at de effektivt kan overvåges af fysiske personer i den periode, hvor de er i brug."
+  url: "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/dan"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  all_of:
+    - signal: system.uses_ai
+
+predikater:
+  - id: er_hojrisiko
+    spørgsmål: "Er systemet klassificeret som højrisiko under art. 6?"
+    type: boolean
+
+  - id: oversight_kapabilitet
+    spørgsmål: "Hvilken type menneskelig overvågning er implementeret?"
+    type: enum
+    enum_values:
+      - kontinuerlig_human_in_the_loop
+      - efter_afgoerelse_review_paa_alle
+      - efter_afgoerelse_review_paa_stikproever
+      - kun_alarm_ved_fejl
+      - ingen
+    hjælp: |
+      Art. 14 kræver effektiv menneskelig overvågning. Stikprøvereview er
+      generelt utilstrækkeligt for systemer med høj risiko for borgerne;
+      kontinuerlig human-in-the-loop er den stærkeste form.
+
+  - id: stop_eller_override_mulighed
+    spørgsmål: "Kan en menneskelig operatør gribe ind, override eller stoppe systemet i drift?"
+    type: boolean
+    hjælp: "Art. 14, stk. 4(d): operatøren skal kunne tilsidesætte eller blokere outputtet, eller stoppe systemet via 'stop'-knap eller lignende procedure."
+
+  - id: kompetent_oversight
+    spørgsmål: "Er overvågningspersonalet uddannet og kompetent til opgaven (uddannelse i systemets begrænsninger, automation bias, fortolkning)?"
+    type: boolean
+    hjælp: "Art. 14, stk. 4(a)+(b): personerne der overvåger skal forstå systemets kapacitet/begrænsninger og være opmærksomme på automation bias."
+
+afgørelse:
+  hvis: "er_hojrisiko AND (oversight_kapabilitet == ingen OR oversight_kapabilitet == kun_alarm_ved_fejl OR NOT stop_eller_override_mulighed OR NOT kompetent_oversight)"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Højrisiko-AI-system mangler effektiv menneskelig overvågning iht. art. 14."
+    krav:
+      - "Etablér human-in-the-loop eller human-on-the-loop processuelt setup"
+      - "Implementér stop/override-mekanisme der kan tilsidesætte output"
+      - "Træn overvågningspersonalet i systemets begrænsninger og automation bias (art. 14(4)(a)+(b))"
+      - "Dokumentér oversight-protokol med roller, procedurer og eskalering"
+    evidens_påkrævet:
+      - oversight_protokol
+      - stop_override_mekanisme_specifikation
+      - traeningsmateriale_personale
+  ellers:
+    status: GO
+    begrundelse: "Enten ikke-højrisiko, eller menneskelig overvågning er etableret med stop/override og kompetent personale."
+    krav:
+      - "Stikprøvekontrol af oversight-effektiviteten anbefales løbende"
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["ai_act", "art14", "menneskelig_overvaagning", "hojrisiko"]

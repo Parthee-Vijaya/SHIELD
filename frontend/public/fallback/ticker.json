@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "title": "EU-guidelines tydeliggør definition af AI-systemer",
+      "url": "https://digital-strategy.ec.europa.eu/en/library/commission-publishes-guidelines-ai-system-definition-facilitate-first-ai-acts-rules-application",
+      "source": "EU-Kommissionen",
+      "published_at": "2025-09-18T08:00:00Z",
+      "scraped_at": "2025-09-21T10:00:00Z"
+    },
+    {
+      "title": "Datatilsynet opdaterer vejledning om automatiserede afgørelser",
+      "url": "https://www.datatilsynet.dk/hvad-siger-reglerne/vejledning/automatiserede-afgoerelser",
+      "source": "Datatilsynet",
+      "published_at": "2025-09-10T09:30:00Z",
+      "scraped_at": "2025-09-21T10:00:00Z"
+    },
+    {
+      "title": "KL samler kommunale erfaringer med ansvarlig AI",
+      "url": "https://www.kl.dk/nyheder/nyheder-om-digitalisering/2025/september/kl-lancerer-ansvarlig-ai-vidensbank/",
+      "source": "KL",
+      "published_at": "2025-09-05T07:45:00Z",
+      "scraped_at": "2025-09-21T10:00:00Z"
+    }
+  ],
+  "last_updated": "2025-09-21T10:00:00Z",
+  "cache_ttl_seconds": 300
+}

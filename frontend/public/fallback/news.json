@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "title": "EU-Kommissionen udgiver retningslinjer for AI-systemdefinition",
+      "url": "https://digital-strategy.ec.europa.eu/en/library/commission-publishes-guidelines-ai-system-definition-facilitate-first-ai-acts-rules-application",
+      "source": "EU-Kommissionen",
+      "category": "eu_news",
+      "summary": "Guidelines forklarer hvornår software betragtes som et AI-system under AI-forordningen og hjælper organisationer med første bølge af overholdelse.",
+      "published_at": "2025-09-18T08:00:00Z",
+      "importance": "high",
+      "keywords": ["AI Act", "guidelines", "definition"],
+      "scraped_at": "2025-09-21T10:00:00Z"
+    },
+    {
+      "title": "Datatilsynet opdaterer vejledning om automatiserede afgørelser",
+      "url": "https://www.datatilsynet.dk/hvad-siger-reglerne/vejledning/automatiserede-afgoerelser",
+      "source": "Datatilsynet",
+      "category": "datatilsynet",
+      "summary": "Vejledningen beskriver krav til transparens, menneskelig inddragelse og DPIA for kommunale AI-løsninger.",
+      "published_at": "2025-09-10T09:30:00Z",
+      "importance": "medium",
+      "keywords": ["automatiserede afgørelser", "GDPR", "kommuner"],
+      "scraped_at": "2025-09-21T10:00:00Z"
+    },
+    {
+      "title": "KL samler kommunernes erfaringer med ansvarlig AI",
+      "url": "https://www.kl.dk/nyheder/nyheder-om-digitalisering/2025/september/kl-lancerer-ansvarlig-ai-vidensbank/",
+      "source": "KL",
+      "category": "danish_municipal",
+      "summary": "KL lancerer en vidensbank med cases, risikovurderinger og governance-modeller til kommunal anvendelse af AI.",
+      "published_at": "2025-09-05T07:45:00Z",
+      "importance": "medium",
+      "keywords": ["kommuner", "governance", "vidensbank"],
+      "scraped_at": "2025-09-21T10:00:00Z"
+    }
+  ],
+  "last_updated": "2025-09-21T10:00:00Z",
+  "cache_ttl_seconds": 900,
+  "source_status": []
+}

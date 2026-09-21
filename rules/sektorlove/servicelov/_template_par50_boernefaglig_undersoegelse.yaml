@@ -1,0 +1,74 @@
+# TEMPLATE — afventer jurist-input
+# Højrisiko-paragraf: § 50 børnefaglig undersøgelse.
+# Se docs/JURIST_INTERVIEW.md for spørgsmål.
+
+id: servicelov.par50.boernefaglig_undersoegelse
+
+kilde:
+  lov: "Lov om social service (LBK nr. 1089 af 18. august 2025 med senere ændringer)"
+  artikel: "§ 50"
+  citat: "[TODO: jurist udfylder eksakt citat fra § 50, stk. 1. Forventet om kommunens forpligtelse til at iværksætte børnefaglig undersøgelse ved bekymring for et barns trivsel. Min. 10 tegn.]"
+  url: "https://www.retsinformation.dk/eli/lta/2025/1089"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_decisions_about_persons
+    - signal: system.classifies_individuals
+    - signal: system.scores_or_ranks_persons
+    - signal: system.aggregates_or_combines_databases
+
+predikater:
+  # TODO: jurist verificerer/udvider/skifter
+  - id: anvendes_paa_boern_eller_familier
+    spørgsmål: "Anvendes systemet i forbindelse med vurdering eller screening af børn eller familiers trivsel?"
+    type: boolean
+
+  - id: anvendes_til_screening_for_undersoegelses_behov
+    spørgsmål: "Bruges systemet til at identificere familier der bør tilbydes/pålægges en § 50-undersøgelse?"
+    type: boolean
+
+  - id: kun_advisory_til_sagsbehandler
+    spørgsmål: "Anvendes resultatet udelukkende som rådgivning til sagsbehandler — eller fungerer det som faktisk visiterings-mekanisme?"
+    type: enum
+    enum_values: [advisory, visiterende, hybrid]
+    hjælp: "TODO: jurist præciserer grænserne. EU AI Act Bilag III kategoriserer denne anvendelse højrisiko."
+
+  - id: dpia_eksisterer_for_anvendelsen
+    spørgsmål: "Findes der en gyldig DPIA der specifikt dækker denne børne-screening-anvendelse?"
+    type: boolean
+
+  - id: bias_evaluering_for_socioeokonomiske_forskelle
+    spørgsmål: "Er systemet evalueret for bias overfor socioøkonomiske grupper, etnicitet og bopælsmønstre?"
+    type: boolean
+
+afgørelse:
+  hvis: "anvendes_paa_boern_eller_familier AND (anvendes_til_screening_for_undersoegelses_behov OR kun_advisory_til_sagsbehandler IN [visiterende, hybrid])"
+  så:
+    status: BETINGET-GO
+    begrundelse: "[TODO: jurist udfylder. Hovedpunkt: § 50 stiller kvalitetskrav til kommunens børnefaglige undersøgelse — AI-screening må ikke erstatte den faglige vurdering, og bias kan have alvorlige konsekvenser for de mest udsatte familier.]"
+    krav:
+      - "DPIA der specifikt dækker børne-screenings-anvendelsen"
+      - "Bias-evaluering med fokus på socioøkonomiske og etniske forskelle"
+      - "Sagsbehandler-godkendelse INDEN igangsætning af § 50-undersøgelse"
+      - "Klar dokumentation af systemets grænser i journalen"
+      - "[TODO: jurist tilføjer flere — fx om partshøring efter forvaltningslovens § 19]"
+    evidens_påkrævet:
+      - dpia_dokument_boerne_screening
+      - bias_evalueringsrapport
+      - sagsbehandler_godkendelsesproces
+      - journal_dokumentation_specifikation
+  ellers:
+    status: GO
+    begrundelse: "Systemet rammer ikke § 50-anvendelsesområdet."
+    krav: []
+    evidens_påkrævet: []
+
+metadata:
+  forfatter: "TODO: jurist navn"
+  version: "0.1.0-draft"
+  tags:
+    - servicelov
+    - boern_og_familie
+    - hoejrisiko
+    - draft-template

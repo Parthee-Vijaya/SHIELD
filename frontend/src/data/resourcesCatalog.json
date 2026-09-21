@@ -1,0 +1,550 @@
+[
+  {
+    "id": "ai-act",
+    "title": "AI Act — Forordning 2024/1689",
+    "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+    "category": "EU lovgivning",
+    "type": "Forordning",
+    "description": "EU's AI Act i fuld tekst på dansk + alle EU-sprog. Trinvis ikrafttrædelse 2025-2027.",
+    "tags": ["AI Act", "EU", "Højrisiko", "GPAI"],
+    "language": "da",
+    "lastUpdated": "2024-07-12"
+  },
+  {
+    "id": "gdpr",
+    "title": "GDPR — Databeskyttelsesforordningen 2016/679",
+    "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+    "category": "EU lovgivning",
+    "type": "Forordning",
+    "description": "Den primære EU-lov for behandling af persondata. Gælder uændret når AI behandler persondata.",
+    "tags": ["GDPR", "EU", "Persondata"],
+    "language": "da",
+    "lastUpdated": "2016-04-27"
+  },
+  {
+    "id": "ai-act-implementation",
+    "title": "AI Act implementations-tidslinje",
+    "url": "https://artificialintelligenceact.eu/implementation-timeline/",
+    "category": "EU lovgivning",
+    "type": "Vejledning",
+    "description": "Officiel oversigt over hvornår hvilke AI Act-bestemmelser træder i kraft. Centrale milepæle: feb 2025 (forbud + literacy), aug 2025 (GPAI), aug 2026 (højrisiko).",
+    "tags": ["AI Act", "Tidslinje", "Implementation"],
+    "language": "en",
+    "lastUpdated": "2025-04-01"
+  },
+  {
+    "id": "ai-act-explorer",
+    "title": "AI Act Explorer (artikelvis)",
+    "url": "https://artificialintelligenceact.eu/the-act/",
+    "category": "EU lovgivning",
+    "type": "Database",
+    "description": "Søgbar artikel-for-artikel-version af AI Act med kommentarer og krydsreferencer. Lettere end at læse Eur-Lex.",
+    "tags": ["AI Act", "Artikler", "Søgbar"],
+    "language": "en",
+    "lastUpdated": "2025-03-01"
+  },
+  {
+    "id": "nis2",
+    "title": "NIS2-direktivet (2022/2555)",
+    "url": "https://eur-lex.europa.eu/eli/dir/2022/2555/oj",
+    "category": "EU lovgivning",
+    "type": "Direktiv",
+    "description": "Skærpet cybersikkerhedsdirektiv. Trådte i kraft i Danmark 1. januar 2025. Kommuner er omfattet som væsentlige enheder.",
+    "tags": ["NIS2", "Cybersikkerhed", "2025"],
+    "language": "da",
+    "lastUpdated": "2022-12-14"
+  },
+  {
+    "id": "dora",
+    "title": "DORA — Digital Operational Resilience Act",
+    "url": "https://eur-lex.europa.eu/eli/reg/2022/2554/oj",
+    "category": "EU lovgivning",
+    "type": "Forordning",
+    "description": "EU-forordning om digital operationel modstandsdygtighed for finansielle enheder. I kraft 17. januar 2025.",
+    "tags": ["DORA", "Finans", "Resilience"],
+    "language": "da",
+    "lastUpdated": "2022-12-14"
+  },
+  {
+    "id": "pld",
+    "title": "Updated Product Liability Directive (2024/2853)",
+    "url": "https://eur-lex.europa.eu/eli/dir/2024/2853/oj",
+    "category": "EU lovgivning",
+    "type": "Direktiv",
+    "description": "Revideret EU-direktiv om produktansvar — dækker eksplicit AI-systemer som produkter. Gældende fra 9. december 2026.",
+    "tags": ["Produktansvar", "AI", "2026"],
+    "language": "da",
+    "lastUpdated": "2024-10-23"
+  },
+  {
+    "id": "data-act",
+    "title": "Data Act — Forordning 2023/2854",
+    "url": "https://eur-lex.europa.eu/eli/reg/2023/2854/oj",
+    "category": "EU lovgivning",
+    "type": "Forordning",
+    "description": "Regler om dataadgang og -deling i EU's digitale enkeltmarked. Komplementerer GDPR for ikke-personlige data.",
+    "tags": ["Data Act", "Datadeling", "EU"],
+    "language": "da",
+    "lastUpdated": "2023-12-13"
+  },
+  {
+    "id": "dsa",
+    "title": "Digital Services Act (DSA)",
+    "url": "https://eur-lex.europa.eu/eli/reg/2022/2065/oj",
+    "category": "EU lovgivning",
+    "type": "Forordning",
+    "description": "EU-regler for online-platforme og formidlingstjenester. Påvirker AI-baseret indholdsmoderation og anbefalingssystemer.",
+    "tags": ["DSA", "Platform", "Indhold"],
+    "language": "da",
+    "lastUpdated": "2022-10-19"
+  },
+
+  {
+    "id": "datatilsynet",
+    "title": "Datatilsynet — forside",
+    "url": "https://www.datatilsynet.dk/",
+    "category": "Dansk myndighed",
+    "type": "Tilsyn",
+    "description": "Den danske tilsynsmyndighed for GDPR. Udpeget national kompetent myndighed for AI Act i 2025.",
+    "tags": ["Datatilsynet", "GDPR", "Tilsyn"],
+    "language": "da",
+    "lastUpdated": "2025-01-01"
+  },
+  {
+    "id": "datatilsynet-ai",
+    "title": "Datatilsynet — kunstig intelligens",
+    "url": "https://www.datatilsynet.dk/temaer/kunstig-intelligens",
+    "category": "Dansk myndighed",
+    "type": "Vejledning",
+    "description": "Datatilsynets samlede AI-vejledninger: automatiserede afgørelser, generativ AI i offentlige myndigheder, DPIA for AI-systemer.",
+    "tags": ["Datatilsynet", "AI", "Vejledning"],
+    "language": "da",
+    "lastUpdated": "2025-03-01"
+  },
+  {
+    "id": "digst",
+    "title": "Digitaliseringsstyrelsen",
+    "url": "https://digst.dk/",
+    "category": "Dansk myndighed",
+    "type": "Styrelse",
+    "description": "Digitaliseringsstyrelsen — koordinerer digitaliseringsindsatser i den offentlige sektor og udarbejder fællesoffentlig digitaliseringsstrategi.",
+    "tags": ["Digst", "Digitalisering", "Strategi"],
+    "language": "da",
+    "lastUpdated": "2025-01-01"
+  },
+  {
+    "id": "offentlig-ai",
+    "title": "Offentlig-AI.dk — projektkatalog",
+    "url": "https://offentlig-ai.dk/",
+    "category": "Dansk myndighed",
+    "type": "Database",
+    "description": "Digitaliseringsstyrelsens nationale katalog over AI-projekter i den offentlige sektor. ~143 projekter (maj 2026). Siden AI-løsninger i S.H.I.E.L.D. henter herfra.",
+    "tags": ["Offentlig AI", "Katalog", "Projekter"],
+    "language": "da",
+    "lastUpdated": "2025-05-01"
+  },
+  {
+    "id": "retsinformation",
+    "title": "Retsinformation.dk",
+    "url": "https://www.retsinformation.dk/",
+    "category": "Dansk myndighed",
+    "type": "Database",
+    "description": "Den autoritative danske lovdatabase. Forvaltningsloven, persondataloven, offentlighedsloven m.fl. — primær kilde til alle danske lovcitater i S.H.I.E.L.D.",
+    "tags": ["Retsinformation", "Lovdatabase", "Officielt"],
+    "language": "da",
+    "lastUpdated": "2026-05-01"
+  },
+  {
+    "id": "ankestyrelsen",
+    "title": "Ankestyrelsen",
+    "url": "https://www.ast.dk/",
+    "category": "Dansk myndighed",
+    "type": "Tilsyn",
+    "description": "Klagemyndighed for kommunal og regional sagsbehandling — inkl. afgørelser hvor AI har medvirket. Praksis-portalen indeholder principielle afgørelser.",
+    "tags": ["Ankestyrelsen", "Klage", "Praksis"],
+    "language": "da",
+    "lastUpdated": "2025-01-01"
+  },
+  {
+    "id": "erhvervsstyrelsen",
+    "title": "Erhvervsstyrelsen",
+    "url": "https://erhvervsstyrelsen.dk/",
+    "category": "Dansk myndighed",
+    "type": "Styrelse",
+    "description": "Tilsyn med en række EU-forordninger (e-handel, P2B, DSA-elementer). Relevant for offentlige aktører der opererer som forretningspartnere.",
+    "tags": ["Erhverv", "EU-tilsyn"],
+    "language": "da",
+    "lastUpdated": "2025-01-01"
+  },
+  {
+    "id": "domstol",
+    "title": "Domstolsstyrelsen",
+    "url": "https://www.domstol.dk/",
+    "category": "Dansk myndighed",
+    "type": "Styrelse",
+    "description": "Adgang til retspraksis og domssamlinger. Vigtig for compliance-afgørelser hvor præcedens skal afdækkes.",
+    "tags": ["Domstole", "Retspraksis"],
+    "language": "da",
+    "lastUpdated": "2025-01-01"
+  },
+  {
+    "id": "kl",
+    "title": "Kommunernes Landsforening (KL)",
+    "url": "https://www.kl.dk/",
+    "category": "Dansk myndighed",
+    "type": "Brancheorganisation",
+    "description": "Interesseorganisation for de 98 kommuner. KL's IT-arkitekturråd og digitaliseringsstrategi sætter ofte facto-standarder for kommunal AI.",
+    "tags": ["KL", "Kommuner", "IT-arkitektur"],
+    "language": "da",
+    "lastUpdated": "2025-01-01"
+  },
+
+  {
+    "id": "edpb",
+    "title": "European Data Protection Board (EDPB)",
+    "url": "https://www.edpb.europa.eu/",
+    "category": "EU institution",
+    "type": "Tilsyn",
+    "description": "Sammenslutningen af nationale databeskyttelsesmyndigheder. Udsteder fortolkende vejledninger om GDPR — bindende for nationale tilsyn.",
+    "tags": ["EDPB", "GDPR", "Vejledning"],
+    "language": "en",
+    "lastUpdated": "2026-05-08"
+  },
+  {
+    "id": "edps",
+    "title": "European Data Protection Supervisor (EDPS)",
+    "url": "https://edps.europa.eu/",
+    "category": "EU institution",
+    "type": "Tilsyn",
+    "description": "Tilsyn med EU-institutionernes egen behandling af persondata. Udgiver tematiske vejledninger om bl.a. AI og syntetisk data.",
+    "tags": ["EDPS", "EU-institutioner"],
+    "language": "en",
+    "lastUpdated": "2025-04-01"
+  },
+  {
+    "id": "ai-office",
+    "title": "European AI Office",
+    "url": "https://digital-strategy.ec.europa.eu/en/policies/ai-office",
+    "category": "EU institution",
+    "type": "Tilsyn",
+    "description": "Centralt EU-organ etableret 2024 der koordinerer håndhævelse af AI Act, særligt GPAI-bestemmelser.",
+    "tags": ["AI Office", "AI Act", "GPAI"],
+    "language": "en",
+    "lastUpdated": "2025-08-02"
+  },
+  {
+    "id": "ai-pact",
+    "title": "EU AI Pact",
+    "url": "https://digital-strategy.ec.europa.eu/en/policies/ai-pact",
+    "category": "EU institution",
+    "type": "Frivillig",
+    "description": "Frivilligt forpligtelses-rammeværk hvor organisationer signerer på AI Act-compliance før de juridiske deadlines. 100+ underskrivere.",
+    "tags": ["AI Pact", "Frivillig", "AI Office"],
+    "language": "en",
+    "lastUpdated": "2024-09-25"
+  },
+  {
+    "id": "gpai-cop",
+    "title": "GPAI Code of Practice",
+    "url": "https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai",
+    "category": "EU institution",
+    "type": "Vejledning",
+    "description": "Frivillig adfærdskodeks for udbydere af general-purpose AI-modeller. Det primære compliance-vejledningsdokument indtil harmoniserede standarder foreligger.",
+    "tags": ["GPAI", "Code of Practice", "AI Office"],
+    "language": "en",
+    "lastUpdated": "2025-04-01"
+  },
+  {
+    "id": "ec-ai-database",
+    "title": "EU AI Act risk-classification tool",
+    "url": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+    "category": "EU institution",
+    "type": "Værktøj",
+    "description": "Interaktiv vejledning til selv-klassifikation af AI-systemers risikoniveau iht. AI Act.",
+    "tags": ["AI Act", "Risikoklassifikation", "Værktøj"],
+    "language": "en",
+    "lastUpdated": "2025-03-01"
+  },
+
+  {
+    "id": "iso-42001",
+    "title": "ISO/IEC 42001 — AI Management System",
+    "url": "https://www.iso.org/standard/81230.html",
+    "category": "Standard",
+    "type": "Standard",
+    "description": "Verdens første internationale standard for AI Management Systems (AIMS), publiceret december 2023. Certificerbar struktur for ansvarlig AI-styring.",
+    "tags": ["ISO", "42001", "AIMS", "Certificering"],
+    "language": "en",
+    "lastUpdated": "2023-12-18"
+  },
+  {
+    "id": "iso-27001",
+    "title": "ISO/IEC 27001 — Information Security",
+    "url": "https://www.iso.org/standard/27001",
+    "category": "Standard",
+    "type": "Standard",
+    "description": "International standard for informationssikkerhedsledelse. Forventet baseline for offentlige AI-systemer.",
+    "tags": ["ISO", "27001", "Informationssikkerhed"],
+    "language": "en",
+    "lastUpdated": "2022-10-01"
+  },
+  {
+    "id": "iso-23894",
+    "title": "ISO/IEC 23894 — AI Risk Management",
+    "url": "https://www.iso.org/standard/77304.html",
+    "category": "Standard",
+    "type": "Standard",
+    "description": "Specifik AI-risikostyrings-standard. Komplementerer 42001 med metodologisk dybde.",
+    "tags": ["ISO", "23894", "Risk Management"],
+    "language": "en",
+    "lastUpdated": "2023-02-01"
+  },
+  {
+    "id": "nist-ai-rmf",
+    "title": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "category": "Standard",
+    "type": "Framework",
+    "description": "US National Institute of Standards and Technology's AI risk management framework. Bredt brugt internationalt som best-practice baseline.",
+    "tags": ["NIST", "AI RMF", "USA"],
+    "language": "en",
+    "lastUpdated": "2024-07-26"
+  },
+  {
+    "id": "nist-ai-100",
+    "title": "NIST AI 100-1 (Adversarial Machine Learning)",
+    "url": "https://csrc.nist.gov/pubs/ai/100/2/e2025/final",
+    "category": "Standard",
+    "type": "Framework",
+    "description": "NIST's taxonomi over angreb på ML-systemer og mitigationer. Reference for red teaming og sikkerhedsvurdering af AI.",
+    "tags": ["NIST", "Adversarial ML", "Sikkerhed"],
+    "language": "en",
+    "lastUpdated": "2025-01-29"
+  },
+  {
+    "id": "ieee-standards",
+    "title": "IEEE Standards Association (Ethics in AI)",
+    "url": "https://standards.ieee.org/initiatives/autonomous-intelligence-systems/",
+    "category": "Standard",
+    "type": "Standard",
+    "description": "IEEE's etiske standarder for AI-systemer (P7000-serien). Inspireret af EU AI Act. Supplerer ISO 42001.",
+    "tags": ["IEEE", "Etisk AI", "P7000"],
+    "language": "en",
+    "lastUpdated": "2025-01-01"
+  },
+
+  {
+    "id": "owasp-llm",
+    "title": "OWASP Top 10 for LLM Applications",
+    "url": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+    "category": "Sikkerhed",
+    "type": "Framework",
+    "description": "OWASPs sikkerheds-top-10 for LLM-baserede applikationer. Inkluderer prompt injection, training data poisoning, og supply chain.",
+    "tags": ["OWASP", "LLM", "Sikkerhed"],
+    "language": "en",
+    "lastUpdated": "2025-04-01"
+  },
+  {
+    "id": "mitre-atlas",
+    "title": "MITRE ATLAS — Adversarial Threat Landscape for AI",
+    "url": "https://atlas.mitre.org/",
+    "category": "Sikkerhed",
+    "type": "Database",
+    "description": "MITREs trusselsdatabase for AI-systemer. Mapper kendte angrebsteknikker mod ML-pipelines, inkl. prompt injection og model evasion.",
+    "tags": ["MITRE", "ATLAS", "Adversarial"],
+    "language": "en",
+    "lastUpdated": "2026-04-01"
+  },
+  {
+    "id": "c2pa",
+    "title": "C2PA — Coalition for Content Provenance",
+    "url": "https://c2pa.org/",
+    "category": "Sikkerhed",
+    "type": "Standard",
+    "description": "Teknisk standard for AI-genereret indhold med kryptografisk proveniens. Forventet implementation af AI Act Art. 50 (deepfake disclosure).",
+    "tags": ["C2PA", "Watermarking", "Deepfake"],
+    "language": "en",
+    "lastUpdated": "2024-12-01"
+  },
+
+  {
+    "id": "anthropic-effective-agents",
+    "title": "Anthropic — Building Effective Agents",
+    "url": "https://www.anthropic.com/research/building-effective-agents",
+    "category": "Teknik",
+    "type": "Vejledning",
+    "description": "Anthropics praktiske vejledning til at bygge agentic AI-systemer. Refererence for compliance-vurdering af AI agents.",
+    "tags": ["Agents", "Anthropic", "Best practice"],
+    "language": "en",
+    "lastUpdated": "2024-12-19"
+  },
+  {
+    "id": "mcp-spec",
+    "title": "Model Context Protocol (MCP) — specifikation",
+    "url": "https://modelcontextprotocol.io",
+    "category": "Teknik",
+    "type": "Standard",
+    "description": "Åben protokol fra Anthropic der standardiserer hvordan AI-modeller forbinder til datakilder og værktøjer.",
+    "tags": ["MCP", "Protocol", "Anthropic"],
+    "language": "en",
+    "lastUpdated": "2025-04-01"
+  },
+  {
+    "id": "rag-paper",
+    "title": "RAG — original paper (2020)",
+    "url": "https://arxiv.org/abs/2005.11401",
+    "category": "Teknik",
+    "type": "Forskning",
+    "description": "Det originale Retrieval Augmented Generation-paper fra Facebook AI. Grundlaget for, hvordan Lovassistenten i S.H.I.E.L.D. og lignende systemer fungerer.",
+    "tags": ["RAG", "Forskning", "ArXiv"],
+    "language": "en",
+    "lastUpdated": "2020-05-22"
+  },
+  {
+    "id": "huggingface",
+    "title": "Hugging Face — model + dataset hub",
+    "url": "https://huggingface.co/",
+    "category": "Teknik",
+    "type": "Database",
+    "description": "Største repository af open-source modeller og datasæt. Kilde for evaluering, fine-tuning og research.",
+    "tags": ["HuggingFace", "Open source", "Models"],
+    "language": "en",
+    "lastUpdated": "2026-05-08"
+  },
+
+  {
+    "id": "ftd-ai-cases",
+    "title": "Datatilsynet — afgørelser om AI",
+    "url": "https://www.datatilsynet.dk/afgoerelser",
+    "category": "Praksis",
+    "type": "Afgørelser",
+    "description": "Datatilsynets afgørelsesdatabase. Filtrér på AI/profilering for at se hvordan tilsynet rent faktisk anvender GDPR på AI-sager.",
+    "tags": ["Datatilsynet", "Afgørelser", "Praksis"],
+    "language": "da",
+    "lastUpdated": "2026-05-01"
+  },
+  {
+    "id": "edpb-guidelines",
+    "title": "EDPB Guidelines (samlet)",
+    "url": "https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en",
+    "category": "Praksis",
+    "type": "Vejledning",
+    "description": "EDPB's samlede vejledninger om GDPR. Inkluderer specifikt vejledning om AI, automatiserede afgørelser, biometri og DPIA.",
+    "tags": ["EDPB", "Guidelines", "Best practice"],
+    "language": "en",
+    "lastUpdated": "2026-04-01"
+  },
+  {
+    "id": "council-of-europe",
+    "title": "Council of Europe — AI Convention",
+    "url": "https://www.coe.int/en/web/artificial-intelligence",
+    "category": "Praksis",
+    "type": "Konvention",
+    "description": "Europarådets AI-konvention (september 2024) — første internationale juridisk bindende AI-traktat. Underskrevet af EU + USA + UK m.fl.",
+    "tags": ["Council of Europe", "AI Convention", "Internationalt"],
+    "language": "en",
+    "lastUpdated": "2024-09-05"
+  },
+
+  {
+    "id": "ai-act-checker",
+    "title": "AI Act Compliance Checker (selvtjek)",
+    "url": "https://artificialintelligenceact.eu/assessment/eu-ai-act-compliance-checker/",
+    "category": "Værktøj",
+    "type": "Værktøj",
+    "description": "Interaktivt værktøj til foreløbig selv-vurdering af om et AI-system falder under AI Act og hvilken risikoklasse.",
+    "tags": ["AI Act", "Selvtjek", "Værktøj"],
+    "language": "en",
+    "lastUpdated": "2025-01-01"
+  },
+  {
+    "id": "google-mcp",
+    "title": "Microsoft Responsible AI Standard",
+    "url": "https://www.microsoft.com/en-us/ai/responsible-ai",
+    "category": "Værktøj",
+    "type": "Framework",
+    "description": "Microsofts interne ramme for ansvarlig AI. Inkluderer impact assessment-template som flere kommuner anvender.",
+    "tags": ["Microsoft", "Responsible AI", "Framework"],
+    "language": "en",
+    "lastUpdated": "2024-09-01"
+  },
+  {
+    "id": "google-ai-principles",
+    "title": "Google AI Principles + safety",
+    "url": "https://ai.google/responsibility/principles/",
+    "category": "Værktøj",
+    "type": "Framework",
+    "description": "Googles AI-principper og safety-rammer. Læs sammen med Microsoft's for at sammenligne tilgange ved leverandørvurdering.",
+    "tags": ["Google", "AI principles"],
+    "language": "en",
+    "lastUpdated": "2025-01-01"
+  },
+  {
+    "id": "anthropic-acceptable-use",
+    "title": "Anthropic Acceptable Use Policy",
+    "url": "https://www.anthropic.com/legal/aup",
+    "category": "Værktøj",
+    "type": "Vejledning",
+    "description": "Anthropics regler for hvad Claude må bruges til. Læs ved indkøb hvis I bruger Claude i kommunale flows.",
+    "tags": ["Anthropic", "AUP", "Leverandør"],
+    "language": "en",
+    "lastUpdated": "2024-12-01"
+  },
+
+  {
+    "id": "bletchley",
+    "title": "Bletchley Declaration (2023)",
+    "url": "https://www.gov.uk/government/publications/ai-safety-summit-2023-the-bletchley-declaration",
+    "category": "Politik",
+    "type": "Erklæring",
+    "description": "International erklæring om AI-sikkerhed underskrevet af 28 lande + EU. Lagde grundlaget for AISI'erne.",
+    "tags": ["Bletchley", "AI Safety", "Internationalt"],
+    "language": "en",
+    "lastUpdated": "2023-11-01"
+  },
+  {
+    "id": "uk-aisi",
+    "title": "UK AI Safety Institute",
+    "url": "https://www.aisi.gov.uk/",
+    "category": "Politik",
+    "type": "Institut",
+    "description": "UK's nationale AI-sikkerhedsinstitut. Publicerer evaluations af frontier-modeller og safety-research.",
+    "tags": ["AISI", "UK", "Safety"],
+    "language": "en",
+    "lastUpdated": "2025-04-01"
+  },
+  {
+    "id": "us-aisi",
+    "title": "US AI Safety Institute (NIST)",
+    "url": "https://www.nist.gov/aisi",
+    "category": "Politik",
+    "type": "Institut",
+    "description": "Amerikansk pendant til UK AISI, hostet af NIST. Fokus på testing og evaluation af frontier AI.",
+    "tags": ["AISI", "USA", "NIST"],
+    "language": "en",
+    "lastUpdated": "2025-01-01"
+  },
+
+  {
+    "id": "tyr-source",
+    "title": "S.H.I.E.L.D. — kildekode (intern)",
+    "url": "https://github.com/Parthee-Vijaya/SHIELD",
+    "category": "Internt",
+    "type": "Kildekode",
+    "description": "Kildekoden til S.H.I.E.L.D. på GitHub. Tilgængelig kun for Digitalisering & IT.",
+    "tags": ["S.H.I.E.L.D.", "Kildekode", "GitHub"],
+    "language": "en",
+    "lastUpdated": "2026-05-08"
+  },
+  {
+    "id": "tyr-deploy",
+    "title": "S.H.I.E.L.D. — DEPLOY.md",
+    "url": "/privacy",
+    "category": "Internt",
+    "type": "Dokumentation",
+    "description": "Hvordan S.H.I.E.L.D. drives manuelt på Mac Studio. Persondatapolitikken er tilsvarende dokumenteret på /privacy.",
+    "tags": ["S.H.I.E.L.D.", "Drift", "DEPLOY"],
+    "language": "da",
+    "lastUpdated": "2026-05-08"
+  }
+]

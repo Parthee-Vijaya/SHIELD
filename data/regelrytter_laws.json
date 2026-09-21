@@ -1,0 +1,294 @@
+{
+  "metadata": {
+    "source": "regelrytter.dk",
+    "scrapedAt": "2025-10-12T11:49:41.068746+00:00",
+    "totalCategories": 17,
+    "totalLaws": 295,
+    "detailedLawsScraped": 6
+  },
+  "categories": [
+    {
+      "name": "Se alle love ianden lovgivning",
+      "slug": "anden-lovgivning",
+      "url": "https://regelrytter.dk/kategori/anden-lovgivning",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "barnets-lov",
+        "bekendtgoerelse-om-aendring-af-bekendtgoerelse-om-en-aktiv-beskaeftigelsesindsats-2007",
+        "bekendtgoerelse-om-aendring-af-bekendtgoerelse-om-en-aktiv-beskaeftigelsesindsats-n-merbeskaeftigelseskravet-og-rimelighedskravet"
+      ]
+    },
+    {
+      "name": "Se alle love iarbejdsret",
+      "slug": "arbejdsret",
+      "url": "https://regelrytter.dk/kategori/arbejdsret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "ferieloven",
+        "afskrivningsloven-2016",
+        "afskrivningsloven"
+      ]
+    },
+    {
+      "name": "Se alle love ibolig og lejeret",
+      "slug": "bolig-og-lejeret",
+      "url": "https://regelrytter.dk/kategori/bolig-og-lejeret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "aftaleloven-1996",
+        "aftaleloven",
+        "almenboligloven-2019"
+      ]
+    },
+    {
+      "name": "Se alle love ifamilie og arv",
+      "slug": "familie-og-arv",
+      "url": "https://regelrytter.dk/kategori/familie-og-arv",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "arveloven-2007",
+        "arveloven",
+        "bekendtgoerelse-om-betaling-for-ophold-i-anbringelsessteder-for-boern-og-unge-under-18-ar-samt-for-doegnophold-og-udslusningsophold-for-unge-i-alderen-18-til-og-med-22-ar"
+      ]
+    },
+    {
+      "name": "Se alle love ifast ejendom",
+      "slug": "fast-ejendom",
+      "url": "https://regelrytter.dk/kategori/fast-ejendom",
+      "lawCount": 18,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "bekendtgoerelse-af-lov-om-hegn-hegnsloven",
+        "bekendtgoerelse-af-lov-om-landbrugsejendomme",
+        "ejerlejlighedsloven"
+      ]
+    },
+    {
+      "name": "Se alle love iforbrugerret",
+      "slug": "forbrugerret",
+      "url": "https://regelrytter.dk/kategori/forbrugerret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "bekendtgoerelse-af-lov-om-kreditaftaler",
+        "bekendtgoerelse-om-fremgangsmaderne-ved-indgaelse-af-offentlige-vareindkoebskontrakter-offentlige-tjenesteydelseskontrakter-og-offentlige-bygge-og-anlaegskontrakter",
+        "betaenkning-over-forslag-til-udbudsloven"
+      ]
+    },
+    {
+      "name": "Se alle love iit- og persondataret",
+      "slug": "it-og-persondataret",
+      "url": "https://regelrytter.dk/kategori/it-og-persondataret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "aktivloven",
+        "barnets-lov-2023",
+        "barnets-lov"
+      ]
+    },
+    {
+      "name": "Se alle love imiljøret",
+      "slug": "miljoret",
+      "url": "https://regelrytter.dk/kategori/miljoret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "naturbeskyttelsesloven",
+        "planloven",
+        "betaenkning-over-forslag-til-lov-om-klima"
+      ]
+    },
+    {
+      "name": "Se alle love ioffentlig ret",
+      "slug": "offentlig-ret",
+      "url": "https://regelrytter.dk/kategori/offentlig-ret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "forvaltningsloven",
+        "offentlighedsloven",
+        "bekendtgoerelse-af-lov-om-offentlige-myndigheders-registre"
+      ]
+    },
+    {
+      "name": "Se alle love iselskabsret",
+      "slug": "selskabsret",
+      "url": "https://regelrytter.dk/kategori/selskabsret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "autorisationsloven-2018",
+        "autorisationsloven-2019",
+        "autorisationsloven"
+      ]
+    },
+    {
+      "name": "Se alle love iskatteret",
+      "slug": "skatteret",
+      "url": "https://regelrytter.dk/kategori/skatteret",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "ligningsloven-2019",
+        "ligningsloven-2021",
+        "ligningsloven"
+      ]
+    },
+    {
+      "name": "Se alle love isocialret",
+      "slug": "socialret",
+      "url": "https://regelrytter.dk/kategori/socialret",
+      "lawCount": 11,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "bekendtgoerelse-om-ydelser-efter-lov-om-social-service-og-barnets-lov-under-midlertidige-ophold-i-udlandet-2023",
+        "bekendtgoerelse-om-ydelser-efter-lov-om-social-service-og-barnets-lov-under-midlertidige-ophold-i-udlandet",
+        "lov-om-aendring-af-lov-om-forsikringsaftaler-og-lov-om-tilsyn-med-firmapensionskasser-udvidelse-af-forbud-mod-indhentelse-og-anvendelse-af-visse-helbredsmaessige-oplysninger-ved-tegning-m-v-af-forsikringer-og-pensioner"
+      ]
+    },
+    {
+      "name": "Se alle love istrafferet",
+      "slug": "strafferet",
+      "url": "https://regelrytter.dk/kategori/strafferet",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "straffeloven",
+        "lov-om-klimaradet-klimapolitisk-redegoerelse-og-fastsaettelse-af-nationale-klimamalsaetninger",
+        "lov-om-aendring-af-forskellige-lovbestemmelser-i-forbindelse-med-gennemfoerelsen-af-en-lov-om-fuldbyrdelse-af-straf-m-v"
+      ]
+    },
+    {
+      "name": "Se alle love isundhedsret",
+      "slug": "sundhedsret",
+      "url": "https://regelrytter.dk/kategori/sundhedsret",
+      "lawCount": 12,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "betaenkning-over-forslag-til-lov-om-behandling-af-personoplysninger",
+        "forslag-til-lov-om-behandling-af-personoplysninger",
+        "forslag-til-lov-om-behandling-af-personoplysninger-1999"
+      ]
+    },
+    {
+      "name": "Se alle love itrafik og transport",
+      "slug": "trafik-og-transport",
+      "url": "https://regelrytter.dk/kategori/trafik-og-transport",
+      "lawCount": 20,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "atomanlaegsloven",
+        "bekendtgoerelse-af-international-koebelov",
+        "bekendtgoerelse-af-lov-om-samordning-af-fremgangsmaderne-ved-indgaelse-af-bygge-og-anlaegskontrakter-og-indkoeb-m-v-1"
+      ]
+    },
+    {
+      "name": "Se alle love iuddannelsesret",
+      "slug": "uddannelsesret",
+      "url": "https://regelrytter.dk/kategori/uddannelsesret",
+      "lawCount": 7,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "lov-om-aendring-af-lov-om-erstatningsansvar-tortgodtgoerelse-ved-digitale-seksuelle-kraenkelser",
+        "lov-om-aendring-af-lov-om-ophavsret-n-forlaengelse-af-beskyttelsestiden-for-udoevende-kunstnere-og-fremstillere-af-lydoptagelser-ophoer-af-aftale-om-overdragelse-af-en-udoevende-kunstners-rettigheder-udoevende-kunstneres-ret-til-arligt-supplerende-vederlag-m-v",
+        "kategorier"
+      ]
+    },
+    {
+      "name": "Se alle love iudlændingeret",
+      "slug": "udlandingeret",
+      "url": "https://regelrytter.dk/kategori/udlandingeret",
+      "lawCount": 7,
+      "sampleLaws": [
+        "om",
+        "kontakt",
+        "lov-om-aendring-af-udlaendingeloven-integrationsloven-og-forskellige-andre-love-forenkling-af-regler-herunder-om-klageadgangen-til-udlaendingenaevnet-og-indrejseforbud-indfoerelse-af-en-bagatelgraense-for-tilbagebetaling-af-gebyr-praecisering-af-adgangen-og-aendring-af-kompetencen-til-at-forlaenge-en-udrejsefrist-opfoelgning-pa-evaluering-af-danmarks-anvendelse-af-schengenreglerne-om-bl-a-tilbagesendelse-og-praecisering-af-raekkevidden-af-indrejseforbud-omfattet-af-udsendelsesdirektivet-m-v",
+        "lov-om-aendring-af-udlaendingeloven-lov-om-socialtilsyn-lov-om-social-service-og-barnets-lov-aendringer-af-regler-pa-udlaendingeomradet-vedroerende-indkvartering-ydelser-og-sociale-indsatser-m-v",
+        "kategorier"
+      ]
+    }
+  ],
+  "detailedLaws": [
+    {
+      "title": "Ferieloven",
+      "slug": "ferieloven",
+      "category": "arbejdsret",
+      "url": "https://regelrytter.dk/ferieloven",
+      "lawNumber": "LOV nr 152 af 21.2.2024",
+      "summary": "Kilde:www.retsinformation.dk",
+      "content": "Se fuld lovtekst på regelrytter.dk",
+      "chapters": 37
+    },
+    {
+      "title": "Ligebehandlingsloven",
+      "slug": "ligebehandlingsloven",
+      "category": "anden-lovgivning",
+      "url": "https://regelrytter.dk/ligebehandlingsloven",
+      "lawNumber": "LOV nr 942 af 31.7.2024",
+      "summary": "Kilde:www.retsinformation.dk",
+      "content": "Se fuld lovtekst på regelrytter.dk",
+      "chapters": 28
+    },
+    {
+      "title": "Grundloven",
+      "slug": "grundloven",
+      "category": "anden-lovgivning",
+      "url": "https://regelrytter.dk/grundloven",
+      "lawNumber": "LOV nr 169 af 5.6.1953",
+      "summary": "Danmarks Grundlov fastlægger rigets styreform, de tre statsmagters opdeling og borgernes grundlæggende rettigheder. Den sikrer demokratisk magtudøvelse, retssikkerhed og individets frihed i Danmark.",
+      "content": "Se fuld lovtekst på regelrytter.dk",
+      "chapters": 2
+    },
+    {
+      "title": "Straffeloven",
+      "slug": "straffeloven",
+      "category": "strafferet",
+      "url": "https://regelrytter.dk/straffeloven",
+      "lawNumber": "LOV nr 1360 af 30.9.2022",
+      "summary": "Dansk straffelov fastlægger betingelser for straf, strafbare handlinger og retsfølger samt rammer for retsanvendelse. Loven sikrer retssikkerhed ved krav om lovhjemmel og regulerer bl.a. strafudmåling, ansvar og undtagelser.",
+      "content": "Se fuld lovtekst på regelrytter.dk",
+      "chapters": 58
+    },
+    {
+      "title": "Forvaltningsloven",
+      "slug": "forvaltningsloven",
+      "category": "offentlig-ret",
+      "url": "https://regelrytter.dk/forvaltningsloven",
+      "lawNumber": "LOV nr 433 af 3.5.2014",
+      "summary": "Forvaltningsloven regulerer offentlig forvaltnings sagsbehandling, sikrer retssikkerhed gennem regler om inhabilitet, aktindsigt, partshøring, begrundelser, og tavshedspligt, og fastlægger rammer for god forvaltningsskik i Danmark.",
+      "content": "Se fuld lovtekst på regelrytter.dk",
+      "chapters": 34
+    },
+    {
+      "title": "Persondataloven",
+      "slug": "persondataloven",
+      "category": "anden-lovgivning",
+      "url": "https://regelrytter.dk/persondataloven",
+      "lawNumber": "LOV nr 429 af 2.6.2000",
+      "summary": "Kilde:www.retsinformation.dk",
+      "content": "Se fuld lovtekst på regelrytter.dk",
+      "chapters": 4
+    }
+  ]
+}

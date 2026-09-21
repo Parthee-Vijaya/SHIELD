@@ -1,0 +1,78 @@
+id: ai_act.art50.transparens
+kilde:
+  lov: "EU AI-forordningen (Forordning 2024/1689)"
+  artikel: "Artikel 50"
+  citat: "Udbydere skal sikre, at AI-systemer, der er bestemt til at interagere direkte med fysiske personer, udformes og udvikles på en sådan måde, at de pågældende fysiske personer informeres om, at de interagerer med et AI-system, medmindre dette er åbenbart for en rimeligt informeret, opmærksom og påpasselig fysisk person..."
+  url: "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/dan"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  all_of:
+    - signal: system.uses_ai
+  # any_of is implied by all_of being met; we narrow further with predikater
+
+predikater:
+  - id: scenarie
+    spørgsmål: "Hvilket art. 50-scenarie er relevant for systemet?"
+    type: enum
+    enum_values:
+      - chatbot_eller_konversation
+      - foelelses_eller_biometrisk_genkendelse
+      - syntetisk_indhold_billed_video_lyd
+      - dyb_falsk_deepfake
+      - tekst_offentliggjort_om_offentlig_interesse
+      - intet_af_ovenstaaende
+    hjælp: |
+      Art. 50 dækker fire scenarier:
+      (1) AI der interagerer med personer (chatbots) → personer skal informeres
+      (2) Følelsesgenkendelse / biometrisk kategorisering → registrerede skal informeres
+      (3) Syntetisk indhold (billed/video/lyd) → indholdet skal markeres maskinlæsbart
+      (4) Deepfakes → skal mærkes som kunstigt frembragt eller manipuleret
+      Plus: tekst om emner af offentlig interesse → skal mærkes som AI-genereret
+
+  - id: aabenbart_at_det_er_ai
+    spørgsmål: "Er det åbenbart for en almindelig opmærksom person at de interagerer med AI / ser AI-genereret indhold?"
+    type: boolean
+    hjælp: "Hvis ja, kan oplysningspligten i visse tilfælde lempes (kun gælder scenarie 1, ikke deepfakes/syntetisk indhold)."
+
+  - id: kunstnerisk_eller_satirisk_undtagelse
+    spørgsmål: "Hvis deepfake/syntetisk indhold: er det åbenlyst kunstnerisk, kreativt, satirisk eller fiktivt værk?"
+    type: boolean
+    hjælp: "Art. 50, stk. 4: deepfake-mærkningskrav lempes ved åbenlyst kunstneriske/kreative/satiriske/fiktive værker — men oplysning om eksistensen af det manipulerede indhold må ikke begrænse værkets udtryk."
+
+afgørelse:
+  hvis: "scenarie != intet_af_ovenstaaende AND NOT aabenbart_at_det_er_ai AND NOT kunstnerisk_eller_satirisk_undtagelse"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Systemet udløser oplysningskrav under art. 50. Personer skal informeres senest ved første interaktion / syntetisk indhold skal mærkes maskinlæsbart."
+    krav:
+      - "Informér personer om at de interagerer med AI senest ved første interaktion (art. 50, stk. 1)"
+      - "Hvis følelses-/biometrisk-kategorisering: informér registrerede iht. GDPR + art. 50, stk. 3"
+      - "Hvis syntetisk indhold: implementér maskinlæsbar mærkning (watermark / metadata) — art. 50, stk. 2"
+      - "Hvis deepfake: oplys at indholdet er kunstigt frembragt eller manipuleret (art. 50, stk. 4)"
+      - "Hvis AI-genereret tekst om offentlig interesse-emner: oplys om AI-oprindelse (art. 50, stk. 4, sidste afsnit)"
+    evidens_påkrævet:
+      - oplysningstekst_til_brugere
+      - watermark_eller_metadata_specifikation
+      - mærkning_af_syntetisk_indhold
+  ellers:
+    status: GO
+    begrundelse: "Enten falder systemet uden for art. 50, eller AI-karakteren er åbenbar / undtagelsen for kunstneriske værker gælder."
+    krav: []
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE selv vurdere om transparenskravet gælder."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["ai_act", "transparens", "deepfake", "chatbot"]

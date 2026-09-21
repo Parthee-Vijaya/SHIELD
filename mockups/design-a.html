@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>Hjemmel · Design A — Stille autoritet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f8fafc;
+    --ink: #0f172a;
+    --ink-soft: #475569;
+    --line: #e2e8f0;
+    --teglrod: #c94416;
+    --teglrod-dark: #a03612;
+    --teglrod-soft: #fef0eb;
+  }
+  html, body {
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    font-size: 16px;
+  }
+  /* Top nav */
+  .topbar {
+    border-bottom: 1px solid var(--line);
+    padding: 18px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .brand {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .brand span { color: var(--teglrod); }
+  nav ul { display: flex; gap: 32px; list-style: none; align-items: center; }
+  nav a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  nav a:hover { color: var(--ink); }
+  .login {
+    background: var(--ink);
+    color: white;
+    padding: 9px 18px;
+    border-radius: 6px;
+  }
+  .login:hover { background: var(--teglrod) !important; }
+  /* Crumb */
+  .container {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 56px 40px 80px;
+  }
+  .crumb {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 28px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .crumb a { color: var(--ink-soft); text-decoration: none; }
+  .crumb a:hover { color: var(--ink); }
+  .crumb-sep { color: #cbd5e1; }
+  /* Header */
+  .case-eyebrow {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 18px;
+  }
+  .case-meta {
+    color: var(--ink-soft);
+    font-size: 15px;
+    margin-bottom: 40px;
+  }
+  /* Status hero */
+  .verdict {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 56px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .verdict-badge {
+    background: white;
+    border: 1px solid var(--teglrod);
+    color: var(--teglrod);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .verdict-text h2 {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .verdict-text p { color: var(--ink-soft); font-size: 15px; }
+  /* Section */
+  section { margin-bottom: 64px; }
+  h2.sect {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+  }
+  .sect-lede {
+    color: var(--ink-soft);
+    font-size: 15px;
+    margin-bottom: 28px;
+  }
+  /* Rule cards */
+  .rule {
+    border-top: 1px solid var(--line);
+    padding: 32px 0;
+  }
+  .rule:last-child { border-bottom: 1px solid var(--line); }
+  .rule-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+  .rule-title {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .rule-source {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+  }
+  .rule-source a {
+    color: var(--teglrod);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+  .rule-source a:hover { border-bottom-color: var(--teglrod); }
+  .pill {
+    background: var(--teglrod-soft);
+    color: var(--teglrod-dark);
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .pill-go { background: #ecfdf5; color: #166534; }
+  blockquote {
+    border-left: 3px solid var(--teglrod);
+    padding: 4px 0 4px 20px;
+    margin: 20px 0;
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 18px;
+    color: var(--ink);
+    line-height: 1.55;
+    font-style: italic;
+  }
+  blockquote cite {
+    display: block;
+    font-style: normal;
+    font-family: Inter, sans-serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    letter-spacing: 0.02em;
+  }
+  .req-list { list-style: none; margin-top: 12px; }
+  .req-list li {
+    padding-left: 28px;
+    position: relative;
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  .req-list li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--teglrod);
+    font-weight: 700;
+  }
+  /* Evidence checklist */
+  .evidence {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 32px;
+  }
+  .ev-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ev-row:last-child { border-bottom: none; }
+  .ev-check {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .ev-check.done {
+    background: var(--teglrod);
+    border-color: var(--teglrod);
+    color: white;
+  }
+  .ev-check.done::after { content: "✓"; font-size: 13px; font-weight: 700; }
+  .ev-name { flex: 1; font-size: 15px; }
+  .ev-name.done { color: var(--ink-soft); text-decoration: line-through; }
+  .ev-status {
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  /* Footer */
+  .audit {
+    margin-top: 64px;
+    padding: 24px 28px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-family: 'JetBrains Mono', SF Mono, Consolas, monospace;
+    line-height: 1.7;
+  }
+  .audit b { color: var(--ink); font-weight: 600; }
+  .back {
+    display: inline-block;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-decoration: none;
+  }
+  .back:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Hjemmel<span>.</span></div>
+  <nav>
+    <ul>
+      <li><a href="#">Sager</a></li>
+      <li><a href="#">Vurdering</a></li>
+      <li><a href="#">Videnbase</a></li>
+      <li><a href="#" class="login">Log ud</a></li>
+    </ul>
+  </nav>
+</div>
+
+<div class="container">
+
+  <a class="back" href="index.html">← Tilbage til oversigt</a>
+
+  <div class="crumb">
+    <a href="#">Sager</a>
+    <span class="crumb-sep">/</span>
+    <a href="#">Borgerassistent — Pension</a>
+    <span class="crumb-sep">/</span>
+    <span>Quick Check</span>
+  </div>
+
+  <div class="case-eyebrow">Sag · K-2026-0184</div>
+  <h1>Borgerassistent — Pensionsansøgning</h1>
+  <p class="case-meta">Oprettet 2026-04-29 af Mette Nielsen, Center for Borgerservice · Sidste vurdering 2026-05-07</p>
+
+  <div class="verdict">
+    <div class="verdict-badge">Betinget GO</div>
+    <div class="verdict-text">
+      <h2>Tre regler udløser krav før idriftsættelse</h2>
+      <p>Systemet kan tages i brug under forudsætning af at otte konkrete artefakter etableres og tre dokumentationskrav opfyldes.</p>
+    </div>
+  </div>
+
+  <section>
+    <h2 class="sect">Lov-grundlag</h2>
+    <p class="sect-lede">Hver afgørelse hjemles direkte i den lovartikel den udspringer af. Klik på artiklen for at læse den i sin helhed.</p>
+
+    <div class="rule">
+      <div class="rule-head">
+        <div>
+          <div class="rule-title">Klassificeret som højrisiko-AI-system</div>
+          <div class="rule-source"><a href="https://eur-lex.europa.eu/eli/reg/2024/1689/oj/dan">EU AI-forordningen · Artikel 6, stk. 2 + Bilag III</a> · sidst verificeret 2026-05-07</div>
+        </div>
+        <span class="pill">Betinget GO</span>
+      </div>
+      <blockquote>
+        Ud over de højrisiko-AI-systemer, der er omhandlet i stk. 1, anses AI-systemer, der er omhandlet i bilag III, som højrisiko.
+        <cite>— Forordning 2024/1689, art. 6, stk. 2</cite>
+      </blockquote>
+      <p style="font-size:15px;color:var(--ink-soft);margin-top:18px;">Anvendelsesområde: <b style="color:var(--ink);">væsentlige offentlige tjenester</b>. Profileringspredikatet er sandt. Reglen kræver derfor:</p>
+      <ul class="req-list">
+        <li>Etabler risikostyringssystem (art. 9)</li>
+        <li>Sikr datasæt-kvalitet (art. 10)</li>
+        <li>Lav teknisk dokumentation (art. 11) inden idriftsættelse</li>
+        <li>Sikr menneskelig overvågning (art. 14)</li>
+        <li>Registrér i EU-databasen for højrisikosystemer (art. 49)</li>
+      </ul>
+    </div>
+
+    <div class="rule">
+      <div class="rule-head">
+        <div>
+          <div class="rule-title">Helautomatiseret afgørelse med retsvirkning</div>
+          <div class="rule-source"><a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj/dan#art_22">GDPR · Artikel 22, stk. 1</a> · sidst verificeret 2026-05-07</div>
+        </div>
+        <span class="pill">Betinget GO</span>
+      </div>
+      <blockquote>
+        Den registrerede har ret til ikke at være genstand for en afgørelse, der alene er baseret på automatisk behandling, herunder profilering, som har retsvirkning eller på tilsvarende vis betydeligt påvirker den pågældende.
+        <cite>— Forordning 2016/679, art. 22, stk. 1</cite>
+      </blockquote>
+      <ul class="req-list">
+        <li>Implementér ret til menneskelig indgriben (art. 22, stk. 3)</li>
+        <li>Implementér ret til at bestride afgørelsen</li>
+        <li>Informér registrerede om logikken bag afgørelsen og forventede konsekvenser</li>
+      </ul>
+    </div>
+
+    <div class="rule">
+      <div class="rule-head">
+        <div>
+          <div class="rule-title">Begrundelsespligt ved skriftlig forvaltningsafgørelse</div>
+          <div class="rule-source"><a href="https://www.retsinformation.dk/eli/lta/2014/433">Forvaltningsloven · § 22</a> · sidst verificeret 2026-05-07</div>
+        </div>
+        <span class="pill">Betinget GO</span>
+      </div>
+      <blockquote>
+        En afgørelse skal, når den meddeles skriftligt, være ledsaget af en begrundelse, medmindre afgørelsen fuldt ud giver den pågældende part medhold.
+        <cite>— Forvaltningsloven, § 22</cite>
+      </blockquote>
+      <ul class="req-list">
+        <li>AI-genereret begrundelse skal verificeres af kompetent sagsbehandler INDEN afsendelse</li>
+        <li>Sikr at AI ikke "opfinder" lovhenvisninger — alle paragraffer skal være verificerbare</li>
+        <li>Etablér klagevejledning (§ 25) i samme dokument</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sect">Evidens-checkliste</h2>
+    <p class="sect-lede">Otte artefakter skal være på plads. Tre er allerede dokumenteret.</p>
+    <div class="evidence">
+      <div class="ev-row"><div class="ev-check done"></div><div class="ev-name done">Risikostyringsplan</div><div class="ev-status">Godkendt 2026-05-02</div></div>
+      <div class="ev-row"><div class="ev-check done"></div><div class="ev-name done">Datasæt-dokumentation</div><div class="ev-status">Godkendt 2026-05-04</div></div>
+      <div class="ev-row"><div class="ev-check done"></div><div class="ev-name done">DPIA-dokument</div><div class="ev-status">Godkendt 2026-04-30</div></div>
+      <div class="ev-row"><div class="ev-check"></div><div class="ev-name">Teknisk dokumentation (art. 11)</div><div class="ev-status">Mangler</div></div>
+      <div class="ev-row"><div class="ev-check"></div><div class="ev-name">Logningsspecifikation</div><div class="ev-status">Mangler</div></div>
+      <div class="ev-row"><div class="ev-check"></div><div class="ev-name">Human oversight-protokol</div><div class="ev-status">Under udarbejdelse</div></div>
+      <div class="ev-row"><div class="ev-check"></div><div class="ev-name">Menneskelig indgriben-proces</div><div class="ev-status">Mangler</div></div>
+      <div class="ev-row"><div class="ev-check"></div><div class="ev-name">EU-database registrering</div><div class="ev-status">Afventer art. 49-skema</div></div>
+    </div>
+  </section>
+
+  <div class="audit">
+    <b>Audit-spor</b><br>
+    rule_engine v3.0.0-alpha.1 · evalueret 2026-05-07 11:42:18 CEST<br>
+    3 regler triggered · status: BETINGET-GO · aggregat-precedens: NO-GO &gt; BETINGET-GO &gt; GO<br>
+    deterministisk afgørelse · ingen LLM-input til selve afgørelsen
+  </div>
+
+</div>
+
+</body>
+</html>

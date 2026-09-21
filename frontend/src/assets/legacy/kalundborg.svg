@@ -1,0 +1,8 @@
+<svg width="120" height="40" viewBox="0 0 240 80" xmlns="http://www.w3.org/2000/svg">
+  <rect width="240" height="80" rx="16" fill="#0F3B66"/>
+  <rect x="16" y="16" width="48" height="48" rx="10" fill="#1C64F2"/>
+  <path d="M32 52 L40 28 L48 52 Z" fill="#E0F2FF"/>
+  <path d="M36 44 L44 44 L40 32 Z" fill="#0F3B66" opacity="0.8"/>
+  <text x="80" y="38" font-family="'Inter', sans-serif" font-size="22" font-weight="700" fill="#FFFFFF">Kalundborg</text>
+  <text x="80" y="58" font-family="'Inter', sans-serif" font-size="16" font-weight="500" fill="#9CC9FF">Kommune</text>
+</svg>

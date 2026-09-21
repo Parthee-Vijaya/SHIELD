@@ -1,0 +1,371 @@
+[
+  {
+    "id": 1,
+    "udgiver": "Dansk Industri",
+    "aar": 2025,
+    "titel": "Kunstig intelligens kan medfinansiere løft af forsvaret",
+    "link": "https://www.danskindustri.dk/arkiv/analyser/2025/02/kunstig-intelligens-kan-medfinansiere-loft-af-forsvaret/",
+    "omraade": "Forsvar",
+    "resume": "Analysen viser hvordan AI-teknologi kan effektivisere forsvarsudgifter og frigøre ressourcer til at styrke Danmarks militære kapacitet gennem automatisering og intelligente systemer."
+  },
+  {
+    "id": 2,
+    "udgiver": "Dataetisk Råd",
+    "aar": 2025,
+    "titel": "Generativ AI og offentlige myndigheder: Pålidelighed og dataetik",
+    "link": "https://dataetiskraad.dk/Media/638741872646360392/Dataetisk%20R%C3%A5ds%20rapport%20om%20generativ%20AI.pdf",
+    "omraade": "Generativ AI",
+    "resume": "Rapporten undersøger dataetiske udfordringer ved brug af generativ AI i det offentlige, med fokus på pålidelighed, bias og ansvarlig implementering af ChatGPT-lignende systemer."
+  },
+  {
+    "id": 3,
+    "udgiver": "Dansk Industri",
+    "aar": 2024,
+    "titel": "Stort potentiale i brugen af kunstig intelligens i staten og især inden for offentlig administration",
+    "link": "https://www.danskindustri.dk/arkiv/analyser/2024/4/stort-potentiale-i-brug-af-kunstig-intelligens-i-staten-og-isar-inden-for-offentlig-administration/",
+    "omraade": "Generelt",
+    "resume": "Undersøgelse af AI's potentiale i statslig administration med konkrete cases om automatisering af sagsbehandling, dokumenthåndtering og borgerbetjening."
+  },
+  {
+    "id": 4,
+    "udgiver": "Dataetisk Råd",
+    "aar": 2024,
+    "titel": "Dataetiske perspektiver ved brug af medarbejderdata",
+    "link": "https://dataetiskraad.dk/Media/638512828189129719/Dataetiske_perspektiver_medarbejderdata_v12_Web.pdf",
+    "omraade": "Beskæftigelse",
+    "resume": "Gennemgang af etiske overvejelser når arbejdsgivere anvender medarbejderdata til AI-baseret overvågning, performance tracking og rekruttering."
+  },
+  {
+    "id": 5,
+    "udgiver": "Digitaliseringsstyrelsen",
+    "aar": 2024,
+    "titel": "Evaluering af Signaturprojekterne",
+    "link": "https://digst.dk/media/sgjl0dd0/evalueringen-af-signaturprojekterne-2024.pdf",
+    "omraade": "Signaturprojekter",
+    "resume": "Evaluering af de statsfinansierede AI-signaturprojekter i Danmark med erfaringer, resultater og anbefalinger til fremtidige offentlige AI-initiativer."
+  },
+  {
+    "id": 6,
+    "udgiver": "OECD",
+    "aar": 2024,
+    "titel": "G7 Toolkit for Artificial Intelligence in the Public Sector",
+    "link": "https://www.oecd.org/en/publications/g7-toolkit-for-artificial-intelligence-in-the-public-sector_421c1244-en.html",
+    "omraade": "Generelt",
+    "resume": "International værktøjskasse til ansvarlig implementering af AI i den offentlige sektor med guidelines for governance, risikovurdering og borgerinddragelse."
+  },
+  {
+    "id": 7,
+    "udgiver": "OECD",
+    "aar": 2024,
+    "titel": "G20 Compendium on Data Access and Sharing Across the Public Sector and with the Private Sector for Public Interest",
+    "link": "https://www.oecd.org/en/publications/g20-compendium-on-data-access-and-sharing-across-the-public-sector-and-with-the-private-sector-for-public-interest_df1031a4-en.html",
+    "omraade": "Generelt",
+    "resume": "Best practices for datadeling mellem offentlig og privat sektor til udvikling af AI-løsninger, med fokus på databeskyttelse og samfundsnytte."
+  },
+  {
+    "id": 8,
+    "udgiver": "KL, ATP og Digitaliserings- og ligestillingsministeriet",
+    "aar": 2023,
+    "titel": "Sprogmodeller i Danmark - En analyse af mulige strategiske valg og scenarier",
+    "link": "https://www.kl.dk/videncenter/nyheder/2023/ny-analyse-kaster-lys-over-potentialet-med-store-sprogmodeller-i-den-offentlige-sektor",
+    "omraade": "Sprogmodeller",
+    "resume": "Strategisk analyse af muligheder for danske sprogmodeller vs. internationale løsninger, med vurdering af suverænitet, omkostninger og innovationspotentiale."
+  },
+  {
+    "id": 9,
+    "udgiver": "Datatilsynet",
+    "aar": 2023,
+    "titel": "Brug af kunstig intelligens i den offentlige sektor, Kortlægning",
+    "link": "https://www.datatilsynet.dk/Media/638321078593916218/Brug%20af%20kunstig%20intelligens%20i%20den%20offentlige%20sektor_%20kortl%C3%A6gning.pdf",
+    "omraade": "Generelt",
+    "resume": "Datatilsynets kortlægning af AI-anvendelse i danske myndigheder med fokus på GDPR-compliance, datasikkerhed og beskyttelse af personoplysninger."
+  },
+  {
+    "id": 10,
+    "udgiver": "Digitaliseringsstyrelsen",
+    "aar": 2023,
+    "titel": "Status på signaturprojekterne 2022",
+    "link": "https://digst.dk/media/28384/status-paa-signaturprojekterne-2022.pdf",
+    "omraade": "Generelt",
+    "resume": "Statusrapport på AI-signaturprojekternes fremdrift, læringspunkter og udfordringer i implementeringsfasen med cases fra kommuner og regioner."
+  },
+  {
+    "id": 11,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2023,
+    "titel": "Mere fokus på menneskeretten i den kommende AI-forordning",
+    "link": "https://menneskeret.dk/files/media/document/Analysenotat%20om%20EU%20regler%20om%20kunstig%20intelligens_januar2023_accessible.pdf",
+    "omraade": "Generelt",
+    "resume": "Analysenotat om menneskeretlige perspektiver i EU's AI Act med anbefalinger til styrkelse af grundlæggende rettigheder og non-diskrimination."
+  },
+  {
+    "id": 12,
+    "udgiver": "OECD",
+    "aar": 2023,
+    "titel": "AI Language Models: Technological, Socio-Economic and Policy Considerations",
+    "link": "https://www.oecd-ilibrary.org/docserver/13d38f92-en.pdf",
+    "omraade": "Sprogmodeller",
+    "resume": "Omfattende analyse af store sprogmodellers teknologi, samfundsøkonomiske implikationer og politiske overvejelser omkring regulering og innovation."
+  },
+  {
+    "id": 13,
+    "udgiver": "UNESCO",
+    "aar": 2023,
+    "titel": "UNESCO's Recommendation on the Ethics of Artificial Intelligence: key facts",
+    "link": "https://unesdoc.unesco.org/ark:/48223/pf0000385082",
+    "omraade": "Generelt",
+    "resume": "UNESCO's etiske rammeværk for AI-udvikling og -anvendelse med principper for menneskelig værdighed, miljøbeskyttelse og kulturel diversitet."
+  },
+  {
+    "id": 14,
+    "udgiver": "UNESCO",
+    "aar": 2023,
+    "titel": "Missing Links in AI Governance",
+    "link": "https://unesdoc.unesco.org/ark:/48223/pf0000384787",
+    "omraade": "Generelt",
+    "resume": "Identifikation af huller i global AI-governance med fokus på internationale samarbejdsmekanismer, standarder og implementering af etiske retningslinjer."
+  },
+  {
+    "id": 15,
+    "udgiver": "Danish Life Science Cluster",
+    "aar": 2022,
+    "titel": "Analyse af juridiske rammer for brug af sundhedsdata til forskning og udvikling af innovative løsninger",
+    "link": "https://sum.dk/Media/637798254985572675/Analyse%20af%20juridiske%20rammer%20for%20brug%20af%20sundhedsdata%20til%20forskning%20og%20udvikling%20af%20innovative%20l%C3%B8sninger.pdf",
+    "omraade": "Sundhed",
+    "resume": "Juridisk analyse af muligheder og barrierer for anvendelse af sundhedsdata i AI-forskning, med forslag til forbedring af lovgivning og dataadgang."
+  },
+  {
+    "id": 16,
+    "udgiver": "Dataetisk Råd",
+    "aar": 2022,
+    "titel": "Dataetisk Råds anbefalinger til ansigtsgenkendelse i det offentlige rum og alment tilgængelige steder",
+    "link": "https://nationaltcenterforetik.dk/Media/637895978472559049/Dataetisk%20Ra%C2%B0ds%20anbefalinger%20om%20ansigtsgenkendelse.pdf",
+    "omraade": "Ansigtsgenkendelse",
+    "resume": "Etiske retningslinjer for brug af ansigtsgenkendelse i det offentlige rum med vurdering af proportionalitet, transparens og borgernes privatlivsbeskyttelse."
+  },
+  {
+    "id": 17,
+    "udgiver": "EU AI Watch",
+    "aar": 2022,
+    "titel": "European Landscape on the Use of Artificial Intelligence by the Public Sector",
+    "link": "https://op.europa.eu/en/publication-detail/-/publication/7ed5aa59-dca1-11ec-a534-01aa75ed71a1/language-en",
+    "omraade": "EU",
+    "resume": "Overblik over AI-implementering i europæiske offentlige sektorer med cases, trends og komparative analyser på tværs af medlemslande."
+  },
+  {
+    "id": 18,
+    "udgiver": "Finansministeriet",
+    "aar": 2022,
+    "titel": "Danmarks digitaliseringsstrategi 2022-2026",
+    "link": "https://www.regeringen.dk/media/11324/danmarks-digitaliseringsstrategi-sammen-om-den-digitale-udvikling.pdf",
+    "omraade": "Generelt",
+    "resume": "National strategi for digitalisering inklusiv AI-indsatser, med mål for effektivisering, innovation og digital kompetenceudvikling i den offentlige sektor."
+  },
+  {
+    "id": 19,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2022,
+    "titel": "Tilsyn med efterretningstjenester",
+    "link": "https://menneskeret.dk/udgivelser/tilsyn-efterretningstjenester",
+    "omraade": "Efterretning, data",
+    "resume": "Analyse af tilsynsmekanismer med efterretningstjenesters brug af AI og overvågningsteknologi med fokus på kontrol og retssikkerhed."
+  },
+  {
+    "id": 20,
+    "udgiver": "Joint Research Centre (European Commission)",
+    "aar": 2022,
+    "titel": "AI Watch, road to the adoption of artificial intelligence by the public sector",
+    "link": "https://op.europa.eu/en/publication-detail/-/publication/34251428-dc12-11ec-a534-01aa75ed71a1",
+    "omraade": "EU",
+    "resume": "EU-kommissionens roadmap for AI-adoption i den offentlige sektor med barrierer, enablers og anbefalinger til policy-makers."
+  },
+  {
+    "id": 21,
+    "udgiver": "KMD",
+    "aar": 2022,
+    "titel": "Ansigtsgenkendelse – den danske befolkningskendskab og holdninger",
+    "link": "https://www.kmd.dk/indsigter/kmd-analyse-ansigtsgenkendelse-2022",
+    "omraade": "Ansigtsgenkendelse",
+    "resume": "Befolkningsundersøgelse af danskernes kendskab til og holdninger omkring ansigtsgenkendelse med indsigter til ansvarlig implementering."
+  },
+  {
+    "id": 22,
+    "udgiver": "Rambøll",
+    "aar": 2022,
+    "titel": "IT i praksis 2022-2023",
+    "link": "https://7520151.fs1.hubspotusercontent-na1.net/hubfs/7520151/RMC/Content/IT%20i%20praksis%202022-2023.pdf",
+    "omraade": "Generelt",
+    "resume": "Årlig undersøgelse af IT-trends i den offentlige sektor inklusiv AI-adoption, cloud computing og cybersikkerhed med benchmark data."
+  },
+  {
+    "id": 23,
+    "udgiver": "Regeringen, KL & Danske Regioner",
+    "aar": 2022,
+    "titel": "Digitalisering der løfter samfundet: Den fællesoffentlige digitaliseringsstrategi 2022-2025",
+    "link": "https://fm.dk/media/26022/digitalisering-der-loefter-samfundet_den-faellesoffentlige-digitaliseringsstrategi-2022-2025_web.pdf",
+    "omraade": "Generelt",
+    "resume": "Fællesoffentlig strategi med AI som central pille for effektivisering, bedre service og dataadgang på tværs af stat, kommuner og regioner."
+  },
+  {
+    "id": 24,
+    "udgiver": "SIRI-Kommissionen",
+    "aar": 2022,
+    "titel": "En Fremtidssikret Velfærdsstat med AI",
+    "link": "https://ida.dk/media/12512/et-fremtidssikret-velfaerdssystem-med-ai-2022.pdf",
+    "omraade": "Generelt",
+    "resume": "Vision for AI i velfærdsstaten med konkrete anbefalinger til sundhed, ældrepleje, uddannelse og social service for at sikre fremtidig bæredygtighed."
+  },
+  {
+    "id": 25,
+    "udgiver": "UNESCO",
+    "aar": 2022,
+    "titel": "Multistakeholder AI development: 10 building blocks for inclusive policy design",
+    "link": "https://unesdoc.unesco.org/ark:/48223/pf0000382570",
+    "omraade": "Generelt",
+    "resume": "Guide til involvering af multiple interessenter i AI-policy med fokus på inklusion, transparens og demokratisk deltagelse i teknologiudvikling."
+  },
+  {
+    "id": 26,
+    "udgiver": "UNESCO",
+    "aar": 2022,
+    "titel": "Artificial intelligence and digital transformation: competencies for civil servants",
+    "link": "https://unesdoc.unesco.org/ark:/48223/pf0000383325",
+    "omraade": "Generelt",
+    "resume": "Kompetenceramme for offentligt ansatte om AI og digital transformation med fokus på kritisk tænkning, dataforståelse og etisk anvendelse."
+  },
+  {
+    "id": 27,
+    "udgiver": "UNESCO",
+    "aar": 2022,
+    "titel": "Inside AI: An Algorithmic Adventure",
+    "link": "https://unesdoc.unesco.org/ark:/48223/pf0000382456",
+    "omraade": "Generelt",
+    "resume": "Pædagogisk materiale til forståelse af AI-algoritmer, maskinlæring og etiske implikationer rettet mod både unge og voksne."
+  },
+  {
+    "id": 28,
+    "udgiver": "Vestlandsforsking",
+    "aar": 2022,
+    "titel": "Bruk av kunstig intelligens i offentlig sektor og risiko for diskriminering",
+    "link": "https://www.vestforsk.no/sites/default/files/2023-03/VFrapport7_2022_KI_i_offentlig_sektor.pdf",
+    "omraade": "Generelt",
+    "resume": "Norsk forskningsrapport om diskriminationsrisici ved AI i offentlig sagsbehandling med cases og anbefalinger til risikoforebyggelse."
+  },
+  {
+    "id": 29,
+    "udgiver": "ADD",
+    "aar": 2021,
+    "titel": "Ansigtsgenkendelse - Befolkningsundersøgelse",
+    "link": "https://algoritmer.org/befolkningsundersoegelse/ansigtsgenkendelse/",
+    "omraade": "Ansigtsgenkendelse",
+    "resume": "AlgorithmWatch's undersøgelse af danskernes accept, bekymringer og viden om ansigtsgenkendelse i forskellige kontekster fra politi til shopping."
+  },
+  {
+    "id": 30,
+    "udgiver": "Danske Regioner",
+    "aar": 2021,
+    "titel": "Sund Teknolog - Eksempler på afprøvning af KI i sundhedsvæsnet",
+    "link": "https://www.regioner.dk/media/14804/ai-eksempelsamling_elektronisk.pdf",
+    "omraade": "Sundhed",
+    "resume": "Cases fra danske hospitaler om AI-afprøvning i diagnostik, billedanalyse og patientforløb med erfaringer og resultater fra pilotprojekter."
+  },
+  {
+    "id": 31,
+    "udgiver": "Digitaliseringsstyrelsen",
+    "aar": 2021,
+    "titel": "Temperaturmåling af signaturprojekterne",
+    "link": "https://digst.dk/media/24196/temperaturmaaling-af-signaturprojekterne-endelig.pdf",
+    "omraade": "Generelt",
+    "resume": "Midtvejsevaluering af AI-signaturprojekternes status, udfordringer og early wins med anbefalinger til kursjusteringer."
+  },
+  {
+    "id": 32,
+    "udgiver": "EU Agency for Fundamental Rights",
+    "aar": 2021,
+    "titel": "Rettidig omhu for fremtiden: Kunstig intelligens og grundlæggende rettigheder",
+    "link": "https://fra.europa.eu/sites/default/files/fra_uploads/fra-2021-artificial-intelligence-summary_da.pdf",
+    "omraade": "Generelt",
+    "resume": "EU-agenturets vurdering af AI's impact på grundlæggende rettigheder med fokus på non-diskrimination, privatliv og demokratiske værdier."
+  },
+  {
+    "id": 33,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2021,
+    "titel": "Når algoritmer sagsbehandler: Rettigheder og rettssikkerhed i offentlige myndigheders brug af profileringsmodeller",
+    "link": "https://menneskeret.dk/sites/menneskeret.dk/files/media/document/Algoritmer_8.K.pdf",
+    "omraade": "Beslutningssystemer",
+    "resume": "Juridisk analyse af rettigheder og rettssikkerhed når algoritmer indgår i offentlig sagsbehandling med fokus på indsigt, partshøring og klageadgang."
+  },
+  {
+    "id": 34,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2021,
+    "titel": "Når algoritmer sagsbehandler: Transparens i det offentliges brug af profileringsmodeller",
+    "link": "https://menneskeret.dk/sites/menneskeret.dk/files/media/document/Overbliksnotat%20-%20n%C3%A5r%20algoritmer%20sagsbehandler%20-%20Transparens%20i%20og%20om%20profileringsmodeller%20brugt%20i%20det%20offentlige%20WEB_accessible.pdf",
+    "omraade": "Beslutningssystemer",
+    "resume": "Krav til transparens om algoritmisk sagsbehandling med guidelines for dokumentation, forklarlighed og offentlig indsigt i AI-systemer."
+  },
+  {
+    "id": 35,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2021,
+    "titel": "Når algoritmer sagsbehandler: Risiko for diskrimination i det offentliges brug af profileringsmodeller",
+    "link": "https://menneskeret.dk/sites/menneskeret.dk/files/media/document/Overbliksnotat%20-%20n%C3%A5r%20algoritmer%20sagsbehandler%20-%20Risiko%20for%20diskrimination%20i%20det%20offentliges%20brug%20af%20profileringsmodeller%20WEB_accessible.pdf",
+    "omraade": "Beslutningssystemer",
+    "resume": "Vurdering af diskriminationsrisici i algoritmisk sagsbehandling med fokus på bias i data, proxyvariable og beskyttelse af sårbare grupper."
+  },
+  {
+    "id": 36,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2021,
+    "titel": "Når algoritmer sagsbehandler: klare rammer for det offentliges brug af profileringsmodeller",
+    "link": "https://menneskeret.dk/sites/menneskeret.dk/files/media/document/Overbliksnotat%20-%20n%C3%A5r%20algoritmer%20sagsbehandler%20-%20Klare%20rammer%20for%20det%20offentliges%20brug%20af%20profileringsmodeller%20WEB_accessible.pdf",
+    "omraade": "Beslutningssystemer",
+    "resume": "Anbefalinger til lovgivning og regulering af AI i offentlig forvaltning med krav til godkendelse, tilsyn og ansvar."
+  },
+  {
+    "id": 37,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2021,
+    "titel": "Når algoritmer sagsbehandler: krav til data i profileringsmodeller brugt i det offentlige",
+    "link": "https://menneskeret.dk/sites/menneskeret.dk/files/media/document/Overbliksnotat%20-%20n%C3%A5r%20algoritmer%20sagsbehandler%20-%20Krav%20til%20data%20i%20profileringsmodeller%20brugt%20i%20det%20offentlige%20WEB_accessible.pdf",
+    "omraade": "Beslutningssystemer",
+    "resume": "Datakvalitetskrav til træning af AI-modeller i offentlig sektor med fokus på repræsentativitet, aktualitet og dokumentation."
+  },
+  {
+    "id": 38,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2021,
+    "titel": "Tech Giants and Human Rights: Investor Expectations",
+    "link": "https://www.humanrights.dk/files/media/document/Tech%20giants%20and%20human%20rights_2021.pdf",
+    "omraade": "Generelt",
+    "resume": "Investor guidelines om menneskeretlige forventninger til tech-virksomheder der leverer AI-løsninger til den offentlige sektor."
+  },
+  {
+    "id": 39,
+    "udgiver": "KL",
+    "aar": 2021,
+    "titel": "Kommunernes Digitaliseringsprogram 2021-2025",
+    "link": "https://www.kl.dk/media/26163/c-users-many-desktop-digitale-svar-paa-fremtidens-udfordringer.pdf",
+    "omraade": "Generelt",
+    "resume": "Kommunernes fælles digitaliseringsprogram med AI-indsatser inden for sagsbehandling, borgerservice og velfærdsteknologi."
+  },
+  {
+    "id": 40,
+    "udgiver": "Digitaliseringsstyrelsen, Erhvervsstyrelsen og Center for Cybersikkerhed",
+    "aar": 2020,
+    "titel": "Analyse af kunstig intelligens i et sikkerhedsperspektiv",
+    "link": "https://digst.dk/media/21663/analyse-af-kunstig-intelligens-i-et-sikkerhedsperspektiv-2020.pdf",
+    "omraade": "Generelt/sikkerhed",
+    "resume": "Tværgående sikkerhedsanalyse af AI med fokus på cybersikkerhed, sårbarhedsscenarier og beskyttelse af kritisk infrastruktur."
+  },
+  {
+    "id": 41,
+    "udgiver": "Institut for Menneskerettigheder",
+    "aar": 2020,
+    "titel": "Klage til Ligebehandlingsnævnet",
+    "link": "https://menneskeret.dk/sites/menneskeret.dk/files/media/dokumenter/klage_til_ligebehandlingsnaevnet_.pdf",
+    "omraade": "Beskæftigelse",
+    "resume": "Principiel klagesag om potentiel diskrimination i AI-baseret rekruttering med juridiske argumenter og præcedensskabende elementer."
+  }
+]

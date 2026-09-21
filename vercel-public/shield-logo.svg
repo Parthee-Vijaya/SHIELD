@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="shield-title shield-desc">
+  <title id="shield-title">S.H.I.E.L.D.</title>
+  <desc id="shield-desc">Et originalt skjold med en kontrolleret beslutningssti</desc>
+  <path d="M48 5 82 18v27c0 21-13.2 37.8-34 46C27.2 82.8 14 66 14 45V18L48 5Z" fill="#252525"/>
+  <path d="M48 13 74 23v22c0 16.6-9.8 30.3-26 37.7C31.8 75.3 22 61.6 22 45V23L48 13Z" fill="#FFFEFB"/>
+  <path d="M34 31h20c5.5 0 10 4.5 10 10s-4.5 10-10 10H42c-5.5 0-10 4.5-10 10s4.5 10 10 10h18" fill="none" stroke="#C94416" stroke-width="6" stroke-linecap="square"/>
+  <circle cx="34" cy="31" r="4" fill="#006F71"/>
+  <circle cx="60" cy="71" r="4" fill="#006F71"/>
+  <path d="m43 49 4 4 8-10" fill="none" stroke="#252525" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

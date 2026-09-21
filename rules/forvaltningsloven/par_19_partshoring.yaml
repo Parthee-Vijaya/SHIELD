@@ -1,0 +1,68 @@
+id: forvaltningsloven.par19.partshoring
+kilde:
+  lov: "Forvaltningsloven (lovbekendtgørelse nr. 433 af 22. april 2014 med senere ændringer)"
+  artikel: "§ 19, stk. 1"
+  citat: "Kan en part i en sag ikke antages at være bekendt med, at myndigheden er i besiddelse af bestemte oplysninger om en sags faktiske grundlag eller eksterne faglige vurderinger, må der ikke træffes afgørelse, før myndigheden har gjort parten bekendt med oplysningerne eller vurderingerne og givet denne lejlighed til at fremkomme med en udtalelse."
+  url: "https://www.retsinformation.dk/eli/lta/2014/433"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_administrative_decisions
+    - signal: system.is_used_by_public_authority
+
+predikater:
+  - id: traeffer_afgoerelse
+    spørgsmål: "Træffer systemet en forvaltningsafgørelse over for en part?"
+    type: boolean
+
+  - id: bruger_oplysninger_om_part
+    spørgsmål: "Anvender systemet faktiske oplysninger om sagens grundlag eller eksterne faglige vurderinger om parten?"
+    type: boolean
+    hjælp: "Eksempler: oplysninger fra andre myndigheder, lægeerklæringer, sagkyndige udtalelser, indhentede registeroplysninger."
+
+  - id: parten_kender_oplysningerne
+    spørgsmål: "Kan parten med rimelighed antages at kende oplysningerne på forhånd?"
+    type: boolean
+    hjælp: "Hvis parten selv har afleveret oplysningerne, eller de er offentligt tilgængelige om partens egne forhold, kan partshøring ofte undlades. Tvivl skal komme parten til gode."
+
+  - id: ufordelagtig_for_parten
+    spørgsmål: "Vil afgørelsen være imod partens interesse (ikke fuldt medhold)?"
+    type: boolean
+    hjælp: "Partshøring er primært relevant ved bebyrdende afgørelser. Ved fuldt medhold kan partshøring som udgangspunkt undlades."
+
+afgørelse:
+  hvis: "traeffer_afgoerelse AND bruger_oplysninger_om_part AND NOT parten_kender_oplysningerne AND ufordelagtig_for_parten"
+  så:
+    status: BETINGET-GO
+    begrundelse: "Partshøring er påkrævet før afgørelse træffes (§ 19, stk. 1)."
+    krav:
+      - "Send oplysningerne / vurderingerne til parten med rimelig frist for udtalelse"
+      - "Dokumentér modtagelse og evt. svar i sagen"
+      - "Hvis AI bruges til at sammenstille oplysningerne: sikr at parten kan forstå hvilke oplysninger der indgår"
+      - "Vurder om undtagelserne i § 19, stk. 2 finder anvendelse — hvis ja, dokumentér grundlaget"
+    evidens_påkrævet:
+      - partshoringsbrev
+      - frist_dokumentation
+      - kvittering_for_modtagelse
+  ellers:
+    status: GO
+    begrundelse: "Partshøring er enten ikke påkrævet (parten kender oplysningerne, fuldt medhold, eller ingen oplysninger om part anvendes), eller en undtagelse i § 19, stk. 2 gælder."
+    krav: []
+    evidens_påkrævet: []
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE vurdere partshøringspligten — den afgøres af reglen baseret på sagsbehandlerens svar."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["forvaltningsloven", "partshoring"]

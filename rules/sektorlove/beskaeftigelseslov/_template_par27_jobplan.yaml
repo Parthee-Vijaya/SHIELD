@@ -1,0 +1,56 @@
+# TEMPLATE — afventer jurist-input
+# § 27 om jobplan.
+
+id: beskaeftigelseslov.par27.jobplan
+
+kilde:
+  lov: "Lov om en aktiv beskæftigelsesindsats (LBK nr. 701 af 22. maj 2024 med senere ændringer)"
+  artikel: "§ 27"
+  citat: "[TODO: jurist udfylder eksakt citat fra § 27 om jobplan. Min. 10 tegn.]"
+  url: "https://www.retsinformation.dk/eli/lta/2024/701"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.generates_decision_text
+    - signal: system.makes_administrative_decisions
+
+predikater:
+  - id: ai_genererer_jobplan_indhold
+    spørgsmål: "Genererer systemet selve jobplanens indhold (delmål, aktiviteter, tilbud)?"
+    type: boolean
+
+  - id: borger_godkender_planen
+    spørgsmål: "Skal borgeren formelt godkende jobplanen før den effektueres?"
+    type: boolean
+
+  - id: sagsbehandler_godkender_inden_afsendelse
+    spørgsmål: "Verificerer sagsbehandler den AI-genererede jobplan inden den deles med borgeren?"
+    type: boolean
+
+afgørelse:
+  hvis: "ai_genererer_jobplan_indhold AND NOT sagsbehandler_godkender_inden_afsendelse"
+  så:
+    status: BETINGET-GO
+    begrundelse: "[TODO: jurist udfylder. Hovedpunkt: jobplanen er en formel afgørelse efter beskæftigelsesloven og kræver kvalitetssikring inden den sendes.]"
+    krav:
+      - "Etabler proces hvor sagsbehandler verificerer AI-genereret jobplan"
+      - "Sikr at jobplanen indeholder de elementer § 27 kræver"
+      - "[TODO: jurist tilføjer]"
+    evidens_påkrævet:
+      - kvalitetssikrings_proces_jobplan
+      - jobplan_indholds_specifikation
+  ellers:
+    status: GO
+    begrundelse: "AI-genereringen kvalitetssikres af sagsbehandler eller anvendes ikke til faktisk jobplan."
+    krav: []
+    evidens_påkrævet: []
+
+metadata:
+  forfatter: "TODO: jurist navn"
+  version: "0.1.0-draft"
+  tags:
+    - beskaeftigelseslov
+    - jobcenter
+    - jobplan
+    - draft-template

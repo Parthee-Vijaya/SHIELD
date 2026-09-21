@@ -1,0 +1,60 @@
+# TEMPLATE — afventer jurist-input
+# Aktiveres ved at fjerne "_template_" fra filnavnet.
+# Se docs/JURIST_INTERVIEW.md for spørgsmål jurist skal afklare.
+
+id: servicelov.par11.raadgivning_og_vejledning
+
+kilde:
+  lov: "Lov om social service (LBK nr. 1089 af 18. august 2025 med senere ændringer)"
+  artikel: "§ 11"
+  citat: "[TODO: jurist udfylder eksakt citat fra § 11. Forventet stk. 1 om kommunens pligt til rådgivning og vejledning til borgere. Min. 10 tegn.]"
+  url: "https://www.retsinformation.dk/eli/lta/2025/1089"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_decisions_about_persons
+    - signal: system.generates_decision_text
+    - signal: system.is_used_by_public_authority
+
+predikater:
+  # TODO: jurist verificerer/udvider/skifter
+  - id: anvender_til_borgervejledning
+    spørgsmål: "Bruges systemet til at give borgere rådgivning eller vejledning på vegne af kommunen (jf. § 11)?"
+    type: boolean
+    hjælp: "§ 11 forpligter kommunen til at yde rådgivning og vejledning. AI kan understøtte men ikke erstatte den kommunale forpligtelse."
+
+  - id: ai_genereret_raadgivning_til_borger
+    spørgsmål: "Genererer systemet den faktiske vejledningstekst der gives til borgeren?"
+    type: boolean
+    hjælp: "TODO: jurist præciserer grænse mellem 'AI-assist til sagsbehandler' og 'AI-direkte til borger'."
+
+  - id: sagsbehandler_godkender_inden_afsendelse
+    spørgsmål: "Verificerer en kompetent sagsbehandler vejledningen INDEN den sendes til borgeren?"
+    type: boolean
+
+afgørelse:
+  hvis: "ai_genereret_raadgivning_til_borger AND NOT sagsbehandler_godkender_inden_afsendelse"
+  så:
+    status: BETINGET-GO
+    begrundelse: "[TODO: jurist udfylder begrundelse — typisk om kommunens ansvar for vejledningens rigtighed efter § 11.]"
+    krav:
+      - "Etabler proces hvor sagsbehandler verificerer AI-genereret vejledning inden afsendelse"
+      - "[TODO: jurist tilføjer flere konkrete krav]"
+    evidens_påkrævet:
+      - vejledningsproces_dokumentation
+      - kvalitetssikrings_specifikation
+  ellers:
+    status: GO
+    begrundelse: "Systemet understøtter kommunens vejledningsforpligtelse uden at erstatte den."
+    krav: []
+    evidens_påkrævet: []
+
+metadata:
+  forfatter: "TODO: jurist navn"
+  version: "0.1.0-draft"
+  tags:
+    - servicelov
+    - kommune
+    - vejledning
+    - draft-template

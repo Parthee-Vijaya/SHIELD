@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>Hjemmel — Design-retninger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    background: #f5f5f4;
+    color: #18181b;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 64px 32px;
+  }
+  header { margin-bottom: 56px; }
+  .eyebrow {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #71717a;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    max-width: 800px;
+  }
+  .lede {
+    font-size: 18px;
+    color: #3f3f46;
+    max-width: 720px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .grid.row2 { margin-top: 20px; }
+  .card {
+    background: #fff;
+    border: 1px solid #e4e4e7;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -8px rgba(0,0,0,0.08);
+  }
+  .preview {
+    height: 220px;
+    border-bottom: 1px solid #e4e4e7;
+    position: relative;
+    overflow: hidden;
+  }
+  .preview-a { background: #ffffff; }
+  .preview-b { background: #0a0a0b; }
+  .preview-c { background: #faf8f5; }
+  .preview-d { background: #fbfaf6; }
+  .ph-line { height: 6px; border-radius: 3px; }
+  .preview-a .ph-line { background: #d4d4d8; }
+  .preview-a .ph-accent { background: #c94416; }
+  .preview-b .ph-line { background: #27272a; }
+  .preview-b .ph-accent { background: #c94416; }
+  .preview-c .ph-line { background: #d4d4d8; }
+  .preview-c .ph-accent { background: #c94416; }
+  .preview-inner { padding: 28px 24px; }
+  .preview-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    align-items: center;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #c94416; }
+  .preview-b .dot { background: #c94416; box-shadow: 0 0 8px rgba(201,68,22,0.6); }
+  .pa-h1 { width: 70%; height: 14px; border-radius: 3px; margin-bottom: 12px; }
+  .pa-l1 { width: 90%; }
+  .pa-l2 { width: 80%; }
+  .pa-l3 { width: 65%; margin-bottom: 18px; }
+  .pa-btn {
+    width: 110px; height: 26px; border-radius: 4px;
+  }
+  .body { padding: 24px; }
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    font-size: 13px;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+  p { font-size: 14px; color: #3f3f46; line-height: 1.55; }
+  .meta {
+    margin-top: 16px;
+    font-size: 12px;
+    color: #71717a;
+  }
+  a.cta {
+    display: inline-block;
+    margin-top: 20px;
+    background: #18181b;
+    color: white;
+    padding: 9px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  a.cta:hover { background: #27272a; }
+  /* preview B has dark contents */
+  .preview-b .pa-h1 { background: #3f3f46; }
+  .preview-b .pa-l1, .preview-b .pa-l2, .preview-b .pa-l3 { background: #27272a; }
+  .preview-b .pa-btn { background: #c94416; }
+  .preview-c .pa-h1 { background: #a3a3a3; }
+  .preview-a .pa-btn { background: #c94416; }
+  .preview-c .pa-btn { background: #c94416; }
+  .preview-d .ph-line { background: #d4ccba; }
+  .preview-d .ph-accent { background: #c94416; }
+  .preview-d .pa-h1 { background: #97897b; }
+  .preview-d .pa-btn { background: #c94416; }
+  .preview-d .sidenote-stripe {
+    position: absolute;
+    right: 24px; top: 28px; bottom: 28px;
+    width: 60px;
+    border-left: 1px solid #e8e2d4;
+    padding-left: 8px;
+  }
+  .preview-d .sn-bar { width: 100%; height: 4px; border-radius: 2px; background: #e8e2d4; margin-bottom: 6px; }
+  .preview-d .sn-bar.short { width: 70%; }
+  .new-badge {
+    display: inline-block;
+    background: #c94416;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .footnote {
+    margin-top: 56px;
+    padding: 20px 24px;
+    background: #fafaf9;
+    border: 1px solid #e7e5e4;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #57534e;
+    line-height: 1.55;
+  }
+  .footnote strong { color: #292524; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Hjemmel · Design-retninger</div>
+    <h1>Fire bud på hvordan v3 skal se ud</h1>
+    <p class="lede">Samme indhold (en Quick Check af en pensionsassistent), fire forskellige visuelle sprog. <strong>Design D</strong> blender den stille autoritet fra A med editorial-workspace-følelsen fra C — det er det nye forslag.</p>
+  </header>
+
+  <div class="grid">
+
+    <a class="card" href="design-a.html">
+      <div class="preview preview-a">
+        <div class="preview-inner">
+          <div class="preview-bar"><div class="dot"></div></div>
+          <div class="ph-line pa-h1"></div>
+          <div class="ph-line pa-l1" style="margin-bottom:8px;"></div>
+          <div class="ph-line pa-l2" style="margin-bottom:8px;"></div>
+          <div class="ph-line pa-l3"></div>
+          <div class="ph-line ph-accent pa-btn"></div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="sub">A · Stille autoritet</div>
+        <h3>fairai.one-stil</h3>
+        <p>Hvid baggrund, generende serif-overskrifter, masser af luft. Lov-citater som elegante citatblokke. Føles troværdigt for indkøbere og borgmesterkontor.</p>
+        <div class="meta">Source Serif Pro · Inter · Whitespace · Centeret content</div>
+        <span class="cta">Se design A →</span>
+      </div>
+    </a>
+
+    <a class="card" href="design-b.html">
+      <div class="preview preview-b">
+        <div class="preview-inner">
+          <div class="preview-bar"><div class="dot"></div></div>
+          <div class="ph-line pa-h1"></div>
+          <div class="ph-line pa-l1" style="margin-bottom:8px;"></div>
+          <div class="ph-line pa-l2" style="margin-bottom:8px;"></div>
+          <div class="ph-line pa-l3"></div>
+          <div class="ph-line ph-accent pa-btn"></div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="sub">B · Kommandocenter</div>
+        <h3>Linear/Vercel-stil mørkt</h3>
+        <p>Mørkt default, ⌘K command palette, keyboard shortcuts overalt, tæt info-densitet. Power-user-følelse for jurister og IT der bruger app'en dagligt.</p>
+        <div class="meta">Inter · JetBrains Mono · Status-pills · ⌘K</div>
+        <span class="cta">Se design B →</span>
+      </div>
+    </a>
+
+    <a class="card" href="design-c.html">
+      <div class="preview preview-c">
+        <div class="preview-inner">
+          <div class="preview-bar"><div class="dot"></div></div>
+          <div class="ph-line pa-h1"></div>
+          <div class="ph-line pa-l1" style="margin-bottom:8px;"></div>
+          <div class="ph-line pa-l2" style="margin-bottom:8px;"></div>
+          <div class="ph-line pa-l3"></div>
+          <div class="ph-line ph-accent pa-btn"></div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="sub">C · Editorial workspace</div>
+        <h3>Notion/Stripe Press-stil</h3>
+        <p>Varm cream-baggrund, dokument-følelse med bredt læsbar typografi. Lov-kilder vises som sidenotes ved siden af teksten — som en levende juridisk læsebog.</p>
+        <div class="meta">Charter/Georgia · 3-kolonne · Sidenotes · Cream tones</div>
+        <span class="cta">Se design C →</span>
+      </div>
+    </a>
+
+  </div>
+
+  <div class="grid row2">
+    <a class="card" href="design-d.html" style="grid-column: span 2;">
+      <div class="preview preview-d">
+        <div class="preview-inner" style="display:grid;grid-template-columns:1fr 80px;gap:20px;">
+          <div>
+            <div class="preview-bar"><div class="dot"></div></div>
+            <div class="ph-line pa-h1"></div>
+            <div class="ph-line pa-l1" style="margin-bottom:8px;"></div>
+            <div class="ph-line pa-l2" style="margin-bottom:8px;"></div>
+            <div class="ph-line pa-l3"></div>
+            <div class="ph-line ph-accent pa-btn"></div>
+          </div>
+          <div style="border-left: 1px solid #e8e2d4; padding-left: 12px;">
+            <div class="sn-bar" style="width:24px;background:#c94416;height:5px;margin-bottom:8px;"></div>
+            <div class="sn-bar"></div>
+            <div class="sn-bar short"></div>
+            <div class="sn-bar"></div>
+            <div class="sn-bar short"></div>
+            <div style="height:14px;"></div>
+            <div class="sn-bar" style="width:24px;background:#c94416;height:5px;margin-bottom:8px;"></div>
+            <div class="sn-bar"></div>
+            <div class="sn-bar short"></div>
+          </div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="sub">D · Editorial autoritet <span class="new-badge">NY</span></div>
+        <h3>A's gravitas møder C's marginalia</h3>
+        <p>Cream-paper i A's renere variant, Source Serif Pro h1 fra A, Lora-paragraffer fra C. Lov-citater rykker ud i sidenotes som klikbare fodnoter — kropsteksten flyder uafbrudt, mens jurister får hjemlen ved fingeren. Det bedste fra begge: stille troværdighed og levende dokument.</p>
+        <div class="meta">Source Serif Pro h1 · Lora body · Sidenotes · ¹²³-fodnoter · Cream-paper</div>
+        <span class="cta">Se design D →</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="footnote">
+    <strong>Sådan vælger du.</strong> Tænk på <em>hvem der skal bruge skærmen mest</em>. A er bedst til marketing/login og indkøbsbeslutningstagere. B er bedst til sagsbehandlere der bruger app'en 2 timer dagligt. C er bedst hvis lov-kilder skal være konstant synlige. <strong>D er det nye forslag</strong> der prøver at få det bedste fra A og C i én og samme oplevelse — autoritativ overskrift, læsbar krop, og lov-citater i marginen som man kan tilgå med ét blik uden at miste tråden i selve teksten.
+  </div>
+
+</div>
+</body>
+</html>

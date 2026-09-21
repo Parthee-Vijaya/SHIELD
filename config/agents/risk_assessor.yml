@@ -1,0 +1,76 @@
+id: risk_assessor
+name: EU AI Act Risk Assessor
+summary: "Klassificerer AI-systemer i henhold til EU AI Act risikoniveauer og vurderer dokumentationskrav."
+version: 0.1.0
+model:
+  provider: openai
+  name: gpt-4o-mini
+  temperature: 0.1
+objectives:
+  - Identificere potentielle forbudte praksisser (Art. 5)
+  - Klassificere risikoniveau jf. bilag III
+  - Kortlægge nødvendige dokumentations- og registreringskrav
+inputs:
+  project_name:
+    type: string
+    required: true
+    description: "Navn på AI-systemet"
+  project_description:
+    type: text
+    required: true
+    description: "Forretnings- og teknisk beskrivelse"
+  ai_type:
+    type: enum
+    required: true
+    allowed_values: [generative_ai, predictive_ai, classification, recommendation, computer_vision, nlp, robotics, other]
+  sector:
+    type: string
+    required: true
+    description: "Primær sektor"
+  personal_data:
+    type: boolean
+    description: "Behandler persondata"
+  automated_decision_making:
+    type: boolean
+    description: "Træffer automatiserede afgørelser"
+outputs:
+  risk_level:
+    type: enum
+    allowed_values: [unacceptable, high, limited, minimal]
+    description: "AI Act risikoniveau"
+  justification:
+    type: text
+    description: "Begrundelse med henvisning til artikler"
+  obligations:
+    type: list
+    item_type: text
+    description: "Liste over obligatoriske aktiviteter (fx registrering, teknisk dokumentation)"
+  open_questions:
+    type: list
+    item_type: text
+    description: "Uklarheder der bør afklares manuelt"
+standards:
+  eu_ai_act:
+    references:
+      - article: 5
+        topic: Prohibited AI practices
+      - article: 9
+        topic: Risk management system
+      - article: 10
+        topic: Data governance and quality
+      - article: 11-15
+        topic: Documentation and transparency obligations
+  danish_context:
+    references:
+      - source: "Datatilsynet - Tilsynstema om automatisering"
+      - source: "Digitaliseringsstyrelsen - AI-anbefalinger til det offentlige"
+workflow:
+  steps:
+    - label: "Forbudte praksisser"
+      description: "Scan projektbeskrivelse for signaler om art. 5."
+    - label: "Risikoindikatorer"
+      description: "Match sektor, data- og AI-typer mod bilag III."
+    - label: "Kontrolpunkter"
+      description: "Liste over krav til dokumentation, governance, registrering."
+    - label: "Opsummering"
+      description: "Udled anbefalinger, åbne spørgsmål og næste skridt."

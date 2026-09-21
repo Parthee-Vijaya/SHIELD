@@ -1,0 +1,75 @@
+id: forvaltningsloven.par24.begrundelsens_indhold
+kilde:
+  lov: "Forvaltningsloven (lovbekendtgørelse nr. 433 af 22. april 2014 med senere ændringer)"
+  artikel: "§ 24, stk. 1 og stk. 2"
+  citat: "En begrundelse for en afgørelse skal indeholde en henvisning til de retsregler, i henhold til hvilke afgørelsen er truffet. I det omfang, afgørelsen efter disse regler beror på et administrativt skøn, skal begrundelsen tillige angive de hovedhensyn, der har været bestemmende for skønsudøvelsen. Begrundelsen skal endvidere om fornødent indeholde en kort redegørelse for de oplysninger vedrørende sagens faktiske omstændigheder, som er tillagt væsentlig betydning for afgørelsen."
+  url: "https://www.retsinformation.dk/eli/lta/2014/433"
+  sidst_verificeret: "2026-05-07"
+
+trigger:
+  any_of:
+    - signal: system.makes_administrative_decisions
+    - signal: system.generates_decision_text
+
+predikater:
+  - id: genererer_begrundelse
+    spørgsmål: "Genererer systemet selv tekstindholdet i begrundelsen (helt eller delvist)?"
+    type: boolean
+
+  - id: indeholder_lovhenvisning
+    spørgsmål: "Indeholder den genererede begrundelse altid henvisning til de konkrete retsregler afgørelsen er truffet efter?"
+    type: boolean
+    hjælp: "§ 24, stk. 1: 'henvisning til de retsregler, i henhold til hvilke afgørelsen er truffet'."
+
+  - id: angiver_hovedhensyn_ved_skon
+    spørgsmål: "Hvis afgørelsen beror på skøn — angiver begrundelsen de hovedhensyn der har været bestemmende?"
+    type: enum
+    enum_values: [ja, nej, ikke_skon_relevant]
+
+  - id: angiver_faktiske_omstaendigheder
+    spørgsmål: "Angiver begrundelsen de faktiske omstændigheder af væsentlig betydning?"
+    type: boolean
+
+  - id: lovhenvisninger_verificerbare
+    spørgsmål: "Verificeres alle paragraf-henvisninger mod en kilde (Retsinformation, intern lovdatabase) inden afsendelse?"
+    type: boolean
+    hjælp: "AI-systemer kan 'opfinde' paragraffer (hallucination). Verifikation er KRITISK før afsendelse."
+
+afgørelse:
+  hvis: "genererer_begrundelse AND (NOT indeholder_lovhenvisning OR (angiver_hovedhensyn_ved_skon == nej) OR NOT angiver_faktiske_omstaendigheder OR NOT lovhenvisninger_verificerbare)"
+  så:
+    status: NO-GO
+    begrundelse: "AI-genererede begrundelser opfylder ikke kravene i § 24. Mangler enten lovhenvisning, hovedhensyn ved skøn, faktiske omstændigheder, eller systematisk paragraf-verifikation."
+    krav:
+      - "Implementér automatisk lovhenvisnings-verifikation mod intern lovdatabase / Retsinformation INDEN afsendelse"
+      - "Sikr at skabelon altid genererer henvisning til retsregler (§ 24, stk. 1)"
+      - "Sikr at skabelon ved skønsudøvelse altid angiver hovedhensyn"
+      - "Inkludér de faktiske omstændigheder af væsentlig betydning"
+      - "Indtil ovenstående er på plads: kompetent sagsbehandler skal manuelt godkende hver begrundelse"
+    evidens_påkrævet:
+      - lovhenvisnings_verifikator_specifikation
+      - begrundelsesskabelon_godkendt_af_jurist
+      - sagsbehandler_review_protokol
+  ellers:
+    status: GO
+    begrundelse: "Enten genererer systemet ikke begrundelser, eller alle indholdskrav i § 24 er opfyldt med verifikation."
+    krav:
+      - "Stikprøvekontrol af AI-genererede begrundelser anbefales løbende"
+    evidens_påkrævet:
+      - stikproevekontrol_log
+
+llm_fortolkning:
+  rolle: "Du fortolker fritekst-beskrivelse til at foreslå hvilke trigger-signaler der matcher. Du må IKKE vurdere om begrundelsen er lovlig — det afgør reglen baseret på sagsbehandlerens svar."
+  prompt_template: |
+    System-beskrivelse:
+    {system_beskrivelse}
+
+    For hvert af følgende signaler, returnér true, false eller "usikker":
+    {signal_liste}
+
+    Returnér KUN gyldig JSON.
+
+metadata:
+  forfatter: "Tyr core team"
+  version: "1.0.0"
+  tags: ["forvaltningsloven", "begrundelse", "hallucination_risiko"]

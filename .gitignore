@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/.cache/
+frontend/build/
+
+# Environment / Secrets
+.env*
+!.env.example
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+logs/
+/tmp/
+
+# IDE
+.vscode/
+.idea/
+
+# Coverage / reports
+htmlcov/
+.coverage
+
+# Cache
+.cache/
+*.cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local SQLite databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Lokale dokumentuploads fra dokumentbanken
+data/document-bank/
+
+# Local preview symlinks
+frontend/public/mockups
+
+.vercel
+
+# Local credentials and runtime configuration
+*.pem
+*.key
+*.p12
+*.pfx
+.claude/
