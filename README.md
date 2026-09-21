@@ -186,6 +186,8 @@ Word og Excel dannes fra den **valgte gemte vurdering**. Alle risikopunkter føl
 
 En checksum viser, hvilken filversion der er brugt. Den viser ikke i sig selv, at dokumentets indhold er korrekt, dækkende eller juridisk gældende.
 
+Se [versioner, ansvar og menneskelig opfølgning](docs/CASE_WORKSPACE_VERSIONS_AND_OWNERS.md) for eksportgruppering, ændringshistorik, JEV-opfølgning og databasemigration.
+
 ### Teknisk kørsel på den enkelte sag
 
 Åbn **Teknisk kørsel** ved siden af sagens øvrige faner. Vælg en gemt kørsel for at undersøge modellen, behandlingsforløbet, de gemte input og tekster samt JEVs kontrolpunkter og deres kildegrundlag. En genvej fra rapporten åbner den relevante vurderingsversion.

@@ -1,8 +1,8 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import axios from 'axios';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider, useQuery } from 'react-query';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { lightTheme } from '../../theme';
@@ -18,10 +18,10 @@ const review = { model: 'typesafe-ai/jev', rubric_version: 'review-v4', threshol
 const run = { id: 'dpia:a2', assessment_id: 'a2', version: 2, kind: 'dpia_ai', created_at: '2026-09-21T10:00:00Z', generation_created_at: '2026-09-21T09:59:00Z', model: 'gpt-5.6-sol', provider: 'codex-local', prompt_version: 'draft-v3', provenance: { model_attestation: 'operator_reported', run_id: 'run-1' }, input_snapshot: { purpose: 'Interne projektmøder', model_training: null }, output_items: [output], sources: [source], review, usage: { drafting: null, evaluation: review.usage }, stages: [{ id: 'draft', title: 'Udarbejdelse', description: 'AI skriver ud fra det gemte grundlag.' }], recording_notes: ['Den præcise prompt er ikke gemt.'] };
 
 function Location() { const location = useLocation(); return <output aria-label="Adresse">{location.search}</output>; }
-function mount(runs = [run], url = '/sager/c1?tab=technical-runs', response) {
+function mount(runs = [run], url = '/sager/c1?tab=technical-runs', response, companion = null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, cacheTime: 0, refetchOnWindowFocus: false } } });
   axios.get.mockImplementation(response || (() => Promise.resolve({ data: { case_id: 'c1', runs } })));
-  return render(<QueryClientProvider client={client}><ThemeProvider theme={lightTheme}><MemoryRouter initialEntries={[url]}><TechnicalRunsPanel caseId="c1" /><Location /></MemoryRouter></ThemeProvider></QueryClientProvider>);
+  return { queryClient: client, ...render(<QueryClientProvider client={client}><ThemeProvider theme={lightTheme}><MemoryRouter initialEntries={[url]}><TechnicalRunsPanel caseId="c1" /><Location />{companion}</MemoryRouter></ThemeProvider></QueryClientProvider>) };
 }
 async function expand(label, scope = screen) {
   const summary = (await scope.findByText(label)).closest('summary');
@@ -161,4 +161,160 @@ test('viser loading, fejl og fungerende genforsøg uden mutationer', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'Prøv igen' }));
   expect(await screen.findByText('Ingen registrerede kørsler endnu')).toBeInTheDocument();
   expect(axios.post).not.toHaveBeenCalled();
+});
+
+const humanControl = {
+  id: 'h1', assessment_id: 'a2', original_check_id: 'scope', question: 'Er slettefristen efterprøvet?', notes: 'Afventer en dokumenteret prøve.', owner: 'IT-sikkerhed', status: 'open', version: 1,
+  updated_at: '2026-09-21T12:00:00Z', origin: 'human', jev_reviewed: false, requires_new_review: true,
+  history: [{ version: 1, action: 'created', actor_name: 'Sagsbehandleren', identity_assurance: 'verified_entra_token', created_at: '2026-09-21T12:00:00Z', snapshot: { question: 'Er slettefristen efterprøvet?', notes: 'Afventer en dokumenteret prøve.', owner: 'IT-sikkerhed', status: 'open' } }],
+};
+
+test('tilføjer menneskelig opfølgning med audit og bevarer JEV-spørgsmål og score', async () => {
+  axios.post.mockResolvedValue({ data: humanControl });
+  mount();
+  const original = await expand('Resuméets kildeunderstøttelse');
+  fireEvent.click(await original.findByRole('button', { name: 'Tilføj menneskelig opfølgning' }));
+  const form = within(screen.getByRole('form', { name: 'Menneskeligt kontrolpunkt' }));
+  expect(form.getByLabelText('Kontrolspørgsmål')).toHaveValue('Resuméets kildeunderstøttelse');
+  expect(form.getByLabelText('Kontrolspørgsmål')).toHaveFocus();
+  fireEvent.change(form.getByLabelText('Kontrolspørgsmål'), { target: { value: humanControl.question } });
+  fireEvent.change(form.getByLabelText('Opfølgning og noter'), { target: { value: humanControl.notes } });
+  fireEvent.change(form.getByLabelText('Ansvarlig for opfølgningen'), { target: { value: humanControl.owner } });
+  fireEvent.click(form.getByRole('button', { name: 'Gem menneskelig opfølgning' }));
+  await screen.findByText('Menneskelig opfølgning er gemt. Den oprindelige JEV-kontrol er bevaret.');
+  expect(axios.post).toHaveBeenCalledWith('/api/v3/cases/c1/technical-controls', { assessment_id: 'a2', original_check_id: 'scope', question: humanControl.question, notes: humanControl.notes, owner: humanControl.owner, status: 'open' });
+  expect(original.getByText('0,54')).toBeInTheDocument();
+  expect(original.getByRole('button', { name: 'Rediger menneskelig opfølgning' })).toBeInTheDocument();
+  const point = await expand(humanControl.question);
+  expect(await point.findByText(/Menneskelig ændring \/ opfølgning/)).toBeInTheDocument();
+  expect(point.getByText('Ikke JEV-kontrolleret')).toBeInTheDocument();
+  const history = await expand('Ændringshistorik (1)', point);
+  expect(await history.findByText('Revision 1 · Oprettet af Sagsbehandleren')).toBeInTheDocument();
+  expect(axios.get).toHaveBeenCalledTimes(1);
+});
+
+test('afsluttet menneskepunkt beholder nykontrolkrav og gemmes med versionskontrol', async () => {
+  axios.patch.mockResolvedValue({ data: { ...humanControl, version: 2, status: 'completed', owner: '' } });
+  mount([{ ...run, human_controls: [humanControl] }]);
+  const point = await expand(humanControl.question);
+  fireEvent.click(await point.findByRole('button', { name: 'Rediger opfølgning' }));
+  fireEvent.change(screen.getByLabelText('Opfølgningens status'), { target: { value: 'completed' } });
+  fireEvent.change(screen.getByLabelText('Ansvarlig for opfølgningen'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Gem menneskelig opfølgning' }));
+  await screen.findByText('Menneskelig opfølgning er gemt. Den oprindelige JEV-kontrol er bevaret.');
+  expect(axios.patch).toHaveBeenCalledWith('/api/v3/cases/c1/technical-controls/h1', { expected_version: 1, question: humanControl.question, notes: humanControl.notes, owner: '', status: 'completed' });
+  expect(point.getByText('Afsluttet opfølgning')).toBeInTheDocument();
+  expect(point.getByText('Ikke JEV-kontrolleret')).toBeInTheDocument();
+  expect(point.getByText(/kræver ny kontrol/)).toBeInTheDocument();
+  expect(axios.post).not.toHaveBeenCalled();
+});
+
+test('nyt punkt på regelbaseret version kan annulleres uden skrivning', async () => {
+  mount([{ ...run, review: null, kind: 'dpia_rules' }]);
+  fireEvent.click(await screen.findByRole('button', { name: 'Tilføj kontrolpunkt' }));
+  expect(screen.getByLabelText('Kontrolspørgsmål')).toHaveValue('');
+  fireEvent.change(screen.getByLabelText('Kontrolspørgsmål'), { target: { value: 'Hvem skal afklare adgangen?' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Annuller' }));
+  expect(screen.queryByRole('form')).not.toBeInTheDocument();
+  expect(axios.post).not.toHaveBeenCalled();
+  expect(axios.patch).not.toHaveBeenCalled();
+});
+
+test('gemmer selvstændigt menneskepunkt med tom ansvarlig', async () => {
+  axios.post.mockResolvedValue({ data: { ...humanControl, original_check_id: null, owner: '' } });
+  mount();
+  fireEvent.click(await screen.findByRole('button', { name: 'Tilføj kontrolpunkt' }));
+  fireEvent.change(screen.getByLabelText('Kontrolspørgsmål'), { target: { value: humanControl.question } });
+  fireEvent.click(screen.getByRole('button', { name: 'Gem menneskelig opfølgning' }));
+  await screen.findByText('Menneskelig opfølgning er gemt. Den oprindelige JEV-kontrol er bevaret.');
+  expect(axios.post).toHaveBeenCalledWith('/api/v3/cases/c1/technical-controls', { assessment_id: 'a2', original_check_id: null, question: humanControl.question, notes: '', owner: '', status: 'open' });
+  const point = await expand(humanControl.question);
+  expect(await point.findByText('Selvstændigt menneskeligt kontrolpunkt')).toBeInTheDocument();
+  expect(point.getByText('Ikke tildelt')).toBeInTheDocument();
+});
+
+test('versionskonflikt bevarer indtastninger og kræver genindlæsning', async () => {
+  axios.patch.mockRejectedValue({ response: { status: 409 } });
+  mount([{ ...run, human_controls: [humanControl] }]);
+  const point = await expand(humanControl.question);
+  fireEvent.click(await point.findByRole('button', { name: 'Rediger opfølgning' }));
+  fireEvent.change(screen.getByLabelText('Opfølgning og noter'), { target: { value: 'Min endnu ikke gemte note.' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Gem menneskelig opfølgning' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Punktet er ændret siden du åbnede det');
+  expect(screen.getByLabelText('Opfølgning og noter')).toHaveValue('Min endnu ikke gemte note.');
+  expect(screen.getByRole('button', { name: 'Gem menneskelig opfølgning' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Hent gemt udgave og luk redigering' }));
+  await waitFor(() => expect(screen.queryByRole('form')).not.toBeInTheDocument());
+  expect(axios.get).toHaveBeenCalledTimes(2);
+  expect(axios.patch).toHaveBeenCalledTimes(1);
+});
+
+test('viser gemt kontrolspørgsmål, kriterium og grundlag uden opdigtet forklaring', async () => {
+  mount([{ ...run, review: { ...review, checks: [{ ...review.checks[0], question: 'Er teksten dækket af kilderne?', criteria_text: 'Faktapåstande skal have kilde.', grounding: 'Kontrollens registrerede grundlag.' }] } }]);
+  const check = await expand('Resuméets kildeunderstøttelse');
+  expect(await check.findByText('Er teksten dækket af kilderne?')).toBeInTheDocument();
+  expect(check.getByText('Faktapåstande skal have kilde.')).toBeInTheDocument();
+  expect(check.getByText('Kontrollens registrerede grundlag.')).toBeInTheDocument();
+});
+
+
+function WorkspaceHistory({ load }) {
+  const query = useQuery(['case-workspace', 'c1'], load, { staleTime: Infinity });
+  return <output aria-label="Sagens fælles historik">{query.data?.history || 'Henter'}</output>;
+}
+
+test.each(['create', 'update'])('opdaterer sagens fælles historik efter gemt menneskelig opfølgning: %s', async operation => {
+  const history = jest.fn().mockResolvedValueOnce({ history: 'Tidligere historik' }).mockResolvedValue({ history: 'Menneskelig opfølgning er med i historikken' });
+  axios.post.mockResolvedValue({ data: humanControl });
+  axios.patch.mockResolvedValue({ data: { ...humanControl, version: 2 } });
+  mount([{ ...run, human_controls: operation === 'update' ? [humanControl] : [] }], undefined, undefined, <WorkspaceHistory load={history} />);
+  await screen.findByText('Tidligere historik');
+  if (operation === 'update') {
+    const point = await expand(humanControl.question);
+    fireEvent.click(await point.findByRole('button', { name: 'Rediger opfølgning' }));
+  } else {
+    fireEvent.click(await screen.findByRole('button', { name: 'Tilføj kontrolpunkt' }));
+    fireEvent.change(screen.getByLabelText('Kontrolspørgsmål'), { target: { value: humanControl.question } });
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Gem menneskelig opfølgning' }));
+  expect(await screen.findByText('Menneskelig opfølgning er med i historikken')).toBeInTheDocument();
+  expect(history).toHaveBeenCalledTimes(2);
+});
+
+
+test('en fejlet baggrundsopdatering bevarer editor og indtastninger, også efter nyt genforsøg', async () => {
+  const view = mount([{ ...run, human_controls: [humanControl] }]);
+  const point = await expand(humanControl.question);
+  fireEvent.click(await point.findByRole('button', { name: 'Rediger opfølgning' }));
+  fireEvent.change(screen.getByLabelText('Opfølgning og noter'), { target: { value: 'Min ugemte afklaring.' } });
+  axios.get.mockRejectedValueOnce(new Error('Background fetch failed'));
+  await act(async () => { await view.queryClient.invalidateQueries(['case-technical-runs', 'c1']); });
+  expect(await screen.findByText('Kørselsoversigten kunne ikke opdateres')).toBeInTheDocument();
+  expect(screen.getByLabelText('Opfølgning og noter')).toHaveValue('Min ugemte afklaring.');
+  expect(screen.getByText('GPT-5.6 Sol')).toBeInTheDocument();
+  expect(screen.getByLabelText('Vælg kørsel eller rapportversion')).toHaveValue('dpia:a2');
+  fireEvent.click(screen.getByRole('button', { name: 'Prøv at opdatere igen' }));
+  await waitFor(() => expect(screen.queryByText('Kørselsoversigten kunne ikke opdateres')).not.toBeInTheDocument());
+  expect(screen.getByLabelText('Opfølgning og noter')).toHaveValue('Min ugemte afklaring.');
+  expect(axios.patch).not.toHaveBeenCalled();
+  expect(axios.post).not.toHaveBeenCalled();
+});
+
+test('mislykket konfliktreload lukker ikke editoren; kun vellykket eksplicit reload må lukke', async () => {
+  axios.patch.mockRejectedValueOnce({ response: { status: 409 } });
+  mount([{ ...run, human_controls: [humanControl] }]);
+  const point = await expand(humanControl.question);
+  fireEvent.click(await point.findByRole('button', { name: 'Rediger opfølgning' }));
+  fireEvent.change(screen.getByLabelText('Opfølgning og noter'), { target: { value: 'Bevar denne note.' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Gem menneskelig opfølgning' }));
+  await screen.findByText(/Punktet er ændret siden du åbnede det/);
+  axios.get.mockRejectedValueOnce(new Error('Reload failed'));
+  fireEvent.click(screen.getByRole('button', { name: 'Hent gemt udgave og luk redigering' }));
+  await screen.findByText('Kørselsoversigten kunne ikke opdateres');
+  expect(screen.getByLabelText('Opfølgning og noter')).toHaveValue('Bevar denne note.');
+  expect(screen.getByRole('button', { name: 'Gem menneskelig opfølgning' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Hent gemt udgave og luk redigering' }));
+  await waitFor(() => expect(screen.queryByRole('form', { name: 'Menneskeligt kontrolpunkt' })).not.toBeInTheDocument());
+  expect(axios.get).toHaveBeenCalledTimes(3);
+  expect(axios.patch).toHaveBeenCalledTimes(1);
 });

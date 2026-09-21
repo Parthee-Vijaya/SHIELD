@@ -16,7 +16,9 @@ from src.database.connection import Base, get_db, get_test_engine
 
 
 @pytest.fixture()
-def api(tmp_path, monkeypatch) -> Generator[tuple[TestClient, sessionmaker], None, None]:
+def api(
+    tmp_path, monkeypatch
+) -> Generator[tuple[TestClient, sessionmaker], None, None]:
     monkeypatch.setenv("DOCUMENT_BANK_STORAGE_DIR", str(tmp_path / "documents"))
     engine = get_test_engine()
     Base.metadata.create_all(engine)
@@ -84,9 +86,7 @@ def test_empty_case_starts_at_zero_percent_with_one_clear_blocker(api):
     assert response.status_code == 200, response.text
     readiness = response.json()["readiness"]
     assert readiness["percent"] == 0
-    assert readiness["blockers"] == [
-        "Sagen har endnu ingen tilknyttet vurdering."
-    ]
+    assert readiness["blockers"] == ["Sagen har endnu ingen tilknyttet vurdering."]
 
 
 def test_workspace_approval_and_document_flow_is_atomic_and_version_pinned(api):
@@ -113,7 +113,9 @@ def test_workspace_approval_and_document_flow_is_atomic_and_version_pinned(api):
     with testing_session() as db:
         conditions = (
             db.query(CaseAction)
-            .filter(CaseAction.case_db_id == case_id, CaseAction.category == "condition")
+            .filter(
+                CaseAction.case_db_id == case_id, CaseAction.category == "condition"
+            )
             .all()
         )
         assert len(conditions) == 1
@@ -134,7 +136,9 @@ def test_workspace_approval_and_document_flow_is_atomic_and_version_pinned(api):
                 }
             )
         },
-        files={"file": ("politik.txt", b"Godkendt kommunal kontroltekst.\n", "text/plain")},
+        files={
+            "file": ("politik.txt", b"Godkendt kommunal kontroltekst.\n", "text/plain")
+        },
     )
     assert upload_response.status_code == 201, upload_response.text
     document_id = upload_response.json()["document"]["id"]
@@ -163,9 +167,158 @@ def test_workspace_approval_and_document_flow_is_atomic_and_version_pinned(api):
     assert workspace_response.status_code == 200, workspace_response.text
     version = workspace_response.json()["documents"][0]["version"]
     assert "storage_key" not in version
+    document = workspace_response.json()["documents"][0]
+    assert document["category"] == "policy"
+    assert document["uploaded_by"] == "Test Godkender"
+    assert document["uploaded_at"] == version["created_at"]
+    assert document["uploaded_actor_kind"] == "human"
     assert version["download_href"].endswith(f"/{version_id}/download")
 
     download_response = client.get(version["download_href"])
     assert download_response.status_code == 200
     assert download_response.content.startswith(b"Godkendt kommunal")
     assert len(download_response.headers["x-content-sha256"]) == 64
+
+
+def test_action_owner_changes_are_authenticated_audited_and_clearable(api):
+    client, testing_session = api
+    case_id = _ready_case(testing_session)
+    created = client.post(
+        f"/api/v3/cases/{case_id}/actions",
+        json={"title": "Afklar slettefrist", "owner": "Systemejer"},
+    )
+    assert created.status_code == 201
+    action_id = created.json()["id"]
+    url = f"/api/v3/cases/{case_id}/actions/{action_id}"
+    changed = client.patch(url, json={"owner": "DPO"})
+    assert changed.status_code == 200
+    assert changed.json()["owner"] == "DPO"
+    assert (
+        client.patch(
+            url, json={"owner": "DPO", "updated_by": "Opdigtet aktør"}
+        ).status_code
+        == 422
+    )
+    assert client.patch(url, json={"owner": "DPO"}).status_code == 200
+    assert client.patch(url, json={"owner": None}).json()["owner"] is None
+    timeline = client.get(f"/api/v3/cases/{case_id}/workspace").json()["timeline"]
+    changes = [item for item in timeline if item["event_type"] == "measure_updated"]
+    assert len(changes) == 2  # A repeated value is not a change.
+    assert changes[0]["before"] == {"owner": "DPO"}
+    assert changes[0]["after"] == {"owner": None}
+    assert changes[1]["before"] == {"owner": "Systemejer"}
+    assert changes[1]["after"] == {"owner": "DPO"}
+    assert all(
+        item["actor"] == "Test Godkender" and item["actor_kind"] == "human"
+        for item in changes
+    )
+    assert all(
+        item["actor_id"] == "11111111-2222-3333-4444-555555555555" for item in changes
+    )
+    created_event = next(
+        item for item in timeline if item["event_type"] == "measure_added"
+    )
+    assert created_event["actor"] == "Test Godkender"  # Never the owner.
+
+
+def test_assessment_owner_is_a_sidecar_and_rejects_another_case(api):
+    from copy import deepcopy
+    from src.database.dpia import DPIAAssessmentRecord
+    from tests.test_case_workspace_backend import _save_dpia
+
+    client, testing_session = api
+    case_id = _ready_case(testing_session)
+    with testing_session() as db:
+        assessment = _save_dpia(db, "owned-assessment", case_id)
+        another = create_case(db, case_id="ANOTHER", title="En anden sag")
+        _save_dpia(db, "foreign-assessment", another.id)
+        snapshot = deepcopy(assessment.result_payload)
+        request = deepcopy(assessment.request_payload)
+        db.commit()
+    root = f"/api/v3/cases/{case_id}"
+    before = client.get(f"{root}/workspace").json()
+    record = before["assessments"]["dpia"][0]
+    assert record["owner"] is None and record["created_by"] is None
+    response = client.patch(
+        f"{root}/assessments/dpia_assessment/owned-assessment/metadata",
+        json={"owner": "Faglig systemejer"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["owner"] == "Faglig systemejer"
+    assert (
+        client.patch(
+            f"{root}/assessments/dpia_assessment/foreign-assessment/metadata",
+            json={"owner": "Forkert sag"},
+        ).status_code
+        == 404
+    )
+    after = client.get(f"{root}/workspace").json()
+    assessment = after["assessments"]["dpia"][0]
+    assert assessment["owner"] == "Faglig systemejer"
+    assert assessment["created_by"] is None  # Assignment does not invent the creator.
+    assert after["revision_id"] != before["revision_id"]
+    event = next(
+        item
+        for item in after["timeline"]
+        if item["event_type"] == "assessment_owner_changed"
+    )
+    assert event["before"] == {"owner": None}
+    assert event["after"] == {"owner": "Faglig systemejer"}
+    assert event["actor"] == "Test Godkender"
+    with testing_session() as db:
+        record = db.get(DPIAAssessmentRecord, "owned-assessment")
+        assert record.result_payload == snapshot and record.request_payload == request
+    bundle = client.get(f"{root}/export.json")
+    assert bundle.status_code == 200
+    assert bundle.json()["revision_id"] == after["revision_id"]
+    assert after["revision_id"] in bundle.headers["content-disposition"]
+
+
+def test_action_owner_and_audit_event_rollback_together(api, monkeypatch):
+    from sqlalchemy.exc import SQLAlchemyError
+    import src.database.case_workspace as domain
+
+    client, testing_session = api
+    case_id = _ready_case(testing_session)
+    created = client.post(
+        f"/api/v3/cases/{case_id}/actions",
+        json={"title": "Afklar adgang", "owner": "Oprindelig ejer"},
+    ).json()
+
+    def fail(*args, **kwargs):
+        raise SQLAlchemyError("Synthetic unavailable audit storage")
+
+    monkeypatch.setattr(domain, "record_workspace_event", fail)
+    response = client.patch(
+        f"/api/v3/cases/{case_id}/actions/{created['id']}", json={"owner": "Ny ejer"}
+    )
+    assert response.status_code == 503
+    with testing_session() as db:
+        assert db.get(CaseAction, created["id"]).owner == "Oprindelig ejer"
+
+
+def test_action_due_date_can_be_cleared_without_implicit_changes_on_other_edits(api):
+    client, testing_session = api
+    case_id = _ready_case(testing_session)
+    created = client.post(
+        f"/api/v3/cases/{case_id}/actions",
+        json={
+            "title": "Afklar næste review",
+            "owner": "Systemejer",
+            "due_at": "2026-12-01T10:00:00Z",
+        },
+    ).json()
+    url = f"/api/v3/cases/{case_id}/actions/{created['id']}"
+    changed_owner = client.patch(url, json={"owner": "DPO"})
+    assert changed_owner.status_code == 200
+    assert changed_owner.json()["due_at"].startswith("2026-12-01T10:00:00")
+    cleared = client.patch(url, json={"due_at": None})
+    assert cleared.status_code == 200 and cleared.json()["due_at"] is None
+    events = client.get(f"/api/v3/cases/{case_id}/workspace").json()["timeline"]
+    event = next(
+        item
+        for item in events
+        if item["event_type"] == "measure_updated" and "due_at" in item["after"]
+    )
+    assert event["before"]["due_at"].startswith("2026-12-01T10:00:00")
+    assert event["after"] == {"due_at": None}

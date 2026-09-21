@@ -1,7 +1,7 @@
 import { modelLabel, modelNotes, modelNote } from '../../utils/modelPresentation';
 import React, { useId, useMemo, useState } from 'react';
 import axios from 'axios';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { INPUT_SOURCE_LABELS, publicSourceUrl, sourceLabel } from '../assessment/EvidenceNavigator';
@@ -22,8 +22,8 @@ const Panel = styled.div`
   min-width: 0; padding-top: 28px; overflow-wrap: anywhere;
   h3 { margin: 0 0 10px; font-size: 1rem; }
   p { color: ${p => p.theme.colors.inkSoft}; font-size: .84rem; line-height: 1.65; }
-  button, input, select { min-width: 0; }
-  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid ${p => p.theme.colors.primary}; outline-offset: 3px; }
+  button, input, select, textarea { min-width: 0; max-width: 100%; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid ${p => p.theme.colors.primary}; outline-offset: 3px; }
 `;
 const Toolbar = styled.div`
   display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); align-items: end; gap: 16px; margin: 18px 0;
@@ -139,7 +139,78 @@ function OutputList({ items, sources }) {
   </>;
 }
 
-function Review({ review, items, sources }) {
+const HUMAN_STATUS = { open: 'Åben opfølgning', in_progress: 'Under behandling', completed: 'Afsluttet opfølgning', dismissed: 'Arkiveret opfølgning' };
+const Actions = styled.div`display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0;`;
+const ControlForm = styled.form`
+  border-top: 2px solid ${p => p.theme.colors.primary}; padding-top: 18px; margin: 22px 0;
+  textarea { box-sizing: border-box; width: 100%; resize: vertical; }
+`;
+
+function HumanControlEditor({ value, caseId, assessmentId, onSaved, onCancel, onReload }) {
+  const [fields, setFields] = useState({ question: value.question || '', notes: value.notes || '', owner: value.owner || '', status: value.status || 'open' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [conflict, setConflict] = useState(false);
+  const id = useId();
+  const change = key => event => setFields(previous => ({ ...previous, [key]: event.target.value }));
+  const save = async event => {
+    event.preventDefault();
+    if (saving || conflict) return;
+    if (!fields.question.trim()) { setError('Skriv, hvad der skal kontrolleres.'); return; }
+    setSaving(true); setError('');
+    try {
+      const url = `/api/v3/cases/${encodeURIComponent(caseId)}/technical-controls`;
+      const payload = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.trim()]));
+      const response = value.id
+        ? await axios.patch(`${url}/${encodeURIComponent(value.id)}`, { ...payload, expected_version: value.version })
+        : await axios.post(url, { ...payload, assessment_id: assessmentId, original_check_id: value.original_check_id || null });
+      onSaved(response.data);
+    } catch (failure) {
+      const stale = failure.response?.status === 409;
+      setConflict(stale);
+      setError(stale ? 'Punktet er ændret siden du åbnede det. Hent den gemte udgave, før du redigerer videre.' : 'Opfølgningen kunne ikke gemmes. Dine indtastninger er bevaret. Prøv igen.');
+    } finally { setSaving(false); }
+  };
+  return <ControlForm aria-label="Menneskeligt kontrolpunkt" onSubmit={save}>
+    <h3>{value.id ? 'Rediger menneskelig opfølgning' : value.original_check_id ? 'Følg op på JEV-kontrolpunkt' : 'Tilføj menneskeligt kontrolpunkt'}</h3>
+    <p>Dette er en menneskelig tilføjelse eller ændring, som ikke er kontrolleret af JEV. Originale spørgsmål, svar, scorer og godkendelser ændres ikke. En afsluttet opfølgning er ikke en ny JEV-kontrol.</p>
+    {value.original_check_id && <p>Tilknyttet originalt kontrolpunkt: {text(value.original_check_id)}</p>}
+    <Field><label htmlFor={`${id}-question`}>Kontrolspørgsmål</label><textarea autoFocus required id={`${id}-question`} rows={3} maxLength={2000} value={fields.question} onChange={change('question')} /></Field>
+    <Field><label htmlFor={`${id}-notes`}>Opfølgning og noter</label><textarea id={`${id}-notes`} rows={4} maxLength={12000} value={fields.notes} onChange={change('notes')} placeholder="Beskriv afklaringen og henvis til dokumentation." /></Field>
+    <Toolbar><Field><label htmlFor={`${id}-owner`}>Ansvarlig for opfølgningen</label><input id={`${id}-owner`} maxLength={200} value={fields.owner} onChange={change('owner')} /></Field><Field><label htmlFor={`${id}-status`}>Opfølgningens status</label><select id={`${id}-status`} value={fields.status} onChange={change('status')}>{Object.entries(HUMAN_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field></Toolbar>
+    {error && <ErrorPanel role="alert">{error}{conflict && <Actions><SecondaryButton type="button" onClick={onReload}>Hent gemt udgave og luk redigering</SecondaryButton></Actions>}</ErrorPanel>}
+    <Actions><SecondaryButton type="submit" disabled={saving || conflict}>{saving ? 'Gemmer…' : 'Gem menneskelig opfølgning'}</SecondaryButton><SecondaryButton type="button" disabled={saving} onClick={onCancel}>Annuller</SecondaryButton></Actions>
+  </ControlForm>;
+}
+
+function HumanControls({ controls, caseId, assessmentId, editor, setEditor, onSaved, onReload }) {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const id = useId();
+  const filtered = controls.filter(control => normalise([control.question, control.notes, control.owner, control.original_check_id].join(' ')).includes(normalise(search)));
+  return <>
+    <h3>Menneskelig opfølgning på denne version</h3>
+    <p>Nye eller ændrede kontrolspørgsmål gemmes særskilt med ansvarlig og ændringshistorik. De kræver ny kontrol, også når den menneskelige opfølgning afsluttes. Der startes ikke automatisk en AI-kørsel.</p>
+    {!editor && <Actions><SecondaryButton type="button" onClick={() => setEditor({})}>Tilføj kontrolpunkt</SecondaryButton></Actions>}
+    {editor && <HumanControlEditor key={editor.id || editor.original_check_id || 'new'} value={editor} caseId={caseId} assessmentId={assessmentId} onSaved={onSaved} onCancel={() => setEditor(null)} onReload={onReload} />}
+    {controls.length > 0 && <><Field><label htmlFor={id}>Søg i menneskelig opfølgning</label><input id={id} type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(0); }} /></Field><Count>{filtered.length} af {controls.length} menneskelige kontrolpunkter</Count></>}
+    {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(control => <Fold key={control.id} label={<><strong>{text(control.question)}</strong><StatusPill $tone="neutral">{HUMAN_STATUS[control.status] || NOT_RECORDED}</StatusPill><StatusPill $tone="warning">Ikke JEV-kontrolleret</StatusPill></>}>
+      <p><strong>Menneskelig {control.original_check_id ? 'ændring / opfølgning' : 'tilføjelse'} · kræver ny kontrol</strong></p>
+      <Metadata><div><dt>Ansvarlig</dt><dd>{text(control.owner) || 'Ikke tildelt'}</dd></div><div><dt>Senest gemt</dt><dd>{date(control.updated_at)}</dd></div><div><dt>Tilknytning</dt><dd>{control.original_check_id ? `Originalt JEV-kontrolpunkt: ${text(control.original_check_id)}` : 'Selvstændigt menneskeligt kontrolpunkt'}</dd></div></Metadata>
+      <Fields><div><dt>Opfølgning og noter</dt><dd>{text(control.notes) || 'Ingen noter endnu.'}</dd></div></Fields>
+      <Actions><SecondaryButton type="button" onClick={() => setEditor(control)}>Rediger opfølgning</SecondaryButton></Actions>
+      <Fold label={`Ændringshistorik (${array(control.history).length})`}>{array(control.history).map(revision => <div key={revision.version}>
+        <h4>Revision {revision.version} · {revision.action === 'created' ? 'Oprettet' : 'Ændret'} af {text(revision.actor_name) || NOT_RECORDED}</h4>
+        <p>{date(revision.created_at)}{revision.identity_assurance === 'development_only' ? ' · Lokal brugeridentitet, ikke bekræftet via login' : ''}</p>
+        <Fields>{[['question', 'Kontrolspørgsmål'], ['notes', 'Opfølgning og noter'], ['owner', 'Ansvarlig'], ['status', 'Opfølgningens status']].map(([key,label]) => <div key={key}><dt>{label}</dt><dd>{key === 'status' ? HUMAN_STATUS[revision.snapshot?.[key]] || NOT_RECORDED : text(revision.snapshot?.[key]) || NOT_RECORDED}</dd></div>)}</Fields>
+      </div>)}</Fold>
+    </Fold>)}
+    {!filtered.length && <p>{controls.length ? 'Ingen menneskelige kontrolpunkter matcher søgningen.' : 'Ingen menneskelige kontrolpunkter er tilføjet endnu.'}</p>}
+    <Pages page={page} total={filtered.length} onChange={setPage} label="Sider i menneskelig opfølgning" />
+  </>;
+}
+
+function Review({ review, items, sources, controls = [], onFollowUp }) {
   const checks = array(review?.checks);
   const reviewedItems = array(review?.reviewed_output_items);
   const flagged = checks.filter(check => check.requires_review || check.stale);
@@ -169,12 +240,14 @@ function Review({ review, items, sources }) {
     {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(check => <Fold key={check.id} label={<><strong>{text(check.label) || text(check.id)}</strong><StatusPill $tone={check.stale || check.requires_review ? 'warning' : 'neutral'}>{check.stale ? 'Kræver ny kontrol' : check.requires_review ? 'Kræver opfølgning' : 'Uden markering'}</StatusPill></>}>
       {check.stale && <Inset><strong>Den tidligere kontrol gælder ikke den ændrede tekst.</strong><p>Indholdet er redigeret efter JEV-kørslen og afventer ny kontrol. Den tidligere score vises kun som historik.</p></Inset>}
       <Metadata><div><dt>{check.stale ? 'Tidligere problemsignal' : 'Problemsignal'}</dt><dd>{score(check.probability)}</dd></div><div><dt>Grænse for opfølgning</dt><dd>{score(review.threshold)}</dd></div><div><dt>Kontrolpunktets ID</dt><dd>{text(check.id)}</dd></div></Metadata>
+      {[['question', 'Registreret kontrolspørgsmål'], ['criteria_text', 'Registreret kriterium'], ['grounding', 'Registreret grundlag']].map(([key,label]) => typeof check[key] === 'string' && check[key] ? <Fields key={key}><div><dt>{label}</dt><dd>{check[key]}</dd></div></Fields> : null)}
       <h3>{check.stale ? 'Tidligere kontrolleret tekst' : 'Kontrolleret tekst'}</h3>
       {strings(check.output_item_ids).length ? strings(check.output_item_ids).map(itemId => {
         const item = (check.stale ? reviewedItems : items).find(value => value.id === itemId);
         return item ? <Output key={itemId} item={item} sources={sources} includeSources={false} /> : <p key={itemId}>Output {itemId} er ikke registreret.</p>;
       }) : <p>Det præcise output for dette kontrolpunkt er ikke registreret.</p>}
       <Fold label={`Grundlag for kontrollen (${strings(check.source_ids).length} kilder)`}><Sources ids={check.source_ids} sources={sources} /></Fold>
+      {onFollowUp && <Actions><SecondaryButton type="button" onClick={() => onFollowUp(controls.find(control => control.original_check_id === check.id) || { original_check_id: check.id, question: text(check.question) || text(check.label) || text(check.id) })}>{controls.some(control => control.original_check_id === check.id) ? 'Rediger menneskelig opfølgning' : 'Tilføj menneskelig opfølgning'}</SecondaryButton></Actions>}
     </Fold>)}
     {!filtered.length && <p>Ingen kontrolpunkter matcher valget. Menneskelig gennemgang er stadig nødvendig.</p>}
     <Pages page={page} total={filtered.length} onChange={setPage} label="Sider i JEV-kontrolpunkter" />
@@ -214,7 +287,11 @@ function BatchSummary({ batching }) {
   </Fold>;
 }
 
-function RunDetails({ run, caseId }) {
+function RunDetails({ run, caseId, onControlSaved, onReload }) {
+  const [editor, setEditor] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const controls = array(run.human_controls);
+  const saveControl = control => { onControlSaved(control); setEditor(null); setSaved(true); };
   const sources = array(run.sources);
   const items = array(run.output_items);
   const notes = modelNotes([...strings(run.limitations), ...strings(run.recording_notes)], run.model);
@@ -227,7 +304,10 @@ function RunDetails({ run, caseId }) {
     {run.editorial_revision && <Inset><strong>Fagligt redigeret version – ingen ny AI-kørsel</strong><p>{text(run.editorial_revision.note) || 'Rapportteksten er ændret efter den oprindelige kørsel.'} Modeloplysninger og tidligere kontrolresultater stammer fra den oprindelige AI-version. Ændrede kontrolpunkter kræver ny kontrol.</p></Inset>}
     {stages.length > 0 && <Steps aria-label="Kørslens procestrin">{stages.map((stage, index) => <li key={stage.id || index}><strong>{index + 1}. {text(stage.title)}</strong><p>{text(stage.description)}</p></li>)}</Steps>}
     <BatchSummary batching={run.batching} />
-    <Section><SectionHeader><div><h2>JEV-kontrol</h2><p>Se, hvilke formuleringer der blev kontrolleret, og hvilket registreret kildegrundlag der hører til.</p></div></SectionHeader><Review review={run.review} items={items} sources={sources} /></Section>
+    <Section><SectionHeader><div><h2>JEV-kontrol</h2><p>Se, hvilke formuleringer der blev kontrolleret, og hvilket registreret kildegrundlag der hører til.</p></div></SectionHeader><Review review={run.review} items={items} sources={sources} controls={controls} onFollowUp={run.assessment_id ? value => { setSaved(false); setEditor(value); } : null} />
+      {saved && <p role="status">Menneskelig opfølgning er gemt. Den oprindelige JEV-kontrol er bevaret.</p>}
+      {run.assessment_id ? <HumanControls controls={controls} caseId={caseId} assessmentId={run.assessment_id} editor={editor} setEditor={value => { setSaved(false); setEditor(value); }} onSaved={saveControl} onReload={async () => { const refreshed = await onReload(); if (refreshed.isSuccess && !refreshed.isError) setEditor(null); }} /> : <p>Vælg en gemt vurderingsversion for at tilføje menneskelige kontrolpunkter.</p>}
+    </Section>
     <Section><SectionHeader><div><h2>Det udarbejdede indhold</h2><p>Det gemte output fra denne version med tilknyttede kilder. Anbefalinger vises som selvstændige outputpunkter.</p></div></SectionHeader>{items.length ? <OutputList items={items} sources={sources} /> : <StatePanel><strong>Output er ikke registreret</strong><p>Denne kørsel har ingen gemte outputpunkter.</p></StatePanel>}</Section>
     <Section><SectionHeader><div><h2>Kildegrundlag</h2><p>De gemte kildetekster fra kørslen. Et link kan siden være ændret; uddraget her viser det registrerede grundlag.</p></div></SectionHeader><SourceList sources={sources} /></Section>
     <Section><SectionHeader><div><h2>Kørselsoplysninger og afgrænsning</h2><p>Registrerede metadata og begrænsninger. Manglende oplysninger vises som »Ikke registreret«.</p></div></SectionHeader>
@@ -241,6 +321,7 @@ function RunDetails({ run, caseId }) {
 
 export default function TechnicalRunsPanel({ caseId }) {
   const [params, setParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const query = useQuery(['case-technical-runs', caseId], async () => (await axios.get(`/api/v3/cases/${encodeURIComponent(caseId)}/technical-runs`)).data, { enabled: Boolean(caseId) });
   const runs = array(query.data?.runs);
   const requestedRun = params.get('run_id');
@@ -256,10 +337,14 @@ export default function TechnicalRunsPanel({ caseId }) {
   };
   return <Panel id="case-panel-technical-runs" role="tabpanel" aria-labelledby="case-tab-technical-runs" tabIndex={0}>
     <SectionHeader><div><h2>Teknisk kørsel</h2><p>Følg det gemte spor fra sagens oplysninger til rapporttekst, kilder og JEV-kontrol. Visningen starter ingen nye AI-kald.</p></div></SectionHeader>
-    {query.isLoading ? <StatePanel role="status"><strong>Henter registrerede kørsler…</strong></StatePanel> : query.isError ? <ErrorPanel role="alert"><strong>Kørselsoplysningerne kunne ikke hentes</strong><p>Prøv igen. Sagens gemte vurderinger er ikke ændret.</p><SecondaryButton type="button" onClick={() => query.refetch()}>Prøv igen</SecondaryButton></ErrorPanel> : !runs.length ? <StatePanel><strong>Ingen registrerede kørsler endnu</strong><p>Når sagen får en materialeanalyse eller en gemt vurdering, vises det tilgængelige kørselsgrundlag her.</p></StatePanel> : <>
+    {query.isError && query.data && <ErrorPanel role="alert"><strong>Kørselsoversigten kunne ikke opdateres</strong><p>Den senest hentede oversigt vises. Dine indtastninger er bevaret.</p><SecondaryButton type="button" onClick={() => query.refetch()}>Prøv at opdatere igen</SecondaryButton></ErrorPanel>}
+    {query.isLoading ? <StatePanel role="status"><strong>Henter registrerede kørsler…</strong></StatePanel> : query.isError && !query.data ? <ErrorPanel role="alert"><strong>Kørselsoplysningerne kunne ikke hentes</strong><p>Prøv igen. Sagens gemte vurderinger er ikke ændret.</p><SecondaryButton type="button" onClick={() => query.refetch()}>Prøv igen</SecondaryButton></ErrorPanel> : !runs.length ? <StatePanel><strong>Ingen registrerede kørsler endnu</strong><p>Når sagen får en materialeanalyse eller en gemt vurdering, vises det tilgængelige kørselsgrundlag her.</p></StatePanel> : <>
       <Field><label htmlFor="technical-run-select">Vælg kørsel eller rapportversion</label><select id="technical-run-select" value={selected.id} onChange={event => chooseRun(event.target.value)}>{runs.map(run => <option key={run.id} value={run.id}>{run.version == null ? kindLabel(run.kind) : `Version ${run.version} · ${kindLabel(run.kind)}`} · {date(run.created_at)}</option>)}</select></Field>
       {selectionMissing && <p role="status">Den ønskede version har ingen registreret kørsel. Den seneste tilgængelige version vises.</p>}
-      <RunDetails key={selected.id} run={selected} caseId={caseId} />
+      <RunDetails key={selected.id} run={selected} caseId={caseId} onReload={() => query.refetch()} onControlSaved={control => {
+        queryClient.setQueryData(['case-technical-runs', caseId], previous => ({ ...previous, runs: array(previous?.runs).map(run => run.assessment_id !== control.assessment_id ? run : { ...run, human_controls: [...array(run.human_controls).filter(item => item.id !== control.id), control] }) }));
+        queryClient.invalidateQueries(['case-workspace', caseId]);
+      }} />
     </>}
   </Panel>;
 }

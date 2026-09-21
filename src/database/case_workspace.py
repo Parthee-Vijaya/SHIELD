@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from sqlalchemy import (
     JSON,
@@ -283,6 +283,109 @@ def add_workspace_reference(
     return reference
 
 
+def record_workspace_event(
+    session: Session,
+    *,
+    case_db_id: str,
+    event_type: str,
+    title: str,
+    target_type: str,
+    target_id: str,
+    before: dict[str, Any],
+    after: dict[str, Any],
+    actor: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    actor_kind: str = "unknown",
+    model: Optional[str] = None,
+) -> CaseWorkspaceReference:
+    """Append an authenticated workflow event without editing any snapshot."""
+    if actor_kind not in {"human", "ai", "system", "unknown"}:
+        raise ValueError("invalid actor kind")
+    return add_workspace_reference(
+        session,
+        case_db_id=case_db_id,
+        reference_type="external_record",
+        reference_id=f"workflow-event:{_uuid()}",
+        title=title[:255],
+        created_by=actor,
+        details={
+            "workspace_event": {
+                "event_type": event_type,
+                "target_type": target_type,
+                "target_id": target_id,
+                "before": before,
+                "after": after,
+                "actor_id": actor_id,
+                "actor_kind": actor_kind,
+                "model": model,
+            }
+        },
+    )
+
+
+def update_assessment_owner(
+    session: Session,
+    *,
+    case_db_id: str,
+    reference_type: str,
+    reference_id: str,
+    owner: Optional[str],
+    updated_by: str,
+    actor_id: Optional[str] = None,
+    actor_kind: str = "human",
+    model: Optional[str] = None,
+) -> CaseWorkspaceReference:
+    """Caller verifies case ownership; only the workspace sidecar is mutable."""
+    if reference_type not in {
+        "dpia_assessment",
+        "legal_screening",
+        "ai_act_assessment",
+        "fria_assessment",
+    }:
+        raise ValueError("invalid assessment type")
+    reference = add_workspace_reference(
+        session,
+        case_db_id=case_db_id,
+        reference_type=reference_type,
+        reference_id=reference_id,
+        details={"metadata_only": True},
+    )
+    details = dict(reference.details or {})
+    metadata = dict(details.get("workspace_metadata") or {})
+    normalized_owner = (owner or "").strip() or None
+    if metadata.get("owner") == normalized_owner:
+        return reference
+    before = {"owner": metadata.get("owner")}
+    metadata.update(
+        {
+            "owner": normalized_owner,
+            "updated_by": updated_by,
+            "updated_by_id": actor_id,
+            "updated_by_kind": actor_kind,
+            "updated_by_model": model,
+            "updated_at": _now().isoformat(),
+        }
+    )
+    details["workspace_metadata"] = metadata
+    cast(Any, reference).details = details
+    record_workspace_event(
+        session,
+        case_db_id=case_db_id,
+        event_type="assessment_owner_changed",
+        title="Vurderingens ejer ændret",
+        target_type=reference_type,
+        target_id=reference_id,
+        before=before,
+        after={"owner": normalized_owner},
+        actor=updated_by,
+        actor_id=actor_id,
+        actor_kind=actor_kind,
+        model=model,
+    )
+    session.flush()
+    return reference
+
+
 def list_workspace_references(
     session: Session,
     case_db_id: str,
@@ -343,16 +446,29 @@ def update_case_action(
     status: Optional[str] = None,
     owner: Optional[str] = None,
     due_at: Optional[datetime] = None,
+    due_at_supplied: bool = False,
     evidence_note: Optional[str] = None,
+    updated_by: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    actor_kind: str = "unknown",
+    model: Optional[str] = None,
 ) -> CaseAction:
     action = session.get(CaseAction, action_id)
     if action is None:
         raise ValueError(f"case action not found: {action_id}")
+    audited_fields = ("status", "owner", "due_at", "evidence_note", "completed_at")
+    previous = action.to_dict()
+    before = {key: previous[key] for key in audited_fields}
     if action.source_reference_type == "procurement_clarification":
         next_status = status if status is not None else action.status
         next_note = evidence_note if evidence_note is not None else action.evidence_note
-        if next_status in {"completed", "dismissed"} and len((next_note or "").strip()) < 20:
-            raise ValueError("Afsluttede afklaringer kræver et dokumenteret svar på mindst 20 tegn.")
+        if (
+            next_status in {"completed", "dismissed"}
+            and len((next_note or "").strip()) < 20
+        ):
+            raise ValueError(
+                "Afsluttede afklaringer kræver et dokumenteret svar på mindst 20 tegn."
+            )
     if status is not None:
         if status not in ACTION_STATUSES:
             raise ValueError(f"invalid action status: {status}")
@@ -361,15 +477,34 @@ def update_case_action(
             and len((evidence_note or action.evidence_note or "").strip()) < 5
         ):
             raise ValueError("completed actions require an evidence note")
-        action.status = status
-        action.completed_at = _now() if status == "completed" else None
+        if action.status != status:
+            action.status = status
+            action.completed_at = _now() if status == "completed" else None
     if owner is not None:
         action.owner = owner.strip() or None
-    if due_at is not None:
-        action.due_at = due_at
+    if due_at is not None or due_at_supplied:
+        cast(Any, action).due_at = due_at
     if evidence_note is not None:
         action.evidence_note = evidence_note.strip() or None
-    action.updated_at = _now()
+    current = action.to_dict()
+    after = {key: current[key] for key in audited_fields}
+    changed_fields = [key for key in audited_fields if before[key] != after[key]]
+    if changed_fields:
+        action.updated_at = _now()
+        record_workspace_event(
+            session,
+            case_db_id=str(action.case_db_id),
+            event_type="measure_updated",
+            title=f"Foranstaltning ændret: {action.title}",
+            target_type="measure",
+            target_id=str(action.id),
+            before={key: before[key] for key in changed_fields},
+            after={key: after[key] for key in changed_fields},
+            actor=updated_by,
+            actor_id=actor_id,
+            actor_kind=actor_kind,
+            model=model,
+        )
     session.flush()
     return action
 

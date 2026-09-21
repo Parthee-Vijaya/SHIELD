@@ -17,14 +17,16 @@ test('sagens DPIA-versioner har hver sit link til læsning og dokumenter', () =>
     { id: 'assessment-1', type: 'dpia_assessment', case_db_id: 'case-1', project_name: 'Sagsløsning', version: 1 },
     { id: 'assessment-2', type: 'dpia_assessment', case_db_id: 'case-1', project_name: 'Sagsløsning', version: 2 },
   ]} /></ThemeProvider>);
-  const links = screen.getAllByRole('link', { name: /Læs analyse og hent Word \/ Excel/ });
-  expect(links[0]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-1&case=case-1');
-  expect(links[1]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-2&case=case-1');
+  expect(screen.getAllByRole('link', { name: 'Åbn denne vurdering →' })[0]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-2&case=case-1');
+  fireEvent.click(screen.getByText('Ældre versioner (1)'));
+  const links = screen.getAllByRole('link', { name: 'Åbn denne vurdering →' });
+  expect(links[0]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-2&case=case-1');
+  expect(links[1]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-1&case=case-1');
   const readableLinks = screen.getAllByRole('link', { name: 'Læsevenlig udgave →' });
-  expect(readableLinks[0]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-1&case=case-1&view=readable');
-  expect(readableLinks[1]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-2&case=case-1&view=readable');
-  expect(screen.getByText('Version 1 · Konsekvensanalyse og risikovurdering')).toBeInTheDocument();
-  expect(screen.getByText('Version 2 · Konsekvensanalyse og risikovurdering')).toBeInTheDocument();
+  expect(readableLinks[0]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-2&case=case-1&view=readable');
+  expect(readableLinks[1]).toHaveAttribute('href', '/vurdering?assessment_id=assessment-1&case=case-1&view=readable');
+  expect(screen.getByText(/Seneste version · Version 2/)).toBeInTheDocument();
+  expect(screen.getByText(/Tidligere version · Version 1/)).toBeInTheDocument();
 });
 
 const exampleRun = {
@@ -186,6 +188,7 @@ test('almindelig sagsindgang returnerer til alle sager efter faneskift', async (
 test('afklaringsopgaver viser gemte svar og kræver 20 tegn ved afslutning', async () => {
   mountWorkspace('/sager/case-example?tab=measures', { measures: [{ id:'clarification-1', title:'Afklar aftalegrundlag', description:'Aftalen skal gennemgås.\nAnalyse: internal-id\nSpørgsmål: question_dpa', status:'in_progress', source_reference_type:'procurement_clarification', evidence_note:'Leverandøren er bedt om et udkast til aftale.' }] });
   await screen.findByRole('heading',{name:'Afklar aftalegrundlag'});
+  fireEvent.click(screen.getByText('Beskrivelse, dokumentation og afslutning'));
   expect(screen.getByText('Dokumenteret afklaring')).toBeInTheDocument();
   expect(screen.queryByText(/internal-id/)).not.toBeInTheDocument();
   const field=screen.getByRole('textbox',{name:'Dokumentation for udført handling'});
@@ -202,10 +205,32 @@ test('afslutning af et tiltag markerer både oversigtstal og sagsliste til genhe
   axios.patch.mockResolvedValue({ data: { status: 'completed' } });
   mountWorkspace('/sager/case-example?tab=measures', { client, measures: [{ id: 'action-1', title: 'Gennemgå dokumentation', status: 'open' }] });
   await screen.findByRole('heading', { name: 'Gennemgå dokumentation' });
+  fireEvent.click(screen.getByText('Beskrivelse, dokumentation og afslutning'));
   fireEvent.change(screen.getByRole('textbox', { name: 'Dokumentation for udført handling' }), { target: { value: 'Kontrol dokumenteret i syntetisk test.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Markér afsluttet' }));
   await waitFor(() => expect(client.getQueryState(overviewKey).isInvalidated).toBe(true));
   expect(client.getQueryState('v3-cases').isInvalidated).toBe(true);
   expect(axios.patch).toHaveBeenCalledWith('/api/v3/cases/case-example/actions/action-1', { status: 'completed', evidence_note: 'Kontrol dokumenteret i syntetisk test.' });
   client.clear();
+});
+
+test('ejer og dato kan ændres uden at afslutte opgaven', async () => {
+  axios.patch.mockResolvedValue({ data: { owner: 'Ny ansvarlig' } });
+  mountWorkspace('/sager/case-example?tab=measures', { measures: [{ id: 'owner-task', title: 'Følg op på sletning', status: 'open', owner: 'Tidligere ansvarlig', due_at: '2026-10-01T12:00:00Z' }] });
+  fireEvent.click(await screen.findByRole('button', { name: 'Ret ejer og frist' }));
+  fireEvent.change(screen.getByLabelText('Ansvarlig person eller rolle'), { target: { value: 'Ny ansvarlig' } });
+  fireEvent.change(screen.getByLabelText('Frist for opfølgning'), { target: { value: '2026-11-01' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Gem ansvar' }));
+  await waitFor(() => expect(axios.patch).toHaveBeenCalledWith('/api/v3/cases/case-example/actions/owner-task', { owner: 'Ny ansvarlig', due_at: '2026-11-01T12:00:00Z' }));
+  expect(await screen.findByText('Ejerskabet er gemt. Ændringen fremgår af historikken.')).toBeVisible();
+});
+
+test('ved gemmefejl bevares indtastet ejer og mulighed for at prøve igen', async () => {
+  axios.patch.mockRejectedValueOnce(new Error('Network unavailable'));
+  mountWorkspace('/sager/case-example?tab=measures', { measures: [{ id: 'error-task', title: 'Følg op', status: 'open' }] });
+  fireEvent.click(await screen.findByRole('button', { name: 'Tildel ejer og frist' }));
+  fireEvent.change(screen.getByLabelText('Ansvarlig person eller rolle'), { target: { value: 'Forslag til ansvarlig' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Gem ansvar' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Ændringen kunne ikke gemmes');
+  expect(screen.getByLabelText('Ansvarlig person eller rolle')).toHaveValue('Forslag til ansvarlig');
 });

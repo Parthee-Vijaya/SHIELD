@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from io import BytesIO
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, NoReturn
 from urllib.parse import quote
 
 from fastapi import (
@@ -45,6 +45,7 @@ from src.database.case_workspace import (
     decide_case_approval,
     request_case_approval,
     update_case_action,
+    update_assessment_owner,
 )
 from src.database.cases import Case, get_case, transition_case
 from src.database.connection import get_db
@@ -135,6 +136,10 @@ class CaseActionUpdate(StrictModel):
         if not self.model_fields_set:
             raise ValueError("mindst ét felt skal ændres")
         return self
+
+
+class AssessmentMetadataUpdate(StrictModel):
+    owner: str | None = Field(max_length=128)
 
 
 class CaseApprovalRequest(StrictModel):
@@ -254,7 +259,7 @@ def _get_case_or_404(db: Session, case_db_id: str) -> Case:
     return case
 
 
-def _raise_domain_error(exc: ValueError) -> None:
+def _raise_domain_error(exc: ValueError) -> NoReturn:
     detail = str(exc)
     lowered = detail.lower()
     if "not found" in lowered or "findes ikke" in lowered:
@@ -376,6 +381,64 @@ def get_case_workspace(
         _raise_domain_error(exc)
 
 
+@router.patch(
+    "/api/v3/cases/{case_db_id}/assessments/{assessment_type}/{assessment_id}/metadata"
+)
+def patch_assessment_metadata(
+    case_db_id: str,
+    assessment_type: str,
+    assessment_id: str,
+    request: AssessmentMetadataUpdate,
+    db: Session = Depends(get_db),
+    user: UserPrincipal = Depends(WORKSPACE_ACCESS),
+) -> dict[str, Any]:
+    _get_case_or_404(db, case_db_id)
+    groups = {
+        "dpia_assessment": "dpia",
+        "legal_screening": "legal_screening",
+        "ai_act_assessment": "ai_act",
+        "fria_assessment": "fria",
+    }
+    group = groups.get(assessment_type)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Vurderingstypen findes ikke.")
+    workspace = build_case_workspace(db, case_db_id)
+    assessment = next(
+        (
+            item
+            for item in workspace["assessments"][group]
+            if item.get("assessment_id") == assessment_id
+        ),
+        None,
+    )
+    if assessment is None:
+        raise HTTPException(status_code=404, detail="Vurderingen findes ikke på sagen.")
+    try:
+        reference = update_assessment_owner(
+            db,
+            case_db_id=case_db_id,
+            reference_type=assessment_type,
+            reference_id=assessment_id,
+            owner=request.owner,
+            updated_by=_actor_name(user),
+            actor_id=user.oid,
+        )
+        db.commit()
+        return {
+            "assessment_id": assessment_id,
+            "type": assessment_type,
+            **reference.details.get("workspace_metadata", {"owner": None}),
+        }
+    except ValueError as exc:
+        db.rollback()
+        _raise_domain_error(exc)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=503, detail="Vurderingens ejer kunne ikke opdateres."
+        ) from exc
+
+
 @router.get("/api/v3/cases/{case_db_id}/export.json")
 def export_case_workspace(
     case_db_id: str,
@@ -395,10 +458,11 @@ def export_case_workspace(
         )[:64]
         or "sag"
     )
+    revision_id = bundle["revision_id"]
     return JSONResponse(
         content=jsonable_encoder(bundle),
         headers={
-            "Content-Disposition": f'attachment; filename="shield-{safe_case_id}.json"',
+            "Content-Disposition": f'attachment; filename="shield-{safe_case_id}-{revision_id}.json"',
             "Cache-Control": "no-store",
             "X-Content-Type-Options": "nosniff",
         },
@@ -449,7 +513,7 @@ def patch_case_action(
     action_id: str,
     request: CaseActionUpdate,
     db: Session = Depends(get_db),
-    _user: UserPrincipal = Depends(WORKSPACE_ACCESS),
+    user: UserPrincipal = Depends(WORKSPACE_ACCESS),
 ) -> dict[str, Any]:
     _get_case_or_404(db, case_db_id)
     action = db.get(CaseAction, action_id)
@@ -462,8 +526,14 @@ def patch_case_action(
             db,
             action_id,
             status=request.status,
-            owner=request.owner if "owner" in request.model_fields_set else None,
+            updated_by=_actor_name(user),
+            actor_id=user.oid,
+            actor_kind="human",
+            owner=(
+                (request.owner or "") if "owner" in request.model_fields_set else None
+            ),
             due_at=request.due_at if "due_at" in request.model_fields_set else None,
+            due_at_supplied="due_at" in request.model_fields_set,
             evidence_note=(
                 request.evidence_note
                 if "evidence_note" in request.model_fields_set

@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { formatDocumentDate } from '../features/documents/documentDates';
 import {
   Button,
   Card,
@@ -14,7 +13,6 @@ import {
   Grid,
   HeaderActions,
   Inset,
-  Lede,
   List,
   ListItem,
   Metric,
@@ -37,6 +35,12 @@ import {
 } from '../components/workflow/WorkflowUi';
 import { useAuth } from '../contexts/AuthContext';
 import TechnicalRunsPanel from '../components/cases/TechnicalRunsPanel';
+import CaseDocumentsPanel from '../components/cases/CaseDocumentsPanel';
+import CaseAssessmentTools, { latestDpia } from '../components/cases/CaseAssessmentTools';
+import StructuredReportText from '../components/assessment/StructuredReportText';
+import AssessmentVersionsPanel from '../components/cases/AssessmentVersionsPanel';
+import CaseExportsPanel from '../components/cases/CaseExportsPanel';
+import CaseHistoryTimeline from '../components/cases/CaseHistoryTimeline';
 
 const TABS = [
   { id: 'overview', label: 'Overblik' },
@@ -152,6 +156,29 @@ const Panel = styled.div`
   padding-top: 28px;
 `;
 
+const CaseTitle = styled(Title)`
+  max-width: 28ch;
+  font-size: clamp(1.8rem, 3.8vw, 3rem);
+  line-height: 1.12;
+`;
+const CaseContext = styled.div`
+  display: flex; flex-wrap: wrap; gap: 12px 30px; margin-top: 20px;
+  p { margin: 0; font-size: 0.9rem; color: ${p => p.theme.colors.inkSoft}; }
+  strong { color: ${p => p.theme.colors.ink}; }
+`;
+const ScopeDetails = styled.details`
+  margin-top: 22px;
+  max-width: 82ch;
+  summary { cursor: pointer; font-size: 0.9rem; font-weight: 620; }
+  &[open] summary { margin-bottom: 16px; }
+`;
+const TaskEditor = styled.div`
+  border-top: 1px solid ${p => p.theme.colors.line};
+  margin-top: 8px; padding-top: 18px;
+  > p { font-size: 0.82rem; line-height: 1.6; }
+  ${Form} { margin-top: 16px; }
+`;
+
 const MeasureCard = styled(Card)`
   display: grid;
   gap: 15px;
@@ -163,56 +190,6 @@ const MeasureMeta = styled.div`
   gap: 8px 18px;
   color: ${(p) => p.theme.colors.inkFaded};
   font-size: 0.74rem;
-`;
-
-const Timeline = styled.ol`
-  position: relative;
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 12px;
-    bottom: 12px;
-    left: 7px;
-    width: 1px;
-    background: ${(p) => p.theme.colors.line};
-  }
-`;
-
-const TimelineItem = styled.li`
-  position: relative;
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 16px;
-  padding: 0 0 24px;
-
-  &::before {
-    content: '';
-    z-index: 1;
-    width: 13px;
-    height: 13px;
-    margin-top: 5px;
-    border: 2px solid ${(p) => p.theme.colors.primary};
-    background: ${(p) => p.theme.colors.background};
-  }
-
-  strong { font-size: 0.87rem; }
-  p { margin: 4px 0 0; color: ${(p) => p.theme.colors.inkSoft}; font-size: 0.8rem; line-height: 1.5; }
-  time { display: block; margin-top: 7px; color: ${(p) => p.theme.colors.inkFaded}; font: 0.7rem ${(p) => p.theme.fonts.mono}; }
-`;
-
-const ExportCard = styled(Card)`
-  display: flex;
-  flex-direction: column;
-  align-items: start;
-  min-height: 190px;
-
-  ${TextLink} { margin-top: auto; padding-top: 18px; }
 `;
 
 const WorkflowControls = styled.div`
@@ -311,6 +288,17 @@ async function completeMeasure({ caseId, actionId, evidenceNote }) {
   return response.data;
 }
 
+async function updateMeasure({ caseId, actionId, owner, dueAt }) {
+  const response = await axios.patch(`/api/v3/cases/${encodeURIComponent(caseId)}/actions/${encodeURIComponent(actionId)}`, { owner: owner.trim() || null, due_at: dueAt ? `${dueAt}T12:00:00Z` : null });
+  return response.data;
+}
+
+async function updateAssessmentOwner({ caseId, item, owner }) {
+  const type = ({ dpia: 'dpia_assessment', ai_act: 'ai_act_assessment', fria: 'fria_assessment' })[item.type || item.assessment_type] || item.type || item.assessment_type;
+  const response = await axios.patch(`/api/v3/cases/${encodeURIComponent(caseId)}/assessments/${encodeURIComponent(type)}/${encodeURIComponent(item.reference_id || item.id)}/metadata`, { owner: owner.trim() || null });
+  return response.data;
+}
+
 async function downloadProtected({ href, filename }) {
   const response = await axios.get(href, { responseType: 'blob' });
   const objectUrl = URL.createObjectURL(response.data);
@@ -367,6 +355,7 @@ export function normalizeWorkspace(payload) {
   return {
     caseRecord,
     organisation: plainText(source.procurement?.organisation) || plainText(caseRecord.organisation),
+    procurement: source.procurement || null,
     assessments: assessments.filter(Boolean),
     documents: toArray(source.documents || source.evidence || source.attachments).filter(isRecord).map((item) => ({
       ...(item.document || {}),
@@ -374,6 +363,9 @@ export function normalizeWorkspace(payload) {
       ...item,
       title: item.document?.title || item.title,
       owner: item.document?.owner || item.owner,
+      category: item.category || item.document?.category || 'other',
+      uploaded_at: item.uploaded_at || item.version?.created_at || null,
+      uploaded_by: item.uploaded_by || item.version?.uploaded_by || null,
       version: item.version?.version_number || item.version_number || item.version,
       metadata: isRecord(item.version?.metadata) ? item.version.metadata : isRecord(item.metadata) ? item.metadata : {},
       download_href: item.version?.download_href || item.download_href,
@@ -489,7 +481,7 @@ function OverviewPanel({ workspace }) {
         <Metric><span>Vurderinger</span><strong>{assessments.length}</strong></Metric>
         <Metric><span>Dokumenter</span><strong>{documents.length}</strong></Metric>
         <Metric><span>Foranstaltninger</span><strong>{completedMeasures}/{measures.length}</strong></Metric>
-        <Metric><span>Godkendelser</span><strong>{approvals.length}</strong></Metric>
+        <Metric><span>Godkendte beslutninger</span><strong>{approvals.filter(item => ['approved', 'approved_with_conditions'].includes(item.status)).length}</strong></Metric>
       </MetricGrid>
 
       <Section>
@@ -524,87 +516,62 @@ function OverviewPanel({ workspace }) {
           </Card>
           <Card>
             <h3>Formål og afgrænsning</h3>
-            <p>{caseRecord.description || caseRecord.notes || caseRecord.scope || 'Sagens formål og afgrænsning er ikke beskrevet endnu.'}</p>
+            <StructuredReportText text={workspace.procurement?.intended_use || caseRecord.description || caseRecord.notes || caseRecord.scope || 'Sagens formål og afgrænsning er ikke beskrevet endnu.'} />
           </Card>
         </Grid>
       </Section>
+      <CaseAssessmentTools caseId={caseRecord.id} assessments={assessments} />
     </Panel>
   );
 }
 
-export function AssessmentsPanel({ assessments }) {
-  return (
-    <Panel id="case-panel-assessments" role="tabpanel" aria-labelledby="case-tab-assessments">
-      <SectionHeader data-tour="case-assessments"><div><h2>Vurderinger</h2><p>Alle vurderinger vises med resultat, version og tidspunkt.</p></div></SectionHeader>
-      {assessments.length ? (
-        <List>
-          {assessments.map((item, index) => {
-            const status = item.aggregate_status || item.status || item.result || 'Kladde';
-            const isDpia = ['dpia', 'dpia_assessment'].includes(item.type || item.assessment_type);
-            const dpiaHref = isDpia && item.id ? `/vurdering?assessment_id=${encodeURIComponent(item.id)}${item.case_db_id ? `&case=${encodeURIComponent(item.case_db_id)}` : ''}` : null;
-            const href = dpiaHref || item.url || item.href || (item.audit_log_id ? `/historik/${item.audit_log_id}` : item.type === 'legal_screening' || item.assessment_type === 'legal_screening' ? `/historik/${item.id}` : null);
-            return (
-              <ListItem key={item.id || item.audit_log_id || `${itemTitle(item, 'Vurdering')}-${index}`}>
-                <div>
-                  <strong>{itemTitle(item, `Vurdering ${index + 1}`)}</strong>
-                  <p>{itemDescription(item) || `Gennemført ${formatDate(item.created_at || item.completed_at, true)}.`}</p>
-                  <p>Version {item.version || 1}{isDpia ? ' · Konsekvensanalyse og risikovurdering' : ''}</p>
-                  {href ? <TextLink href={href}>{isDpia ? 'Læs analyse og hent Word / Excel' : 'Åbn låst vurdering'} <span aria-hidden="true">→</span></TextLink> : null}
-                  {dpiaHref && <p><TextLink href={`${dpiaHref}&view=readable`}>Læsevenlig udgave →</TextLink></p>}
-                </div>
-                <StatusPill $tone={toneForStatus(status)}>{statusLabel(status)}</StatusPill>
-              </ListItem>
-            );
-          })}
-        </List>
-      ) : <Empty title="Ingen vurderinger endnu">Start en DPIA-, AI Act- eller juridisk vurdering fra sagen.</Empty>}
-    </Panel>
-  );
+export function AssessmentsPanel({ assessments, caseRecord, renderOwnerEditor }) {
+  return <AssessmentVersionsPanel assessments={assessments} caseRecord={caseRecord} renderOwnerEditor={renderOwnerEditor} />;
 }
 
-function DocumentsPanel({ documents }) {
-  const downloadMutation = useMutation(downloadProtected);
-  return (
-    <Panel id="case-panel-documents" role="tabpanel" aria-labelledby="case-tab-documents">
-      <SectionHeader data-tour="case-documents"><div><h2>Dokumentation og evidens</h2><p>Dokumenter er versionsstyrede, så godkenderen kan se det præcise grundlag.</p></div></SectionHeader>
-      {documents.length ? (
-        <List>
-          {documents.map((item, index) => (
-            <ListItem key={item.id || `${itemTitle(item, 'Dokument')}-${index}`}>
-              <div>
-                <strong>{itemTitle(item, `Dokument ${index + 1}`)}</strong>
-                <p>{itemDescription(item) || `${item.document_type || item.category || 'Dokument'} · version ${item.version || '1'}`}</p>
-                <Metadata>
-                  <div><dt>Ejer</dt><dd>{item.owner || 'Ikke angivet'}</dd></div>
-                  <div><dt>Næste dokumentgennemgang</dt><dd>{formatDocumentDate(item.review_at || item.valid_until || item.expires_at)}</dd></div>
-                </Metadata>
-                {item.download_href ? (
-                  <Button
-                    type="button"
-                    disabled={downloadMutation.isLoading}
-                    onClick={() => downloadMutation.mutate({ href: item.download_href, filename: item.original_filename || item.title })}
-                  >
-                    {downloadMutation.isLoading ? 'Henter…' : 'Hent denne version'}
-                  </Button>
-                ) : null}
-              </div>
-              <StatusPill $tone={item.verified || ['valid', 'approved'].includes(item.status) ? 'success' : 'neutral'}>{statusLabel(item.status || (item.verified ? 'Verificeret' : 'Registreret'))}</StatusPill>
-            </ListItem>
-          ))}
-        </List>
-      ) : <Empty title="Intet dokumenteret grundlag">Tilknyt databehandleraftaler, sikkerhedsbeskrivelser og anden evidens fra dokumentbanken.</Empty>}
-      {downloadMutation.isError ? <ErrorPanel role="alert"><strong>Dokumentet kunne ikke hentes</strong><p>{String(downloadMutation.error?.response?.data?.detail || downloadMutation.error?.message)}</p></ErrorPanel> : null}
-    </Panel>
-  );
+function DocumentsPanel({ documents, caseId }) {
+  const download = useMutation(downloadProtected);
+  return <CaseDocumentsPanel documents={documents} caseId={caseId} onDownload={download.mutate} isDownloading={download.isLoading} downloadError={download.isError ? download.error?.response?.data?.detail || download.error?.message : null} />;
 }
 
-function MeasuresPanel({ measures, completeMutation }) {
+function AssignmentEditor({ item, onSave, assessment = false }) {
+  const [editing, setEditing] = useState(false);
+  const [owner, setOwner] = useState(item.owner || '');
+  const [dueAt, setDueAt] = useState((item.due_at || '').slice(0, 10));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const save = async event => {
+    event.preventDefault();
+    setSaving(true); setError('');
+    try {
+      await onSave({ item, owner, dueAt });
+      setEditing(false); setSaved(true);
+    } catch (failure) {
+      const detail = failure?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Ændringen kunne ikke gemmes. Prøv igen.');
+    } finally { setSaving(false); }
+  };
+  const fieldId = `${assessment ? 'assessment' : 'measure'}-owner-${item.id}`;
+  return <TaskEditor>
+    {!editing && <Button type="button" onClick={() => { setOwner(item.owner || ''); setDueAt((item.due_at || '').slice(0, 10)); setSaved(false); setEditing(true); }}>{item.owner ? 'Ret ejer' : 'Tildel ejer'}{assessment ? '' : ' og frist'}</Button>}
+    {saved && <p role="status">Ejerskabet er gemt. Ændringen fremgår af historikken.</p>}
+    {editing && <Form onSubmit={save}>
+      <Field><label htmlFor={fieldId}>Ansvarlig person eller rolle</label><input id={fieldId} value={owner} onChange={event => setOwner(event.target.value)} maxLength={128} placeholder="Fx systemejer eller en navngiven sagsansvarlig" /><small>Angiv en person eller en ansvarlig rolle. Rollen skal bekræftes lokalt. Et tomt felt fjerner tildelingen.</small></Field>
+      {!assessment && <Field><label htmlFor={`${fieldId}-due`}>Frist for opfølgning</label><input id={`${fieldId}-due`} type="date" value={dueAt} onChange={event => setDueAt(event.target.value)} /></Field>}
+      <ControlRow><Button type="submit" disabled={saving}>{saving ? 'Gemmer…' : 'Gem ansvar'}</Button><Button type="button" disabled={saving} onClick={() => { setEditing(false); setError(''); }}>Annuller</Button></ControlRow>
+    </Form>}
+    {error && <p role="alert">{error}</p>}
+  </TaskEditor>;
+}
+
+function MeasuresPanel({ measures, completeMutation, onSaveAssignment }) {
   const [evidenceNotes, setEvidenceNotes] = useState({});
   return (
     <Panel id="case-panel-measures" role="tabpanel" aria-labelledby="case-tab-measures">
       <SectionHeader><div><h2>Foranstaltninger</h2><p>Restrisici omsættes til opgaver med ejer, frist og evidens.</p></div></SectionHeader>
       {measures.length ? (
-        <Grid $columns={2}>
+        <Grid $columns={1}>
           {measures.map((item, index) => {
             const status = item.status || 'Åben';
             const isClarification = item.source_reference_type === 'procurement_clarification';
@@ -613,14 +580,17 @@ function MeasuresPanel({ measures, completeMutation }) {
             return (
               <MeasureCard key={item.id || `${itemTitle(item, 'Foranstaltning')}-${index}`}>
                 <ContentHeader>
-                  <div><h3>{itemTitle(item, `Foranstaltning ${index + 1}`)}</h3><p>{description}</p></div>
+                  <div><h3>{itemTitle(item, `Foranstaltning ${index + 1}`)}</h3></div>
                   <StatusPill $tone={toneForStatus(status)}>{statusLabel(status)}</StatusPill>
                 </ContentHeader>
                 <MeasureMeta>
-                  <span>Ansvarlig: {item.owner || item.assigned_to || 'Ikke tildelt'}</span>
+                  <span><strong>Ansvarlig: {item.owner || item.assigned_to || 'Ikke tildelt'}</strong></span>
                   <span>Frist: {formatDate(item.due_at || item.due_date || item.deadline)}</span>
-                  <span>Evidens: {toArray(item.evidence || item.documents).length}</span>
+                  <span>Kategori: {({ measure: 'Risikobegrænsende tiltag', condition: 'Godkendelsesvilkår', evidence: 'Dokumentationsopgave', follow_up: 'Opfølgning', reassessment: 'Genvurdering' })[item.category] || 'Anden opgave'}</span>
                 </MeasureMeta>
+                {onSaveAssignment && <AssignmentEditor item={item} onSave={onSaveAssignment} />}
+                <ScopeDetails><summary>Beskrivelse, dokumentation og afslutning</summary>
+                <StructuredReportText text={description} />
                 {item.evidence_note && <Inset><strong>{isClarification ? 'Dokumenteret afklaring' : 'Evidens'}</strong><p>{item.evidence_note}</p></Inset>}
                 {!['done', 'completed', 'afsluttet', 'dismissed'].includes(String(status).toLowerCase()) ? (
                   <InlineActions>
@@ -641,6 +611,7 @@ function MeasuresPanel({ measures, completeMutation }) {
                     {isClarification && <small>Afslutning kræver et dokumenteret svar på mindst 20 tegn.</small>}
                   </InlineActions>
                 ) : null}
+                </ScopeDetails>
               </MeasureCard>
             );
           })}
@@ -668,9 +639,7 @@ function ApprovalsPanel({ approvals, timeline, readiness, caseRecord, user, canA
   const conditions = conditionsText.split('\n').map((item) => item.trim()).filter(Boolean);
   const decisionValid = reason.trim().length >= 20 && (decision !== 'approved_with_conditions' || conditions.length > 0);
   const verifiedIdentity = user?.identityAssurance === 'verified_entra_token';
-  const nonApprovalTimeline = timeline.filter((item) => !String(item.event_type || '').startsWith('approval_'));
-  const entries = [...approvals.map((item) => ({ ...item, _entryType: 'approval', created_at: item.decided_at || item.requested_at })), ...nonApprovalTimeline.map((item) => ({ ...item, _entryType: 'timeline' }))]
-    .sort((a, b) => new Date(b.created_at || b.changed_at || 0) - new Date(a.created_at || a.changed_at || 0));
+
 
   return (
     <Panel id="case-panel-approvals" role="tabpanel" aria-labelledby="case-tab-approvals">
@@ -744,54 +713,14 @@ function ApprovalsPanel({ approvals, timeline, readiness, caseRecord, user, canA
         ) : null}
         {requestMutation.isError || decisionMutation.isError ? <ErrorPanel role="alert"><strong>Godkendelsesflowet kunne ikke gennemføres</strong><p>{String((requestMutation.error || decisionMutation.error)?.response?.data?.detail?.message || (requestMutation.error || decisionMutation.error)?.response?.data?.detail || (requestMutation.error || decisionMutation.error)?.message)}</p></ErrorPanel> : null}
       </WorkflowControls>
-      {entries.length ? (
-        <Timeline>
-          {entries.map((item, index) => (
-            <TimelineItem key={item.id || `${item._entryType}-${index}`}>
-              <div>
-                <strong>{item._entryType === 'approval' ? `Godkendelse: ${statusLabel(item.status)}` : itemTitle(item, 'Status ændret')}</strong>
-                <p>{itemDescription(item) || `${item.from_status || ''}${item.from_status ? ' → ' : ''}${item.to_status || item.status || ''}`}</p>
-                <time dateTime={item.created_at || item.changed_at}>{formatDate(item.created_at || item.changed_at, true)} · {item.decided_by || item.requested_by || item.changed_by || item.actor || 'System'}</time>
-                {item._entryType === 'approval' && item.decided_at ? <StatusPill $tone={item.is_identity_verified ? 'success' : 'warning'}>{item.is_identity_verified ? 'Entra-verificeret' : 'Ikke Entra-signeret'}</StatusPill> : null}
-              </div>
-            </TimelineItem>
-          ))}
-        </Timeline>
-      ) : <Empty title="Ingen beslutninger endnu">Når sagen skifter status eller godkendes, vises begrundelsen her.</Empty>}
+      <CaseHistoryTimeline approvals={approvals} timeline={timeline} />
     </Panel>
   );
 }
 
 function ExportsPanel({ exports: exportItems }) {
-  const downloadMutation = useMutation(downloadProtected);
-  return (
-    <Panel id="case-panel-exports" role="tabpanel" aria-labelledby="case-tab-exports">
-      <SectionHeader data-tour="case-exports"><div><h2>Eksportér beslutningsgrundlaget</h2><p>Eksporten skal være et låst øjebliksbillede med vurderinger, kilder og godkendelser.</p></div></SectionHeader>
-      {exportItems.length ? (
-        <Grid $columns={3}>
-          {exportItems.map((item, index) => (
-            <ExportCard key={item.id || `${itemTitle(item, 'Eksport')}-${index}`}>
-              <h3>{itemTitle(item, item.format || `Eksport ${index + 1}`)}</h3>
-              <p>{itemDescription(item) || 'Hent den dokumenterede sagsversion.'}</p>
-              {item.url || item.href ? (
-                <Button
-                  type="button"
-                  disabled={downloadMutation.isLoading}
-                  onClick={() => downloadMutation.mutate({
-                    href: item.url || item.href,
-                    filename: item.download_name || `shield-${item.type || 'eksport'}.${item.format || 'json'}`,
-                  })}
-                >
-                  {downloadMutation.isLoading ? 'Henter…' : 'Hent fil ↓'}
-                </Button>
-              ) : <StatusPill $tone="neutral">Ikke klar</StatusPill>}
-            </ExportCard>
-          ))}
-        </Grid>
-      ) : <Empty title="Ingen eksport klar">Eksport bliver tilgængelig, når sagen har et dokumenteret vurderingsgrundlag.</Empty>}
-      {downloadMutation.isError ? <ErrorPanel role="alert"><strong>Eksporten kunne ikke hentes</strong><p>{String(downloadMutation.error?.response?.data?.detail || downloadMutation.error?.message)}</p></ErrorPanel> : null}
-    </Panel>
-  );
+  const download = useMutation(downloadProtected);
+  return <CaseExportsPanel exports={exportItems} onDownload={download.mutate} isDownloading={download.isLoading} downloadError={download.isError ? download.error?.response?.data?.detail || download.error?.message : null} />;
 }
 
 function CaseWorkspacePage() {
@@ -826,6 +755,14 @@ function CaseWorkspacePage() {
   );
   const completeMutation = useMutation(
     ({ actionId, evidenceNote }) => completeMeasure({ caseId, actionId, evidenceNote }),
+    { onSuccess: refreshWorkspace },
+  );
+  const assignmentMutation = useMutation(
+    ({ item, owner, dueAt }) => updateMeasure({ caseId, actionId: item.id, owner, dueAt }),
+    { onSuccess: refreshWorkspace },
+  );
+  const assessmentOwnerMutation = useMutation(
+    ({ item, owner }) => updateAssessmentOwner({ caseId, item, owner }),
     { onSuccess: refreshWorkspace },
   );
   const workspace = useMemo(() => normalizeWorkspace(query.data), [query.data]);
@@ -870,18 +807,18 @@ function CaseWorkspacePage() {
       <PageHeader $stacked>
         <div>
           <Eyebrow>S.H.I.E.L.D. · samlet sag · {caseRecord.case_id || caseId}</Eyebrow>
-          <Title>{caseRecord.title || caseRecord.name || 'Sag uden titel'}</Title>
-          {workspace.organisation && <Lede><strong>Sagens organisation:</strong> {workspace.organisation}</Lede>}
-          <Lede>{caseRecord.description || caseRecord.notes || 'Følg hele beslutningsprocessen fra første vurdering til godkendelse, drift og senere opfølgning.'}</Lede>
+          <CaseTitle>{caseRecord.title || caseRecord.name || 'Sag uden titel'}</CaseTitle>
+          <CaseContext>
+            {workspace.organisation && <p><strong>Sagens organisation:</strong> {workspace.organisation}</p>}
+            {workspace.procurement?.department && <p><strong>Fagområde:</strong> {workspace.procurement.department}</p>}
+            <p><strong>Sagsansvarlig:</strong> {caseRecord.assigned_to || workspace.procurement?.owner || 'Ikke registreret'}</p>
+          </CaseContext>
+          <ScopeDetails><summary>Læs formål og afgrænsning</summary><StructuredReportText text={workspace.procurement?.intended_use || caseRecord.description || caseRecord.notes || 'Formål og afgrænsning skal beskrives i sagens oplysninger.'} /></ScopeDetails>
         </div>
         <HeaderActions>
-          <StatusPill $tone={toneForStatus(status)}>{status}</StatusPill>
+          <StatusPill $tone={toneForStatus(caseRecord.status)}>{statusLabel(status)}</StatusPill>
           {query.data?.procurement && <Button as={Link} to={`/anskaffelse?case=${encodeURIComponent(caseId)}&step=materials`}>AI-løsning og leverandørmateriale</Button>}
-          <Button as={Link} to={`/vurdering?case=${encodeURIComponent(caseId)}`}>Ny konsekvensanalyse</Button>
-          <Button as={Link} to={`/juridisk-screening?case=${encodeURIComponent(caseId)}`}>Juridisk screening</Button>
-          <Button as={Link} to={`/ai-act-vurdering?case_id=${encodeURIComponent(caseId)}`}>AI Act</Button>
-          <Button as={Link} to={`/grundrettigheder?case_id=${encodeURIComponent(caseId)}`}>Grundrettigheder</Button>
-          <Button as={Link} to={`/dokumentbank?case_id=${encodeURIComponent(caseId)}`}>Dokumentbank</Button>
+          {latestDpia(workspace.assessments) ? <Button as={Link} to={`/vurdering?assessment_id=${encodeURIComponent(latestDpia(workspace.assessments).id)}&case=${encodeURIComponent(caseId)}&view=readable`}>Læs seneste vurdering</Button> : <Button as={Link} to={`/vurdering?case=${encodeURIComponent(caseId)}`}>Start konsekvensanalyse</Button>}
           <Link to={backToCases}>← Tilbage til sager</Link>
         </HeaderActions>
       </PageHeader>
@@ -906,10 +843,10 @@ function CaseWorkspacePage() {
       </TabList>
 
       {activeTab === 'overview' ? <OverviewPanel workspace={workspace} /> : null}
-      {activeTab === 'assessments' ? <AssessmentsPanel assessments={workspace.assessments} /> : null}
+      {activeTab === 'assessments' ? <><AssessmentsPanel assessments={workspace.assessments} caseRecord={caseRecord} renderOwnerEditor={item => <AssignmentEditor key={item.id} item={item} assessment onSave={assessmentOwnerMutation.mutateAsync} />} /><CaseAssessmentTools caseId={caseId} assessments={workspace.assessments} /></> : null}
       {activeTab === 'technical-runs' ? <TechnicalRunsPanel caseId={caseId} /> : null}
-      {activeTab === 'documents' ? <DocumentsPanel documents={workspace.documents} /> : null}
-      {activeTab === 'measures' ? <MeasuresPanel measures={workspace.measures} completeMutation={completeMutation} /> : null}
+      {activeTab === 'documents' ? <DocumentsPanel documents={workspace.documents} caseId={caseId} /> : null}
+      {activeTab === 'measures' ? <MeasuresPanel measures={workspace.measures} completeMutation={completeMutation} onSaveAssignment={assignmentMutation.mutateAsync} /> : null}
       {activeTab === 'approvals' ? (
         <ApprovalsPanel
           approvals={workspace.approvals}

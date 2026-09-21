@@ -404,6 +404,11 @@ def _review(
         checks.append(
             {
                 **_pick(check, ("id", "label", "section_ids", "requires_review")),
+                **{
+                    key: check[key]
+                    for key in ("question", "criteria_text", "grounding")
+                    if isinstance(check.get(key), str)
+                },
                 "probability": probability,
                 "stale": check_id in stale_ids
                 or any(target in stale_ids for target in targets),

@@ -120,6 +120,7 @@ async def lifespan(app: FastAPI):
         from src.database import document_bank as _document_bank_models  # noqa: F401
         from src.database import legal_monitoring as _legal_monitoring_models  # noqa: F401
         from src.database import user_tutorial as _user_tutorial_models  # noqa: F401
+        from src.database import technical_controls as _technical_control_models  # noqa: F401
         from src.rule_engine import audit as v3_audit  # noqa: F401 — registers V3AssessmentLog
         from src.services import citation_verifier as v3_freshness  # noqa: F401 — registers RuleFreshness
         from src.database.connection import init_db
