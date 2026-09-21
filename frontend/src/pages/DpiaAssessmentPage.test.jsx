@@ -105,6 +105,7 @@ test('genåbner en gemt vurdering med sagslink, risikofelter og uden at erstatte
   fireEvent.click(screen.getByRole('button', { name: /3\.1 · Adgang/ }));
   expect(screen.getByText('Sandsynlighed efter')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Tilbage til samlet sag' })).toHaveAttribute('href', '/sager/case-1');
+  expect(screen.getByRole('link', { name: 'Teknisk kørsel' })).toHaveAttribute('href', '/sager/case-1?tab=technical-runs&assessment_id=assessment-1');
   expect(screen.queryByRole('button', { name: 'Redigér oplysninger' })).not.toBeInTheDocument();
   expect(window.localStorage.getItem(DRAFT_STORAGE_KEY)).toBe(draft);
   expect(authFetch.mock.calls.filter(([url]) => url.endsWith('/generate'))).toHaveLength(0);

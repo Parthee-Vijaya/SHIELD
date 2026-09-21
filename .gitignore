@@ -47,6 +47,7 @@ htmlcov/
 
 # Lokale dokumentuploads fra dokumentbanken
 data/document-bank/
+data/documents/
 
 # Local preview symlinks
 frontend/public/mockups

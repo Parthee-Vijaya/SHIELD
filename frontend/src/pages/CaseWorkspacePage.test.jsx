@@ -133,6 +133,7 @@ function NavigationState() {
 function mountWorkspace(url, { client, measures = [] } = {}) {
   useAuth.mockReturnValue({ user: { id: 'test-user' }, hasRole: () => false });
   axios.get.mockImplementation(path => {
+    if (path === '/api/v3/cases/case-example/technical-runs') return Promise.resolve({ data: { runs: [] } });
     if (path !== '/api/v3/cases/case-example/workspace') return Promise.reject(new Error(`Unexpected GET ${path}`));
     return Promise.resolve({ data: { case: { id: 'case-example', case_id: 'EKSEMPEL-001', title: 'Eksempel til navigation', status: 'kladde' }, measures } });
   });
@@ -151,8 +152,12 @@ test('eksempelfilter og guideparametre bevares gennem faneskift, browser tilbage
   fireEvent.click(screen.getByRole('tab', { name: 'Vurderinger' }));
   expect(screen.getByTestId('workspace-location')).toHaveTextContent('/sager/case-example?from=examples&tab=assessments&guide_case=case-example');
   fireEvent.keyDown(screen.getByRole('tab', { name: 'Vurderinger' }), { key: 'ArrowRight' });
+  expect(screen.getByRole('tab', { name: 'Teknisk kørsel' })).toHaveAttribute('aria-selected', 'true');
+  fireEvent.keyDown(screen.getByRole('tab', { name: 'Teknisk kørsel' }), { key: 'ArrowRight' });
   expect(screen.getByRole('tab', { name: 'Dokumentation' })).toHaveAttribute('aria-selected', 'true');
   expect(screen.getByTestId('workspace-location')).toHaveTextContent('from=examples&tab=documents&guide_case=case-example');
+  fireEvent.click(screen.getByRole('button', { name: 'Browser tilbage' }));
+  expect(screen.getByRole('tab', { name: 'Teknisk kørsel' })).toHaveAttribute('aria-selected', 'true');
   fireEvent.click(screen.getByRole('button', { name: 'Browser tilbage' }));
   expect(screen.getByRole('tab', { name: 'Vurderinger' })).toHaveAttribute('aria-selected', 'true');
   fireEvent.click(screen.getByRole('link', { name: '← Tilbage til sager' }));

@@ -38,6 +38,7 @@ En konsekvensanalyse vedrørende databeskyttelse kaldes også en **DPIA**. I SHI
 | Arbejde med risici | Hvert risikopunkt beskriver hændelse, årsag, konsekvenser og forslag til foranstaltninger samt den beregnede risiko. |
 | Følge op | Opret afklaringsopgaver med ansvarlig, frist, svar og status. Opgaverne følger sagen. |
 | Samarbejde med jura | Hent et Word-dialoggrundlag fra materialegennemgangen eller den samlede konsekvensanalyse i Word og Excel. |
+| Se hvad AI og JEV gjorde | Fanen Teknisk kørsel forbinder gemte versioner, modeller, input, output, kildeuddrag og JEV-kontrolpunkter. |
 | Bevare beslutningsgrundlaget | Gemte analyser og rapportrevisioner bevares. Kilder, modeloplysninger og relevante kontrolresultater følger versionen. |
 | Hjælpe nye brugere i gang | En interaktiv introduktion tilbydes ved første login og kan startes igen fra menuen eller indstillinger. |
 
@@ -182,6 +183,20 @@ Word og Excel dannes fra den **valgte gemte vurdering**. Alle risikopunkter føl
 - Sagens overgange, opgaver og beslutninger holdes sammen med dens øvrige dokumentation.
 
 En checksum viser, hvilken filversion der er brugt. Den viser ikke i sig selv, at dokumentets indhold er korrekt, dækkende eller juridisk gældende.
+
+### Teknisk kørsel på den enkelte sag
+
+Åbn **Teknisk kørsel** ved siden af sagens øvrige faner. Vælg en gemt kørsel for at undersøge modellen, behandlingsforløbet, de gemte input og tekster samt JEVs kontrolpunkter og deres kildegrundlag. En genvej fra rapporten åbner den relevante vurderingsversion.
+
+Historiske oplysninger vises, hvor de faktisk er gemt. Manglende oplysninger markeres, og manuelle revisioner skelnes fra nye AI-kørsler. JEVs problemsignal er et hjælpemiddel til gennemgang; en individuel fritekstbegrundelse vises ikke, når den ikke er gemt. Se [vejledningen til Teknisk kørsel](docs/TECHNICAL_RUNS.md).
+
+![Fanen Teknisk kørsel med valg af rapportversion, model og kørselsmiljø](docs/screenshots/09-teknisk-koersel.jpg)
+
+*Krisp-sagens version 6 viser den registrerede udarbejdende model og promptversion. Versionsvælgeren giver adgang til tidligere AI- og regelbaserede vurderinger.*
+
+![Et åbent JEV-kontrolpunkt med problemsignal, grænseværdi, kontrolleret tekst og kildegrundlag](docs/screenshots/10-jev-kontrolpunkt.jpg)
+
+*JEV-visningen prioriterer kontrolpunkter, der kræver opfølgning. Her er resuméet markeret med problemsignalet 0,54 ved en grænse på 0,5. Den kontrollerede tekst og de 12 henviste kilder kan foldes ud. Det er ikke en juridisk godkendelse.*
 
 ### Introduktion for nye brugere
 

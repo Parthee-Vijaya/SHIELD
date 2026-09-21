@@ -36,10 +36,12 @@ import {
   toneForStatus,
 } from '../components/workflow/WorkflowUi';
 import { useAuth } from '../contexts/AuthContext';
+import TechnicalRunsPanel from '../components/cases/TechnicalRunsPanel';
 
 const TABS = [
   { id: 'overview', label: 'Overblik' },
   { id: 'assessments', label: 'Vurderinger' },
+  { id: 'technical-runs', label: 'Teknisk kørsel' },
   { id: 'documents', label: 'Dokumentation' },
   { id: 'measures', label: 'Foranstaltninger' },
   { id: 'approvals', label: 'Godkendelser & historik' },
@@ -902,6 +904,7 @@ function CaseWorkspacePage() {
 
       {activeTab === 'overview' ? <OverviewPanel workspace={workspace} /> : null}
       {activeTab === 'assessments' ? <AssessmentsPanel assessments={workspace.assessments} /> : null}
+      {activeTab === 'technical-runs' ? <TechnicalRunsPanel caseId={caseId} /> : null}
       {activeTab === 'documents' ? <DocumentsPanel documents={workspace.documents} /> : null}
       {activeTab === 'measures' ? <MeasuresPanel measures={workspace.measures} completeMutation={completeMutation} /> : null}
       {activeTab === 'approvals' ? (

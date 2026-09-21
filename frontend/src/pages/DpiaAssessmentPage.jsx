@@ -1295,6 +1295,7 @@ const DpiaAssessmentPage = () => {
                 <Button onClick={generateReport} disabled={generating || editingReport || !aiStatus?.configured}>
                   {generating ? 'Udarbejder og kvalitetstjekker…' : isCodex ? 'Opret via AI Gateway' : generation ? 'Opret ny AI-version' : 'Udarbejd med AI'}
                 </Button>
+                <CaseLink to={`/sager/${encodeURIComponent(caseDbId)}?tab=technical-runs&assessment_id=${encodeURIComponent(result.id)}`}>Teknisk kørsel</CaseLink>
                 {result.parent_assessment_id && <CaseLink to={`/vurdering?assessment_id=${encodeURIComponent(result.parent_assessment_id)}&case=${encodeURIComponent(caseDbId)}`}>Se foregående version</CaseLink>}
               </ResultActions>
               <SourceNote role={generating ? 'status' : undefined}>
