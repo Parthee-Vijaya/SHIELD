@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import DepartmentField from '../components/DepartmentField';
+import FieldHelp from '../components/FieldHelp';
 import MaterialCoverage from '../components/assessment/MaterialCoverage';
 import EvidenceNavigator from '../components/assessment/EvidenceNavigator';
 import ClarificationList from '../components/assessment/ClarificationList';
@@ -18,6 +19,8 @@ const Page = styled.main`
   input:not([type=checkbox]), textarea, select { width: 100%; min-width: 0; padding: 12px; font: inherit; }
   textarea { min-height: 125px; resize: vertical; } input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; accent-color: ${p => p.theme.colors.primary}; }
   label { display: block; font-weight: 600; margin-bottom: 8px; }
+  .field-label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .field-label > label { margin: 0; }
   details { margin: 12px 0; } summary { cursor: pointer; font-weight: 600; }
   blockquote { padding: 12px 16px; border-left: 3px solid ${p => p.theme.colors.border}; margin: 12px 0; white-space: pre-wrap; }
   ul { padding-left: 22px; } li { margin-bottom: 10px; }
@@ -50,6 +53,10 @@ const showValue = (field,value) => Array.isArray(value)
 const date = value => value ? new Date(value).toLocaleString('da-DK') : '';
 const positiveCount = value => Number.isInteger(value) && value > 0;
 const count = value => value.toLocaleString('da-DK');
+
+function FieldLabel({ htmlFor, label, help }) {
+  return <div className="field-label"><label htmlFor={htmlFor}>{label}</label><FieldHelp label={label} id={`${htmlFor}-help`}>{help}</FieldHelp></div>;
+}
 
 function AnalysisBatchSummary({ batching }) {
   if (batching?.strategy !== 'map-reduce-v1' || !positiveCount(batching.batch_count) || !positiveCount(batching.source_count)) return null;
@@ -130,7 +137,7 @@ export default function ProcurementPage() {
     const data = await request(caseId ? `${base}/procurement` : '/api/v3/procurements',{method:caseId ? 'PATCH':'POST',...json({...payload,...(caseId ? {revision:profile.revision} : {})})});
     setProfile(data.profile); go(1,caseId || data.case_id);
   }); };
-  const upload = event => { const files=Array.from(event.target.files || []); event.target.value=''; if(!files.length) return; run('Gemmer og læser materialet…',async () => {
+  const upload = event => { if (!caseId) return; const files=Array.from(event.target.files || []); event.target.value=''; if(!files.length) return; run('Gemmer og læser materialet…',async () => {
     let saved=0;
     try { for(const file of files) { const body=new FormData(); body.append('file',file); body.append('category',category); await request(`${base}/source-material`,{method:'POST',body}); saved+=1; } }
     finally { if(saved) await load(); }
@@ -157,22 +164,23 @@ export default function ProcurementPage() {
     {!loading && !loadError && profile.organisation && <Lead><strong>Sagens organisation:</strong> {profile.organisation}</Lead>}
     <Lead>Saml kommunens behov og leverandørens dokumentation. Gennemgå kildeunderbyggede oplysninger, og forbered konsekvensanalysen og dialogen med jura.</Lead>
     {caseId && <Link to={`/sager/${caseId}`}>Åbn den samlede sag →</Link>}
-    <Steps aria-label="Arbejdsgang for AI-løsninger"><>{STEP_NAMES.map((name,index)=><Step key={name} $active={step===index} aria-current={step===index?'step':undefined} disabled={Boolean(busy)||(!caseId&&index>0)||(!analysis&&index>1)||(!currentReview&&index>2)} onClick={()=>go(index)}>{index+1}. {name}</Step>)}</></Steps>
+    <Steps aria-label="Arbejdsgang for AI-løsninger"><>{STEP_NAMES.map((name,index)=><Step key={name} $active={step===index} aria-current={step===index?'step':undefined} disabled={Boolean(busy)} onClick={()=>go(index)}>{index+1}. {name}</Step>)}</></Steps>
+    {!caseId && <p><small>Du kan frit se alle trin. Udfyld og gem AI-løsningens oplysninger, når du er klar til at vedlægge materiale og starte analysen.</small></p>}
     {error && <Notice $error role="alert">{error}</Notice>}
     {(busy || message) && <Notice role="status">{busy || message}</Notice>}
     {loading ? <p role="status">Henter løsningens oplysninger…</p> : loadError ? <Actions><Button onClick={()=>setLoadAttempt(value=>value+1)}>Hent oplysninger igen</Button></Actions> : <>
       {step===0 && <form onSubmit={saveProfile}>
         <h2>Hvilken AI-løsning skal vurderes?</h2><p>Det kan være en selvstændig AI-løsning eller en IT-løsning med AI. Beskriv den konkrete AI-funktion og dens anvendelse i kommunen. Leverandørmaterialet tilføjes i næste trin.</p>
         <Grid>
-          <div><label htmlFor="system-name">Løsningens navn</label><input id="system-name" required minLength={2} maxLength={255} value={profile.system_name} onChange={e=>update('system_name',e.target.value)} placeholder="Fx en referatassistent eller AI i et journalsystem" /></div>
-          <div><label htmlFor="supplier-name">Leverandør</label><input id="supplier-name" maxLength={500} value={profile.supplier_name} onChange={e=>update('supplier_name',e.target.value)} /></div>
-          <div><label htmlFor="organisation">Kommune eller organisation</label><input id="organisation" required minLength={2} value={profile.organisation} onChange={e=>update('organisation',e.target.value)} /></div>
+          <div><FieldLabel htmlFor="system-name" label="Løsningens navn" help="Angiv produktets navn og gerne den konkrete AI-funktion. Fx en referatassistent eller AI til anonymisering af dokumenter." /><input id="system-name" aria-describedby="system-name-help" required minLength={2} maxLength={255} value={profile.system_name} onChange={e=>update('system_name',e.target.value)} placeholder="Fx en referatassistent eller AI i et journalsystem" /></div>
+          <div><FieldLabel htmlFor="supplier-name" label="Leverandør" help="Virksomheden, der leverer løsningen. Brug navnet fra tilbuddet eller aftalen, hvis du har det." /><input id="supplier-name" aria-describedby="supplier-name-help" maxLength={500} value={profile.supplier_name} onChange={e=>update('supplier_name',e.target.value)} /></div>
+          <div><FieldLabel htmlFor="organisation" label="Kommune eller organisation" help="Den organisation, vurderingen vedrører. Det kan være en anden kommune end den, der vises i løsningens logo." /><input id="organisation" aria-describedby="organisation-help" required minLength={2} value={profile.organisation} onChange={e=>update('organisation',e.target.value)} /></div>
           <DepartmentField value={profile.department} onChange={update} />
-          <div><label htmlFor="system-owner">Ansvarlig for sagen</label><input id="system-owner" required minLength={2} value={profile.owner} onChange={e=>update('owner',e.target.value)} /></div>
-          <div><label htmlFor="procurement-stage">Anledning</label><select id="procurement-stage" value={profile.procurement_stage} onChange={e=>update('procurement_stage',e.target.value)}><option value="new_purchase">Ny anskaffelse</option><option value="renewal">Kontraktfornyelse</option><option value="change">Ændret anvendelse</option></select></div>
+          <div><FieldLabel htmlFor="system-owner" label="Ansvarlig for sagen" help="Den person eller funktion, der samler oplysninger og følger op på sagen. Det er ikke i sig selv en udpegning som juridisk godkender." /><input id="system-owner" aria-describedby="system-owner-help" required minLength={2} value={profile.owner} onChange={e=>update('owner',e.target.value)} /></div>
+          <div><FieldLabel htmlFor="procurement-stage" label="Anledning" help="Vælg, om der er tale om et nyt køb, en fornyelse eller en ændring i, hvordan løsningen bruges. Ændret anvendelse kan fx være nye datatyper eller en ny AI-funktion." /><select id="procurement-stage" aria-describedby="procurement-stage-help" value={profile.procurement_stage} onChange={e=>update('procurement_stage',e.target.value)}><option value="new_purchase">Ny anskaffelse</option><option value="renewal">Kontraktfornyelse</option><option value="change">Ændret anvendelse</option></select></div>
         </Grid>
-        <label htmlFor="intended-use">Kommunens påtænkte anvendelse</label><textarea id="intended-use" required minLength={20} maxLength={10000} value={profile.intended_use} onChange={e=>update('intended_use',e.target.value)} placeholder="Hvad skal AI-funktionen gøre, hvem skal bruge den, hvilke oplysninger behandler den, og hvordan gennemgår medarbejdere dens output?" />
-        <Grid><div><label htmlFor="journal-reference">Journalreference (valgfri)</label><input id="journal-reference" maxLength={100} value={profile.journal_reference} onChange={e=>update('journal_reference',e.target.value)} /></div></Grid>
+        <FieldLabel htmlFor="intended-use" label="Kommunens påtænkte anvendelse" help="Beskriv den konkrete opgave, hvem der bruger AI, hvilke oplysninger der indgår, og hvordan medarbejderne kontrollerer resultatet. Beskriv kommunens behov frem for kun at kopiere leverandørens produkttekst." /><textarea id="intended-use" aria-describedby="intended-use-help" required minLength={20} maxLength={10000} value={profile.intended_use} onChange={e=>update('intended_use',e.target.value)} placeholder="Hvad skal AI-funktionen gøre, hvem skal bruge den, hvilke oplysninger behandler den, og hvordan gennemgår medarbejdere dens output?" />
+        <Grid><div><FieldLabel htmlFor="journal-reference" label="Journalreference (valgfri)" help="Sagsnummeret fra kommunens journalsystem, hvis sagen allerede er oprettet der. Feltet kan stå tomt." /><input id="journal-reference" aria-describedby="journal-reference-help" maxLength={100} value={profile.journal_reference} onChange={e=>update('journal_reference',e.target.value)} /></div></Grid>
         <Actions><Button disabled={Boolean(busy)}>Gem og tilføj materiale →</Button></Actions>
       </form>}
       {step===1 && <>
@@ -184,16 +192,17 @@ export default function ProcurementPage() {
             {capacityAvailable && <p><small>Hver del kan omfatte op til {count(analysisLimits.max_documents)} dokumenter og {count(analysisLimits.max_total_text_chars)} tegn, højst {count(analysisLimits.max_document_text_chars)} tegn pr. kildeuddrag.</small></p>}
           </details>}
         </> : capacityAvailable && <p><small>Analysen kan omfatte op til {count(analysisLimits.max_documents)} dokumenter og {count(analysisLimits.max_total_text_chars)} tegn i alt, højst {count(analysisLimits.max_document_text_chars)} tegn pr. dokument.</small></p>}
+        {!caseId && <Notice>Her vedlægger du aftaler, præsentationer og links. Gem først AI-løsningens oplysninger, så materialet kan knyttes til den rigtige sag.<Actions><Button $secondary onClick={()=>go(0)}>Til AI-løsning og behov</Button></Actions></Notice>}
         <MaterialCoverage sources={sources} onSelectCategory={value=>{setCategory(value);document.getElementById('material-category')?.focus();}} />
         <Grid>
-          <Section><h3>Upload dokumenter</h3><label htmlFor="material-category">Dokumenttype</label><select id="material-category" value={category} onChange={e=>setCategory(e.target.value)}>{CATEGORIES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><label htmlFor="material-files" style={{marginTop:18}}>Vælg filer</label><input id="material-files" type="file" multiple accept=".pptx,.pdf,.docx,.txt" disabled={Boolean(busy)} onChange={upload} /><small>PowerPoint (PPTX), PDF, Word (DOCX) eller tekst. Højst 5 MB pr. fil. Billeder og scannede sider kræver tekstgenkendelse før upload.</small></Section>
-          <Section><h3>Tilføj en hjemmeside</h3><form onSubmit={e=>{e.preventDefault();run('Henter hjemmesiden…',async()=>{await request(`${base}/source-material/url`,{method:'POST',...json({url,category})});setUrl('');await load();setMessage('Hjemmesidens indhold er gemt som kilde.');});}}><label htmlFor="material-url">Offentligt leverandørlink</label><input id="material-url" type="url" required value={url} placeholder="https://leverandoer.dk/ai-loesning" onChange={e=>setUrl(e.target.value)} /><p><small>Vi gemmer et tekstudtræk med adresse og tidspunkt. Sider bag login kan uploades som dokument.</small></p><Button $secondary disabled={Boolean(busy)}>Tilføj hjemmeside</Button></form></Section>
+          <Section><h3>Upload dokumenter</h3><FieldLabel htmlFor="material-category" label="Dokumenttype" help="Kategorien hjælper med at skabe overblik. Vælg fx Databehandleraftale for aftalen om leverandørens behandling af personoplysninger eller Sikkerhedsdokumentation for en revisionsrapport." /><select id="material-category" aria-describedby="material-category-help" value={category} onChange={e=>setCategory(e.target.value)}>{CATEGORIES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><label htmlFor="material-files" style={{marginTop:18}}>Vælg filer</label><input id="material-files" type="file" multiple accept=".pptx,.pdf,.docx,.txt" disabled={Boolean(busy)||!caseId} onChange={upload} /><small>PowerPoint (PPTX), PDF, Word (DOCX) eller tekst. Højst 5 MB pr. fil. Billeder og scannede sider kræver tekstgenkendelse før upload.</small></Section>
+          <Section><h3>Tilføj en hjemmeside</h3><form onSubmit={e=>{e.preventDefault();if(!caseId)return;run('Henter hjemmesiden…',async()=>{await request(`${base}/source-material/url`,{method:'POST',...json({url,category})});setUrl('');await load();setMessage('Hjemmesidens indhold er gemt som kilde.');});}}><FieldLabel htmlFor="material-url" label="Offentligt leverandørlink" help="Brug en konkret produktside, aftaleside eller side om sikkerhed. SHIELD læser den angivne offentlige side; dokumenter bag login skal uploades som filer." /><input id="material-url" aria-describedby="material-url-help" type="url" required value={url} placeholder="https://leverandoer.dk/ai-loesning" onChange={e=>setUrl(e.target.value)} /><p><small>Vi gemmer et tekstudtræk med adresse og tidspunkt. Sider bag login kan uploades som dokument.</small></p><Button $secondary disabled={Boolean(busy)||!caseId}>Tilføj hjemmeside</Button></form></Section>
         </Grid>
         <h3>Materiale på sagen · {sources.length}</h3>
         {sources.length>0&&<details><summary>Søg i sagens dokumenter og kildeuddrag</summary><EvidenceNavigator sources={sources} compact /></details>}
         {!sources.length && <Notice>Start med en produktbeskrivelse og den databehandleraftale, der skal gælde for jeres anvendelse.</Notice>}
         {sources.map(source=><Section key={source.id}><h3>{source.title}</h3><p><small>{date(source.uploaded_at)} · {source.excerpts.length} tekstuddrag · Ikke fagligt godkendt</small></p>{source.source_url && <p><a href={source.source_url} target="_blank" rel="noreferrer">{source.source_url}</a></p>}{source.warnings.map((warning,i)=><Notice key={i}>{warning}</Notice>)}<details><summary>Se tekstgrundlag</summary>{source.excerpts.slice(0,8).map(excerpt=><div key={excerpt.id}><small>{excerpt.locator}</small><blockquote>{excerpt.text}</blockquote></div>)}{source.excerpts.length>8&&<p>Viser de første 8 uddrag. Hent dokumentet for at læse hele materialet.</p>}</details><Button $secondary disabled={Boolean(busy)} onClick={()=>run('Henter dokument…',()=>download(source.download_url,source.original_filename))}>Hent kilde</Button></Section>)}
-        <Actions><Button disabled={Boolean(busy)||!sources.some(source=>source.excerpts.length)} onClick={()=>run(batchingEnabled ? 'AI gennemgår materialet, samler eventuelle delanalyser og kører JEV-kontrol…' : 'AI gennemgår materialet, og JEV kontrollerer kildegrundlaget…',async()=>{const data=await request(`${base}/procurement/analyze`,{method:'POST'});setAnalysis(data);setReview(null);setAccepted([]);go(2);})}>Analysér leverandørmateriale →</Button>{analysis&&<Button $secondary disabled={Boolean(busy)} onClick={()=>go(2)}>Se seneste analyse</Button>}</Actions>
+        <Actions><Button disabled={Boolean(busy)||!caseId||!sources.some(source=>source.excerpts.length)} onClick={()=>run(batchingEnabled ? 'AI gennemgår materialet, samler eventuelle delanalyser og kører JEV-kontrol…' : 'AI gennemgår materialet, og JEV kontrollerer kildegrundlaget…',async()=>{const data=await request(`${base}/procurement/analyze`,{method:'POST'});setAnalysis(data);setReview(null);setAccepted([]);go(2);})}>Analysér leverandørmateriale →</Button>{analysis&&<Button $secondary disabled={Boolean(busy)} onClick={()=>go(2)}>Se seneste analyse</Button>}</Actions>
         <p style={{marginTop:14}}><small>AI udleder forslag fra materialet. JEV markerer udsagn, der kan mangle belæg; den faglige og juridiske vurdering ligger hos kommunen.</small></p>
       </>}
       {step===2 && analysis && <>
@@ -210,7 +219,7 @@ export default function ProcurementPage() {
         {analysis.facts.map(fact=><Fact key={fact.id}><label><input type="checkbox" checked={accepted.includes(fact.id)} disabled={Boolean(busy)||analysis.outdated} onChange={e=>setAccepted(ids=>e.target.checked?[...ids,fact.id]:ids.filter(id=>id!==fact.id))} /><span>{FACT_LABELS[fact.field] || fact.label}<br /><span style={{fontWeight:400}}>{showValue(fact.field,fact.value)}</span></span></label>{flagged.has(fact.id)&&<Notice>Kildegrundlaget er markeret af JEV. Beskriv din afklaring i notatet, hvis oplysningen anvendes.</Notice>}<details><summary>Se kildebelæg</summary>{fact.source_refs.map(sourceRef)}</details></Fact>)}
         {analysis.conflicts.length>0&&<Section><h3>Modstridende oplysninger</h3>{analysis.conflicts.map(conflict=><div key={conflict.id}><p>{conflict.description}</p>{flaggedChecks.has(`conflict:${conflict.id}`)&&<Notice>JEV har markeret denne beskrivelse af modstridende oplysninger til gennemgang. Kontrollér begge kilder, og dokumentér afklaringen.</Notice>}{conflict.source_refs.map(sourceRef)}</div>)}</Section>}
         <ClarificationList caseId={caseId} analysisId={analysis.id} questions={analysis.questions} sources={sources} />
-        <Section><label htmlFor="review-note">Notat til den videre gennemgang</label><textarea id="review-note" value={note} maxLength={10000} onChange={e=>setNote(e.target.value)} placeholder="Beskriv afklaringer, forbehold og spørgsmål, som jura og systemejeren skal følge op på." /><small>Din gennemgang gemmes med oplysningerne og den anvendte analyse. Det er ikke en juridisk godkendelse.</small></Section>
+        <Section><FieldLabel htmlFor="review-note" label="Notat til den videre gennemgang" help="Notér hvad du har afklaret, hvilke forbehold der gælder, og hvad jura eller leverandøren stadig skal svare på. Angiv gerne kilde og ansvarlig for opfølgningen." /><textarea id="review-note" aria-describedby="review-note-help" value={note} maxLength={10000} onChange={e=>setNote(e.target.value)} placeholder="Beskriv afklaringer, forbehold og spørgsmål, som jura og systemejeren skal følge op på." /><small>Din gennemgang gemmes med oplysningerne og den anvendte analyse. Det er ikke en juridisk godkendelse.</small></Section>
         <Actions><Button disabled={Boolean(busy)||analysis.outdated} onClick={()=>run('Gemmer gennemgangen…',async()=>{const data=await request(`${base}/procurement/review`,{method:'POST',...json({analysis_id:analysis.id,accepted_fact_ids:accepted,note})});setReview(data);go(3);})}>Gem gennemgang og fortsæt →</Button></Actions>
       </>}
       {step===3 && currentReview && <>
@@ -219,7 +228,23 @@ export default function ProcurementPage() {
         <Section><h3>Forbered den juridiske gennemgang</h3><p>Hent et samlet Word-notat med anvendelse, kilder, udvalgte oplysninger, JEV-markeringer og åbne spørgsmål.</p><Actions><Button $secondary disabled={Boolean(busy)} onClick={()=>run('Henter juridisk dialoggrundlag…',()=>download(`${base}/procurement/reviews/${review.id}/export.docx`,`${profile.system_name} – juridisk dialoggrundlag.docx`))}>Hent dialoggrundlag · Word</Button><Button $secondary disabled={Boolean(busy)} onClick={()=>run('Gemmer opgave til jura…',async()=>{await request(`${base}/actions`,{method:'POST',...json({title:`Juridisk gennemgang af ${profile.system_name}`.slice(0,255),description:`Gennemgang: ${review.id}\n${review.note}\n\n${analysis.questions.map(q=>q.question).join('\n')}`,category:'follow_up',priority:'high',owner:'Jura'})});setMessage('Juraopgaven er gemt under sagens tiltag.');})}>Opret opgave til jura</Button></Actions></Section>
         <Actions><Link to={`/sager/${caseId}`}>Se dokumenter, tiltag og vurderinger på sagen →</Link></Actions>
       </>}
-      {((step===2&&!analysis)||(step===3&&!currentReview))&&<Notice>Gennemgå det aktuelle leverandørmateriale, før dette trin kan åbnes.<Actions><Button onClick={()=>go(1)}>Til leverandørmateriale</Button></Actions></Notice>}
+      {step===2 && !analysis && <>
+        <h2>Gennemgå oplysninger og kilder</h2>
+        <Lead>Her ser du de oplysninger, AI finder i leverandørmaterialet, sammen med de kilder, oplysningerne bygger på.</Lead>
+        <Section><h3>Oplysninger til gennemgang</h3><p>Analysen samler blandt andet løsningens formål, personoplysninger, hosting, modeltræning og sletning. Du vælger, hvilke oplysninger der passer til kommunens konkrete anvendelse.</p></Section>
+        <Section><h3>Kilder og kvalitetstjek</h3><p>Hvert forslag ledsages af kildeuddrag. JEV markerer udsagn, der skal kontrolleres nærmere. Du kan se modstridende oplysninger og spørgsmål til leverandøren.</p></Section>
+        <Section><h3>Din faglige gennemgang</h3><p>Du kan tilføje forbehold og afklaringer, før oplysningerne bruges i konsekvensanalysen. Gennemgangen er ikke en juridisk godkendelse.</p></Section>
+        <Notice>Der er endnu ingen materialeanalyse på sagen. Tilføj materiale, og start analysen, når du er klar.</Notice>
+        <Actions><Button $secondary onClick={()=>go(1)}>Se leverandørmateriale</Button><Button $secondary onClick={()=>go(3)}>Se vurdering og jura →</Button></Actions>
+      </>}
+      {step===3 && !currentReview && <>
+        <h2>Et fælles grundlag for vurdering og jura</h2>
+        <Lead>Her samles vejen videre til konsekvensanalyse, risikovurdering og dialogen med jura.</Lead>
+        <Section><h3>Konsekvensanalyse og risikovurdering</h3><p>De gennemgåede oplysninger kan overføres til spørgerammen. Her beskriver du blandt andet formål, personer og oplysninger, teknologi samt sikkerhed. Den gemte vurdering viser konklusion, risici og mangler og kan læses i en læsevenlig udgave.</p><Button disabled>Fortsæt til konsekvensanalyse →</Button></Section>
+        <Section><h3>Forbered den juridiske gennemgang</h3><p>Du kan hente et Word-notat med kilder, gennemgåede oplysninger og åbne spørgsmål og oprette en opgave til jura på sagen.</p><Actions><Button $secondary disabled>Hent dialoggrundlag · Word</Button><Button $secondary disabled>Opret opgave til jura</Button></Actions></Section>
+        <Notice>Funktionerne bliver klar, når du har analyseret materialet og gemt din gennemgang af oplysningerne. Der er ikke oprettet nogen vurdering eller godkendelse ved at åbne dette trin.</Notice>
+        <Actions><Button $secondary onClick={()=>go(2)}>Se oplysninger og kilder</Button><Button $secondary onClick={()=>go(0)}>Til AI-løsning og behov</Button></Actions>
+      </>}
     </>}
   </Page>;
 }

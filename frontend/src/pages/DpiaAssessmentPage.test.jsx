@@ -56,6 +56,59 @@ beforeEach(() => {
   useAuth.mockReturnValue({ authFetch });
 });
 
+test('alle trin kan åbnes direkte uden udfyldning og uden at oprette en vurdering', async () => {
+  mount('/vurdering');
+  for (const title of ['Styring og kontrol', 'Personoplysninger', 'Teknologi og overførsler', 'Ramme og formål']) {
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`Trin \\d af 4 ${title}`) }));
+    expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  }
+  expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+  await act(async () => {});
+});
+
+test('fortsæt springer frit gennem tomme trin, mens sidste handling validerer hele grundlaget', async () => {
+  mount('/vurdering');
+  for (let index = 0; index < 3; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Fortsæt' }));
+  expect(screen.getByRole('heading', { name: 'Styring og kontrol' })).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Udarbejd vurdering' }));
+  expect(screen.getByRole('heading', { name: 'Ramme og formål' })).toBeInTheDocument();
+  expect(screen.getByRole('alert')).toHaveTextContent('Vurderingen kan ikke beregnes endnu');
+  expect(screen.getByRole('textbox', { name: 'Løsningens eller projektets navn' })).toHaveAttribute('aria-invalid', 'true');
+  expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+  await act(async () => {});
+});
+
+test('frie trinskift bevarer indtastninger og den lokale kladde', async () => {
+  mount('/vurdering');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Løsningens eller projektets navn' }), { target: { value: 'Min dokumentassistent' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Formål med behandlingen' }), { target: { value: 'Udkast til svar ved aktindsigt.' } });
+  fireEvent.click(screen.getByRole('button', { name: /Trin 3 af 4 Teknologi og overførsler/ }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Leverandør eller udviklingsansvarlig' }), { target: { value: 'Leverandørnavn' } });
+  fireEvent.click(screen.getByRole('button', { name: /Trin 1 af 4 Ramme og formål/ }));
+  expect(screen.getByDisplayValue('Min dokumentassistent')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Udkast til svar ved aktindsigt.')).toBeInTheDocument();
+  await waitFor(() => expect(JSON.parse(window.localStorage.getItem(DRAFT_STORAGE_KEY)).values.supplier_name).toBe('Leverandørnavn'));
+  expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+});
+
+test('felthjælp giver konkrete eksempler og ændrer hverken felt eller trin', async () => {
+  mount('/vurdering');
+  const purpose = screen.getByRole('textbox', { name: 'Formål med behandlingen' });
+  expect(purpose).toHaveAccessibleDescription(/Fx: Løsningen laver udkast til referat/);
+  fireEvent.click(screen.getByRole('button', { name: 'Hjælp til Formål med behandlingen' }));
+  expect(screen.getByRole('tooltip')).toHaveTextContent('en medarbejder kontrollerer før brug');
+  expect(purpose).toHaveValue('');
+  expect(screen.getByRole('heading', { name: 'Ramme og formål' })).toBeInTheDocument();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  fireEvent.click(screen.getByRole('button', { name: /Trin 3 af 4 Teknologi og overførsler/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Hjælp til Primært hostingområde' }));
+  expect(screen.getByRole('tooltip')).toHaveTextContent('Serverplacering alene');
+  expect(authFetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+  await act(async () => {});
+});
+
 test('en gemt rapport viser sin egen dataansvarlige organisation frem for portalens kommune', async () => {
   const baseFetch = authFetch.getMockImplementation();
   authFetch.mockImplementation(url => url === '/api/dpia/assessments/assessment-1'

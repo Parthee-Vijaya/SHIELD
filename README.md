@@ -50,6 +50,8 @@ Løsningen vurderer den **konkrete anvendelse**. En AI-assistent til interne pro
 
 Forsiden giver en indgang til at oprette en AI-løsning, finde eksisterende sager og forstå arbejdsgangen. Brugeren behøver ikke begynde med hele konsekvensanalysen; første skridt er at beskrive behovet og samle et brugbart grundlag.
 
+Alle trin kan åbnes, før felterne er udfyldt, både ved oprettelse af en AI-løsning og i konsekvensanalysens spørgeramme. Man kan orientere sig og vende tilbage uden at miste indtastninger under navigationen. Spørgsmålstegnet ved et felt viser en kort forklaring ved mus, tastaturfokus eller tryk. Materiale knyttes først til en gemt sag, og spørgerammens manglende oplysninger kontrolleres, når brugeren vælger **Udarbejd vurdering**.
+
 ![SHIELDs startside med introduktion til arbejdsgangen og indgange til oprettelse af AI-løsninger og eksisterende sager](docs/screenshots/01-startside.jpg)
 
 **Det vigtige i dette trin:** Beskriv AI-funktionen, brugerne, opgaven og de oplysninger, den skal behandle. Kommunens formål er styrende; leverandørens generelle produktbeskrivelse er en kilde, der skal undersøges.

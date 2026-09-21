@@ -11,6 +11,7 @@ import RiskAssessmentPanel from '../components/assessment/RiskAssessmentPanel';
 import ReportEditor from '../components/assessment/ReportEditor';
 import ChoiceWithOtherField from '../components/ChoiceWithOtherField';
 import DepartmentField from '../components/DepartmentField';
+import FieldHelp from '../components/FieldHelp';
 import { PROCESSING_VERSION_OPTIONS } from '../features/dpia/planningFields';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -132,19 +133,21 @@ const StepNav = styled.ol`
 const StepItem = styled.li`
   min-width: 0;
   min-height: 118px;
-  padding: 26px 24px;
   border-bottom: 1px solid ${p => p.theme.colors.border};
   border-left: 4px solid ${p => p.$active ? p.theme.colors.primary : 'transparent'};
   background: ${p => p.$active ? p.theme.colors.surface : 'transparent'};
   color: ${p => p.$active ? p.theme.colors.text : p.theme.colors.textMuted};
 
   &:last-child { border-bottom: 0; }
+  button { display: block; width: 100%; min-height: inherit; padding: 26px 24px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  button:hover { background: ${p => p.theme.colors.primarySoft}; }
+  button:focus-visible { outline: 3px solid ${p => p.theme.colors.primary}; outline-offset: -4px; }
   strong { display: block; margin-top: 12px; font-size: 0.9rem; line-height: 1.35; }
   span { display: block; color: ${p => p.$active ? p.theme.colors.primary : p.theme.colors.textFaded}; font: 600 0.65rem ${p => p.theme.fonts.mono}; }
 
   @media (max-width: 880px) {
     min-height: 98px;
-    padding: 18px;
+    button { padding: 18px; }
     border-left: 0;
     border-right: 1px solid ${p => p.theme.colors.border};
     border-bottom: 4px solid ${p => p.$active ? p.theme.colors.primary : 'transparent'};
@@ -184,6 +187,14 @@ const Field = styled.div`
     overflow-wrap: anywhere;
   }
   small { display: block; margin-top: 8px; color: ${p => p.theme.colors.textMuted}; font-size: 0.76rem; line-height: 1.5; }
+`;
+const FieldLabel = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 9px;
+  min-width: 0;
+  > label, > span { margin: 0; min-width: 0; font-size: 0.84rem; font-weight: 640; line-height: 1.5; }
 `;
 
 const Input = styled.input`
@@ -615,14 +626,45 @@ const InlineError = styled.div`
 `;
 
 const fieldId = (name) => `dpia-${name}`;
+const FIELD_HELP = {
+  project_name: 'Brug et genkendeligt navn på AI-løsningen og dens opgave, fx "Mødeassistent til interne møder".',
+  organisation: 'Angiv den organisation, hvis brug af løsningen vurderes. Det kan være en anden kommune end portalens branding.',
+  data_subjects: 'Vælg de grupper, hvis oplysninger kan indgå, fx borgere i dokumenter eller medarbejdere på en lydoptagelse.',
+  personal_data_categories: 'Medtag både indholdet og de oplysninger, løsningen selv gemmer, fx navne i dokumenter, lyd og brugerlogs.',
+  special_categories: 'Se på det konkrete indhold, fx oplysninger om helbred eller fagforeningsforhold. Dokumentér afgrænsningen; spørg de juridisk ansvarlige ved tvivl.',
+  article_9_basis: 'Angiv det grundlag, der er afklaret med de juridisk ansvarlige for denne anvendelse. Valget her er ikke en juridisk godkendelse.',
+  criminal_data: 'Overvej, om materiale kan indeholde oplysninger om lovovertrædelser eller straffesager. Beskriv anvendelsen frem for konkrete personers forhold.',
+  criminal_data_basis: 'Brug det grundlag, der er dokumenteret for denne anvendelse, og få det gennemgået juridisk.',
+  cpr_data: 'Medtag også CPR-numre, der kan forekomme i uploadede bilag, selv om de ikke er et selvstændigt felt i løsningen.',
+  cpr_basis: 'Få afklaret med de juridisk ansvarlige, hvilket grundlag der gælder for den konkrete brug af CPR-numre.',
+  vulnerable_subjects: 'Overvej fx børn, borgere i udsatte situationer eller personer, som kan have svært ved at forstå eller gøre indsigelse mod behandlingen.',
+  large_scale: 'Se på antal personer, mængden af oplysninger, varighed og udbredelse. Vælg Ikke afklaret, hvis omfanget endnu ikke er beskrevet.',
+  systematic_monitoring: 'Overvej fx løbende registrering af adfærd, placering eller aktivitet. En enkelt upload og løbende sporing kan være forskellige anvendelser.',
+  solution_type: 'Vælg den planlagte opsætning, fx en ekstern webtjeneste, en integration eller drift i organisationens eget miljø.',
+  supplier_name: 'Angiv den ansvarlige leverandør. Beskriv eventuelle andre virksomheder i dataflowet eller leverandørdokumentationen.',
+  hosting_region: 'Brug dokumentation for den konkrete aftale og opsætning. Serverplacering alene siger ikke, hvor support eller underleverandører kan tilgå data.',
+  transfer_outside_eea: 'Medtag både lagring og adgang, fx fjernsupport eller underleverandører. Vælg Ikke afklaret, hvis aftalerne ikke dokumenterer svaret.',
+  transfer_mechanism: 'Angiv kun det overførselsgrundlag, der er dokumenteret og juridisk afklaret for den konkrete dataoverførsel.',
+  model_training: 'Undersøg både input, output og eventuel viderebrug hos underleverandører. Brug aftalen og den valgte opsætning; gæt ikke ud fra en generel produktside.',
+  profiling_scoring: 'Overvej fx rangering, vurdering eller forudsigelser om en persons adfærd eller behov. Beskriv, hvordan resultatet bruges.',
+  data_matching: 'Overvej, om løsningen kombinerer oplysninger om de samme personer fra flere kilder, fx fagsystem og e-mail.',
+  service_access_impact: 'Overvej, om output kan påvirke, hvad en person får adgang til, fx en kommunal ydelse. Medtag også indirekte beslutningsstøtte.',
+  automated_decisions: 'Beskriv, om AI foreslår eller træffer beslutninger om personer, og hvem der kontrollerer resultatet før videre brug.',
+  human_oversight: 'Der skal være en faktisk arbejdsgang: hvem gennemgår output, hvad kontrolleres, og hvordan kan en fejl stoppes eller rettes?',
+  legal_basis: 'Vælg grundlaget for kommunens konkrete brug af oplysningerne i samråd med de juridisk ansvarlige. En aftale med leverandøren er ikke i sig selv denne afklaring.',
+  retention_period: 'Beskriv frister for relevante datatyper, fx upload, udkast, logs og backups, og hvem der kontrollerer sletning. Kopiér ikke en eksempelperiode uden afklaring.',
+  dpo_involved: 'Angiv, om organisationens databeskyttelsesrådgiver er inddraget, og dokumentér rådgivningen nedenfor.',
+  controls: 'Markér oplyste eller planlagte tiltag. Markér først implementering som verificeret nedenfor, når der findes konkret dokumentation.',
+  rights_procedures: 'Vælg de arbejdsgange, der er dokumenteret, fx hvordan en borger kan få indsigt, og hvem der håndterer henvendelsen.',
+};
 
 const FieldError = ({ name, errors }) => errors[name] ? <ErrorText id={`${fieldId(name)}-error`}>{errors[name]}</ErrorText> : null;
 
-const TextField = ({ name, label, value, errors, onChange, textarea = false, help, ...rest }) => {
+const TextField = ({ name, label, value, errors, onChange, textarea = false, help = FIELD_HELP[name], ...rest }) => {
   const Component = textarea ? Textarea : Input;
   return (
     <Field>
-      <label htmlFor={fieldId(name)}>{label}</label>
+      <FieldLabel><label htmlFor={fieldId(name)}>{label}</label>{help && <FieldHelp label={label} id={`${fieldId(name)}-help`}>{help}</FieldHelp>}</FieldLabel>
       <Component
         id={fieldId(name)}
         value={value}
@@ -632,16 +674,15 @@ const TextField = ({ name, label, value, errors, onChange, textarea = false, hel
         aria-describedby={[help ? `${fieldId(name)}-help` : '', errors[name] ? `${fieldId(name)}-error` : ''].filter(Boolean).join(' ') || undefined}
         {...rest}
       />
-      {help && <small id={`${fieldId(name)}-help`}>{help}</small>}
       <FieldError name={name} errors={errors} />
     </Field>
   );
 };
 
-const SelectField = ({ name, label, value, errors, onChange, options, placeholder = 'Vælg…', disabled = false }) => (
+const SelectField = ({ name, label, value, errors, onChange, options, placeholder = 'Vælg…', disabled = false, help = FIELD_HELP[name] }) => (
   <Field>
-    <label htmlFor={fieldId(name)}>{label}</label>
-    <Select id={fieldId(name)} value={value} disabled={disabled} onChange={e => onChange(name, e.target.value)} $invalid={Boolean(errors[name])} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${fieldId(name)}-error` : undefined}>
+    <FieldLabel><label htmlFor={fieldId(name)}>{label}</label>{help && <FieldHelp label={label} id={`${fieldId(name)}-help`}>{help}</FieldHelp>}</FieldLabel>
+    <Select id={fieldId(name)} value={value} disabled={disabled} onChange={e => onChange(name, e.target.value)} $invalid={Boolean(errors[name])} aria-invalid={Boolean(errors[name])} aria-describedby={[help ? `${fieldId(name)}-help` : '', errors[name] ? `${fieldId(name)}-error` : ''].filter(Boolean).join(' ') || undefined}>
       <option value="">{placeholder}</option>
       {Object.entries(options).map(([key, text]) => <option key={key} value={key}>{text}</option>)}
     </Select>
@@ -649,9 +690,9 @@ const SelectField = ({ name, label, value, errors, onChange, options, placeholde
   </Field>
 );
 
-const BooleanField = ({ name, label, value, errors, onChange, allowUnknown = false }) => (
-  <Question $invalid={Boolean(errors[name])} aria-labelledby={`${fieldId(name)}-label`} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${fieldId(name)}-error` : undefined}>
-    <legend id={`${fieldId(name)}-label`}>{label}</legend>
+const BooleanField = ({ name, label, value, errors, onChange, allowUnknown = false, help = FIELD_HELP[name] }) => (
+  <Question $invalid={Boolean(errors[name])} aria-labelledby={`${fieldId(name)}-label`} aria-invalid={Boolean(errors[name])} aria-describedby={[help ? `${fieldId(name)}-help` : '', errors[name] ? `${fieldId(name)}-error` : ''].filter(Boolean).join(' ') || undefined}>
+    <legend><span id={`${fieldId(name)}-label`}>{label}</span>{help && <FieldHelp label={label} id={`${fieldId(name)}-help`}>{help}</FieldHelp>}</legend>
     <Radios>
       <label><input type="radio" name={name} checked={value === true} onChange={() => onChange(name, true)} /> Ja</label>
       <label><input type="radio" name={name} checked={value === false} onChange={() => onChange(name, false)} /> Nej</label>
@@ -661,9 +702,9 @@ const BooleanField = ({ name, label, value, errors, onChange, allowUnknown = fal
   </Question>
 );
 
-const CheckboxField = ({ name, label, values, options, errors, onToggle }) => (
-  <Field>
-    <label>{label}</label>
+const CheckboxField = ({ name, label, values, options, errors, onToggle, help = FIELD_HELP[name] }) => (
+  <Field role="group" aria-labelledby={`${fieldId(name)}-label`} aria-describedby={help ? `${fieldId(name)}-help` : undefined}>
+    <FieldLabel><span id={`${fieldId(name)}-label`}>{label}</span>{help && <FieldHelp label={label} id={`${fieldId(name)}-help`}>{help}</FieldHelp>}</FieldLabel>
     <CheckGrid>
       {options.map(([key, text]) => (
         <CheckLabel key={key} $checked={values.includes(key)}>
@@ -1036,17 +1077,12 @@ const DpiaAssessmentPage = () => {
     setErrors(previous => ({ ...previous, [`control_evidence.${control}`]: undefined }));
   };
 
-  const goNext = () => {
-    const nextErrors = validateStep(step, values);
-    if (Object.keys(nextErrors).length) {
-      setErrors(nextErrors);
-      setFormError('Ret de markerede felter, før du fortsætter.');
-      return;
-    }
+  const goToStep = nextStep => {
     setErrors({});
     setFormError('');
-    setStep(current => Math.min(3, current + 1));
+    setStep(Math.max(0, Math.min(3, nextStep)));
   };
+  const goNext = () => goToStep(step + 1);
 
   const verifyLegalSources = async () => {
     if (!values.legal_basis || values.legal_basis === 'not_assessed') {
@@ -1508,8 +1544,8 @@ const DpiaAssessmentPage = () => {
         <TextField name="planned_end_date" label="Forventet slutdato" value={values.planned_end_date} errors={errors} onChange={update} type="date" min={values.planned_start_date || undefined} max="9999-12-31" />
         <TextField name="planned_start_note" label="Bemærkning til starttidspunkt (valgfrit)" value={values.planned_start_note} errors={errors} onChange={update} help="Fx afhængighed af godkendelse. Tidligere starttidspunkt angivet som tekst bevares her." maxLength={2000} />
         <TextField name="planned_end_condition" label="Ophørsvilkår (valgfrit)" value={values.planned_end_condition} errors={errors} onChange={update} placeholder="Fx pilot slutter efter fire måneder" help="Beskriv, hvornår behandlingen skal ophøre, hvis det ikke kun afhænger af en dato." maxLength={2000} />
-        <Full><TextField name="purpose" label="Formål med behandlingen" value={values.purpose} errors={errors} onChange={update} textarea help="Beskriv det konkrete behov, den forventede gevinst og hvorfor personoplysninger er nødvendige." /></Full>
-        <Full><TextField name="processing_description" label="Sådan behandles oplysningerne" value={values.processing_description} errors={errors} onChange={update} textarea help="Beskriv dataflowet fra indsamling til sletning, herunder datakilder, systemer, brugere og modtagere." /></Full>
+        <Full><TextField name="purpose" label="Formål med behandlingen" value={values.purpose} errors={errors} onChange={update} textarea help="Beskriv det konkrete behov, den forventede gevinst og hvorfor personoplysninger er nødvendige. Fx: Løsningen laver udkast til referat af interne møder, som en medarbejder kontrollerer før brug." /></Full>
+        <Full><TextField name="processing_description" label="Sådan behandles oplysningerne" value={values.processing_description} errors={errors} onChange={update} textarea help="Beskriv dataflowet fra indsamling til sletning. Fx: Medarbejder uploader et dokument → leverandøren behandler det → medarbejder gennemgår udkast → original og udkast slettes efter aftalte frister. Medtag også logs og andre modtagere." /></Full>
         <Full><TextField name="secondary_uses" label="Sekundære eller kompatible anvendelser" value={values.secondary_uses} errors={errors} onChange={update} textarea help="Angiv andre forventede anvendelser eller skriv, at der ikke er planlagt sekundær brug." /></Full>
       </Grid>
     );
@@ -1650,20 +1686,21 @@ const DpiaAssessmentPage = () => {
       {prefillLoaded && <Review><h3>Grundlag fra gennemgået leverandørmateriale</h3><p>Kommunens formål og de oplysninger, du har valgt, er overført. Uafklarede felter er stadig åbne. Hjemmel og implementerede kontroller skal dokumenteres særskilt.</p><CaseLink to={`/anskaffelse?case=${encodeURIComponent(queryCaseId)}&step=review`}>Se kilder og gemt gennemgang</CaseLink></Review>}
       <Workspace data-tour="assessment-form">
         <StepNav aria-label="Vurderingens trin">
-          {STEPS.map(([title], index) => <StepItem key={title} $active={index === step} aria-current={index === step ? 'step' : undefined}><span>Trin {index + 1} af 4</span><strong>{title}</strong></StepItem>)}
+          {STEPS.map(([title], index) => <StepItem key={title} $active={index === step}><button type="button" aria-current={index === step ? 'step' : undefined} aria-controls="dpia-step-content" onClick={() => goToStep(index)}><span>Trin {index + 1} af 4</span><strong>{title}</strong></button></StepItem>)}
         </StepNav>
-        <FormBody>
+        <FormBody id="dpia-step-content">
           <SectionHead>
             <Eyebrow>Trin {step + 1}</Eyebrow>
             <h2>{STEPS[step][0]}</h2>
             <p>{STEPS[step][1]}</p>
+            <SourceNote>Du kan frit skifte mellem trinnene og udfylde oplysningerne i din egen rækkefølge. Manglende felter kontrolleres, når du udarbejder vurderingen.</SourceNote>
           </SectionHead>
           {formError && <FormError role="alert">{formError}</FormError>}
           {renderStep()}
           <Actions>
             <Saved>{savedAt ? `Kladde gemt lokalt ${new Date(savedAt).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })}` : 'Kladde gemmes automatisk i denne browser'}</Saved>
             <ActionGroup>
-              {step > 0 && <Button type="button" onClick={() => { setStep(step - 1); setErrors({}); setFormError(''); }}>Tilbage</Button>}
+              {step > 0 && <Button type="button" onClick={() => goToStep(step - 1)}>Tilbage</Button>}
               {step < 3
                 ? <Button type="button" $primary onClick={goNext}>Fortsæt</Button>
                 : <Button type="button" $primary onClick={submit} disabled={submitting}>{submitting ? 'Udarbejder vurdering…' : 'Udarbejd vurdering'}</Button>}

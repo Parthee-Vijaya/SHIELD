@@ -38,6 +38,76 @@ beforeEach(()=>{
   useAuth.mockReturnValue({authFetch});
 });
 
+test('lets a new case visit every step and preserves partial input without creating or analysing anything', ()=>{
+  mount('/anskaffelse');
+  fireEvent.change(screen.getByLabelText('Løsningens navn'),{target:{value:'AI til dokumentgennemgang'}});
+  fireEvent.change(screen.getByLabelText('Kommunens påtænkte anvendelse'),{target:{value:'Foreløbig beskrivelse'}});
+  const steps = [
+    ['2. Leverandørmateriale','Saml leverandørmaterialet'],
+    ['3. Oplysninger og kilder','Gennemgå oplysninger og kilder'],
+    ['4. Vurdering og jura','Et fælles grundlag for vurdering og jura'],
+    ['1. AI-løsning og behov','Hvilken AI-løsning skal vurderes?'],
+  ];
+  for (const [name,heading] of steps) {
+    expect(screen.getByRole('button',{name})).toBeEnabled();
+    fireEvent.click(screen.getByRole('button',{name}));
+    expect(screen.getByRole('heading',{name:heading})).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  }
+  expect(screen.getByLabelText('Løsningens navn')).toHaveValue('AI til dokumentgennemgang');
+  expect(screen.getByLabelText('Kommunens påtænkte anvendelse')).toHaveValue('Foreløbig beskrivelse');
+  expect(screen.getByLabelText('Ansvarlig for sagen')).toHaveValue('');
+  expect(authFetch).not.toHaveBeenCalled();
+});
+
+test.each([
+  ['materials','Saml leverandørmaterialet'],
+  ['facts','Gennemgå oplysninger og kilder'],
+  ['review','Et fælles grundlag for vurdering og jura'],
+])('opens the %s preview directly without a saved case', (step,heading)=>{
+  mount(`/anskaffelse?step=${step}`);
+  expect(screen.getByRole('heading',{name:heading})).toBeVisible();
+  expect(authFetch).not.toHaveBeenCalled();
+});
+
+test('prevents upload, website fetch and analysis until materials can be attached to a saved case', ()=>{
+  mount('/anskaffelse?step=materials');
+  const files=screen.getByLabelText('Vælg filer');
+  expect(files).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Tilføj hjemmeside'})).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Analysér leverandørmateriale →'})).toBeDisabled();
+  fireEvent.change(files,{target:{files:[new File(['Materiale'],'aftale.pdf',{type:'application/pdf'})]}});
+  const link=screen.getByLabelText('Offentligt leverandørlink');
+  fireEvent.change(link,{target:{value:'https://example.com/product'}});
+  fireEvent.submit(link.closest('form'));
+  expect(authFetch).not.toHaveBeenCalled();
+});
+
+test('explains a field on hover without changing its accessible label or submitting the form', ()=>{
+  mount('/anskaffelse');
+  const input=screen.getByRole('textbox',{name:'Løsningens navn'});
+  fireEvent.mouseEnter(screen.getByRole('button',{name:'Hjælp til Løsningens navn'}));
+  const help=screen.getByRole('tooltip');
+  expect(help).toHaveTextContent('Angiv produktets navn og gerne den konkrete AI-funktion.');
+  expect(input).toHaveAttribute('aria-describedby',help.id);
+  expect(authFetch).not.toHaveBeenCalled();
+  expect(input).toHaveValue('');
+});
+
+test('allows viewing later steps of a saved case before analysis while keeping dependent actions unavailable', async()=>{
+  mockCase();
+  mount();
+  await screen.findByDisplayValue(profile.system_name);
+  fireEvent.click(screen.getByRole('button',{name:'3. Oplysninger og kilder'}));
+  expect(screen.getByRole('heading',{name:'Gennemgå oplysninger og kilder'})).toBeVisible();
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'4. Vurdering og jura'}));
+  expect(screen.getByRole('button',{name:'Fortsæt til konsekvensanalyse →'})).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Hent dialoggrundlag · Word'})).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Opret opgave til jura'})).toBeDisabled();
+  expect(authFetch.mock.calls.filter(([,options])=>options?.method)).toHaveLength(0);
+});
+
 test('creates a municipal procurement and loads its empty material state without a null-review crash', async()=>{
   authFetch.mockImplementation((path,options)=>{
     if(path==='/api/v3/procurements' && options.method==='POST') return reply({case_id:'case-created',profile});
@@ -134,7 +204,10 @@ test('outdated analysis cannot be accepted or continued through a saved review',
   await screen.findByRole('heading',{name:'Gennemgå oplysninger og kilder'});
   expect(screen.getAllByRole('checkbox').every(input=>input.disabled)).toBe(true);
   expect(screen.getByRole('button',{name:'Gem gennemgang og fortsæt →'})).toBeDisabled();
-  expect(screen.getByRole('button',{name:'4. Vurdering og jura'})).toBeDisabled();
+  fireEvent.click(screen.getByRole('button',{name:'4. Vurdering og jura'}));
+  expect(screen.getByRole('heading',{name:'Et fælles grundlag for vurdering og jura'})).toBeVisible();
+  expect(screen.getByRole('button',{name:'Fortsæt til konsekvensanalyse →'})).toBeDisabled();
+  expect(screen.queryByRole('link',{name:'Fortsæt til konsekvensanalyse →'})).not.toBeInTheDocument();
 });
 
 test('upload uses the databehandleraftale enum and refreshes sources before analysis', async()=>{

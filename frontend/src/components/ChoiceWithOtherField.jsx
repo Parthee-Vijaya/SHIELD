@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
+import FieldHelp from './FieldHelp';
 
 const Wrapper = styled.div`
   min-width: 0;
   label { display: block; margin-bottom: 9px; color: ${p => p.theme.colors.text}; font-size: 0.84rem; font-weight: 640; line-height: 1.5; }
+  .choice-label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; }
+  .choice-label > label { margin: 0; }
   select, input { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; min-height: 48px; padding: 12px 14px; border: 1px solid ${p => p.$invalid ? p.theme.colors.danger : p.theme.colors.border}; border-radius: 0; background: ${p => p.theme.colors.inputBackground}; color: ${p => p.theme.colors.text}; font: inherit; font-size: 0.88rem; }
   small { display: block; margin-top: 8px; color: ${p => p.theme.colors.textMuted}; font-size: 0.76rem; line-height: 1.5; overflow-wrap: anywhere; }
   .custom-choice { margin-top: 12px; }
@@ -14,7 +17,7 @@ const CUSTOM = '__custom_choice__';
 const optionValue = option => typeof option === 'string' ? option : option.value;
 const optionLabel = option => typeof option === 'string' ? option : option.label;
 
-export default function ChoiceWithOtherField({ name, label, value = '', onChange, options = [], groups = [], errors = {}, help, customLabel = 'Angiv andet', placeholder = 'Vælg…', maxLength = 500 }) {
+export default function ChoiceWithOtherField({ name, label, value = '', onChange, options = [], groups = [], errors = {}, help, helpHint, customLabel = 'Angiv andet', placeholder = 'Vælg…', maxLength = 500 }) {
   const id = `dpia-${name}`;
   const knownValues = [...options, ...groups.flatMap(group => group.options)].map(optionValue);
   const known = knownValues.includes(value);
@@ -30,11 +33,12 @@ export default function ChoiceWithOtherField({ name, label, value = '', onChange
   }, [value, known, customValue]);
 
   const selected = manual ? CUSTOM : known ? value : customValue ? CUSTOM : '';
-  const describedBy = [help ? `${id}-help` : '', errors[name] ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
+  const hint = helpHint || (typeof help === 'string' ? help : '');
+  const describedBy = [help ? `${id}-help` : '', hint ? `${id}-hint` : '', errors[name] ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
   const renderOption = option => <option key={optionValue(option)} value={optionValue(option)}>{optionLabel(option)}</option>;
 
   return <Wrapper $invalid={Boolean(errors[name])}>
-    <label htmlFor={id}>{label}</label>
+    <div className="choice-label"><label htmlFor={id}>{label}</label>{hint && <FieldHelp label={label} id={`${id}-hint`}>{hint}</FieldHelp>}</div>
     <select id={id} value={selected} aria-invalid={Boolean(errors[name])} aria-describedby={describedBy} onChange={event => {
       const next = event.target.value;
       setManual(next === CUSTOM);
