@@ -3,7 +3,7 @@ import { experimental_evaluate as evaluate } from 'ai';
 export const EVALUATOR_MODEL = 'typesafe-ai/jev';
 export const RUBRIC_VERSION = 'dpia-evidence-review-2026-09-21-v4';
 export const MAX_REVIEW_CONTEXT = 55_000;
-const MAX_REVIEW_BATCHES = 100;
+export const MAX_REVIEW_BATCHES = 500;
 
 export interface Source { id: string; title: string; text: string }
 export interface ReviewUnit {

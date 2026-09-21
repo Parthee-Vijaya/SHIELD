@@ -13,6 +13,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from src.services.analysis_limits import MAX_RAW_INPUT_CHARS  # noqa: E402
 from src.services.procurement_analysis import (  # noqa: E402
     ALLOWED_CODEX_MODELS,
     MaterialAnalysisError,
@@ -22,8 +23,8 @@ from src.services.procurement_analysis import (  # noqa: E402
 )
 
 
-def read_json(path: Path):
-    if path.stat().st_size > 2_000_000:
+def read_json(path: Path, *, max_bytes: int = 2_000_000):
+    if path.stat().st_size > max_bytes:
         raise MaterialAnalysisError("Filen er for stor.")
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -82,7 +83,7 @@ def main():
             else:
                 result = import_codex_analysis(
                     db,
-                    read_json(args.source_pack),
+                    read_json(args.source_pack, max_bytes=MAX_RAW_INPUT_CHARS * 4),
                     read_json(args.draft),
                     model=args.model,
                     run_id=args.run_id,

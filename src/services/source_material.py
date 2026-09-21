@@ -20,7 +20,8 @@ from sqlalchemy.orm import Session
 
 from src.services.analysis_limits import (
     MAX_DOCUMENT_TEXT_CHARS,
-    MAX_DOCUMENT_EXCERPTS,
+    MAX_EXTRACTION_TEXT_CHARS,
+    MAX_EXTRACTION_SEGMENTS,
     danish_number,
 )
 
@@ -47,11 +48,11 @@ from src.services.safe_public_fetch import (
 )
 
 
-MAX_TEXT_CHARS = MAX_DOCUMENT_TEXT_CHARS
-MAX_SEGMENTS = MAX_DOCUMENT_EXCERPTS
+MAX_TEXT_CHARS = MAX_EXTRACTION_TEXT_CHARS
+MAX_SEGMENTS = MAX_EXTRACTION_SEGMENTS
 HTML_BLOCK_CHARS = 2_000
 SOURCE_EXTENSIONS = {".pptx", ".docx", ".pdf", ".txt"}
-EXTRACTION_VERSION = "municipal-sources-2"
+EXTRACTION_VERSION = "municipal-sources-3"
 SUPPLIER_NOTICE = "Kildematerialet er leverandøroplysninger og er ikke juridisk godkendt. Oplysninger skal efterprøves i den konkrete anvendelse."
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
@@ -63,6 +64,7 @@ _R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 class Extraction:
     excerpts: list[dict[str, str]]
     warnings: list[str]
+    complete: bool = True
 
     @property
     def status(self) -> str:
@@ -73,28 +75,57 @@ def _bounded_segments(segments, warnings: list[str]) -> Extraction:
     excerpts: list[dict[str, str]] = []
     remaining = MAX_TEXT_CHARS
     truncated = False
+    source_number = 0
     for locator, text in segments:
         text = text.strip()
         if not text:
             continue
+        source_number += 1
         if remaining <= 0 or len(excerpts) >= MAX_SEGMENTS:
             truncated = True
             break
+        complete_text = text
         if len(text) > remaining:
             text = text[:remaining]
             truncated = True
-        excerpts.append({"locator": locator, "text": text})
-        remaining -= len(text)
+        # Preserve every ordinary source boundary and ID. Large paragraphs get
+        # deterministic suffixes; offsets reference the original stripped text.
+        for offset in range(0, len(text), MAX_DOCUMENT_TEXT_CHARS):
+            if len(excerpts) >= MAX_SEGMENTS:
+                truncated = True
+                break
+            chunk = text[offset : offset + MAX_DOCUMENT_TEXT_CHARS]
+            item = {"locator": locator, "text": chunk}
+            if len(complete_text) > MAX_DOCUMENT_TEXT_CHARS:
+                part = offset // MAX_DOCUMENT_TEXT_CHARS + 1
+                item["source_suffix"] = (
+                    str(source_number) if part == 1 else f"{source_number}:part:{part}"
+                )
+                item["locator"] = f"{locator}, tegn {offset + 1}–{offset + len(chunk)}"
+            elif source_number != len(excerpts) + 1:
+                item["source_suffix"] = str(source_number)
+            excerpts.append(item)
+            remaining -= len(chunk)
+        if truncated:
+            break
     if truncated:
         warnings.append(
             f"Tekstudtrækket er afkortet til højst {danish_number(MAX_TEXT_CHARS)} tegn "
-            f"og {MAX_SEGMENTS} tekstafsnit. Gennemgå originalen for det resterende indhold."
+            f"og {danish_number(MAX_SEGMENTS)} tekstafsnit. Analysen kan ikke startes på et afkortet dokument; "
+            "opdel originalen i mindre filer."
         )
     if not excerpts:
         warnings.append(
             "Der blev ikke fundet læsbar tekst. Upload en tekstbaseret fil; billeder og skannede sider kræver manuel gennemgang."
         )
-    return Extraction(excerpts, list(dict.fromkeys(warnings)))
+    complete = not truncated and not any(
+        "Kun de første" in warning for warning in warnings
+    )
+    return Extraction(excerpts, list(dict.fromkeys(warnings)), complete=complete)
+
+
+def excerpt_source_id(version_id: str, excerpt: dict, number: int) -> str:
+    return f"document:{version_id}:{excerpt.get('source_suffix', number)}"
 
 
 def _pptx_segments(content: bytes):
@@ -343,7 +374,7 @@ def _source_payload(
     )
     excerpts = [
         {
-            "id": f"document:{version.id}:{number}",
+            "id": excerpt_source_id(str(version.id), item, number),
             "locator": item["locator"],
             "text": item["text"],
         }
@@ -362,6 +393,7 @@ def _source_payload(
         "retrieved_at": metadata.get("retrieved_at"),
         "checksum": version.content_sha256,
         "status": "extracted" if excerpts else "unreadable",
+        "extraction_complete": material.get("complete", True),
         "evidence_type": "supplier_statement",
         "review_status": "unreviewed",
         "document_status": version.status,
@@ -399,6 +431,7 @@ def save_case_source(
             "review_status": "unreviewed",
             "excerpts": extraction.excerpts,
             "warnings": extraction.warnings,
+            "complete": extraction.complete,
         },
     }
     stored = None
@@ -498,6 +531,7 @@ def list_case_source_material(db: Session, case_id: str) -> list[dict[str, Any]]
             material = {
                 "excerpts": extraction.excerpts,
                 "warnings": extraction.warnings,
+                "complete": extraction.complete,
             }
         except Exception:
             material = {
@@ -511,10 +545,50 @@ def list_case_source_material(db: Session, case_id: str) -> list[dict[str, Any]]
     return items
 
 
+def case_source_manifest(db: Session, case_id: str) -> list[dict[str, Any]]:
+    """Include unreadable inputs so unchanged readable text cannot hide a new file.
+
+    Outputs are excluded using the same deny rule as text extraction. Only
+    allowlisted version/link metadata is retained, never storage paths or
+    arbitrary uploaded metadata.
+    """
+    links = list_case_documents(db, case_id)
+    output_ids = {
+        link.document_version_id for link in links if link.link_role == "output"
+    }
+    manifest = []
+    for link in links:
+        if link.document_version_id in output_ids:
+            continue
+        version = link.version
+        metadata = (version.version_metadata or {}) if version else {}
+        manifest.append(
+            {
+                "link_id": link.id,
+                "document_id": link.document_id,
+                "document_version_id": link.document_version_id,
+                "link_role": link.link_role,
+                "title": link.document.title if link.document else None,
+                "category": link.document.category if link.document else None,
+                "filename": version.original_filename if version else None,
+                "checksum": version.content_sha256 if version else None,
+                "size_bytes": version.size_bytes if version else None,
+                "version": version.version_number if version else None,
+                "source_url": metadata.get("source_url"),
+            }
+        )
+    return sorted(manifest, key=lambda item: item["link_id"])
+
+
 def case_source_evidence(db: Session, case_id: str) -> list[dict[str, Any]]:
     """Stable source identifiers for this case only; outputs cannot become evidence."""
     result = []
     for item in list_case_source_material(db, case_id):
+        if not item["extraction_complete"]:
+            raise ValueError(
+                f"Dokumentet '{item['title']}' overskrider grænsen for tekstudtræk. "
+                "Opdel originalen i mindre filer. Ingen delvis analyse er gemt."
+            )
         version = db.get(MunicipalDocumentVersion, item["version_id"])
         for excerpt in item["excerpts"]:
             evidence = {

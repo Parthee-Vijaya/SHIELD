@@ -732,7 +732,7 @@ def test_public_source_provenance_survives_snapshot_but_case_outputs_are_never_e
 
 @pytest.mark.parametrize(
     "excerpt_count,total_chars,expected_count",
-    [(245, 173_966, 245), (1001, 10_010, 1000)],
+    [(245, 173_966, 245), (1001, 10_010, 1001)],
 )
 def test_document_excerpt_budget_preserves_large_complete_packs_and_discloses_limit(
     monkeypatch, excerpt_count, total_chars, expected_count
@@ -798,3 +798,63 @@ def test_document_excerpt_budget_preserves_large_complete_packs_and_discloses_li
         assert not any("afkortet" in note or "udeladt" in note for note in limitations)
     else:
         assert any("1.000 kildeuddrag" in note for note in limitations)
+
+
+def test_report_batch_receipt_is_validated_and_preserved_in_new_snapshot():
+    from src.services.analysis_limits import source_document_id
+
+    request, original = make_assessment()
+    before = deepcopy(original.model_dump(mode="json"))
+    sources = dpia_ai.build_sources(request, original) + [
+        {
+            "id": f"document:doc-{index}:1",
+            "title": "Kildedokument",
+            "text": f"Dokumentation {index}",
+        }
+        for index in range(26)
+    ]
+    groups = [sources[:-1], sources[-1:]]
+    batching = {
+        "strategy": "map-reduce-v1",
+        "batch_count": 2,
+        "source_count": len(sources),
+        "source_text_chars": sum(len(source["text"]) for source in sources),
+        "batches": [
+            {
+                "index": index,
+                "source_ids": [source["id"] for source in group],
+                "source_text_chars": sum(len(source["text"]) for source in group),
+                "document_count": len(
+                    {source_document_id(source) for source in group} - {None}
+                ),
+                "summary": "Kilderne er gennemgået med henvisninger.",
+                "finding_count": 1,
+            }
+            for index, group in enumerate(groups, 1)
+        ],
+        "map_call_count": 2,
+        "synthesis_call_count": 2,
+    }
+    output = {**worker_output(original), "batching": batching}
+    generated = dpia_ai.apply_ai_draft(
+        original,
+        output,
+        sources,
+        assessment_id=str(uuid4()),
+        created_at=datetime.now(UTC),
+        case_db_id="case",
+    )
+    assert generated.ai_generation["batching"] == batching
+    assert generated.ai_generation["sources"] == sources
+    assert original.model_dump(mode="json") == before
+    output["batching"]["batches"][-1]["source_ids"] = ["unknown-source"]
+    with pytest.raises(dpia_ai.InvalidAIDraft, match="batchoversigt"):
+        dpia_ai.apply_ai_draft(
+            original,
+            output,
+            sources,
+            assessment_id=str(uuid4()),
+            created_at=datetime.now(UTC),
+            case_db_id="case",
+        )
+    assert original.model_dump(mode="json") == before

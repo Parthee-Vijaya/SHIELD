@@ -446,3 +446,60 @@ def test_database_error_returns_safe_message(setup, monkeypatch):
     response = setup["client"].get(f"/api/v3/cases/{setup['case']}/technical-runs")
     assert response.status_code == 503
     assert "database-password" not in response.text
+
+
+@pytest.mark.parametrize("kind", ["dpia", "material"])
+def test_saved_batch_coverage_is_visible_without_private_worker_metadata(setup, kind):
+    payload = ai_payload()
+    batching = {
+        "strategy": "map-reduce-v1",
+        "batch_count": 2,
+        "source_count": 2,
+        "source_text_chars": 60,
+        "map_call_count": 2,
+        "synthesis_call_count": 1,
+        "authorization": "should-not-leak",
+        "batches": [
+            {
+                "index": index,
+                "source_ids": [f"supplier:{index}"],
+                "source_text_chars": 30,
+                "document_count": 1,
+                "summary": f"Gemt resumé for del {index}.",
+                "fact_count": 1,
+                "headers": {"authorization": "should-not-leak"},
+            }
+            for index in (1, 2)
+        ],
+    }
+    payload["ai_generation"]["batching"] = batching
+    if kind == "dpia":
+        save_dpia(setup, payload)
+    else:
+        with setup["factory"]() as db:
+            db.add(
+                ProcurementAnalysis(
+                    id=str(uuid4()),
+                    case_id=setup["case"],
+                    created_at=NOW,
+                    profile_fingerprint="profile",
+                    source_fingerprint="sources",
+                    generation_payload=payload["ai_generation"],
+                    model="openai/gpt-5.5",
+                    generation_provider="vercel-ai-gateway",
+                    status="requires_human_review",
+                )
+            )
+            db.commit()
+    run = get_runs(setup)[0]
+    assert run["batching"]["batch_count"] == 2
+    assert run["batching"]["source_count"] == 2
+    assert run["batching"]["batches"][1]["source_ids"] == ["supplier:2"]
+    assert run["batching"]["batches"][1]["summary"] == "Gemt resumé for del 2."
+    assert "should-not-leak" not in json.dumps(run)
+
+
+def test_old_runs_do_not_invent_batch_execution(setup):
+    save_dpia(setup, ai_payload())
+    run = get_runs(setup)[0]
+    assert run["batching"] is None

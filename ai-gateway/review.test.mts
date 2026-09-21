@@ -155,7 +155,7 @@ test('unrepresentable drafts, references and excessive request counts fail befor
   await assert.rejects(reviewUnits([{ ...unit('summary', ['a']), text: 'x'.repeat(MAX_REVIEW_CONTEXT) }], sources, {}, evaluator), /REVIEW_CONTEXT_TOO_LARGE/);
   await assert.rejects(reviewUnits([unit('summary', ['missing'])], sources, {}, evaluator), /INVALID_SOURCE_REFERENCE/);
   await assert.rejects(reviewUnits([unit('summary', ['a'])], [{ ...sources[0], title: 'x'.repeat(MAX_REVIEW_CONTEXT) }], {}, evaluator), /REVIEW_CONTEXT_TOO_LARGE/);
-  const manySources = Array.from({ length: 101 }, (_, i) => ({ id: String(i), title: 'Kilde', text: 'x'.repeat(30_000) }));
+  const manySources = Array.from({ length: 501 }, (_, i) => ({ id: String(i), title: 'Kilde', text: 'x'.repeat(30_000) }));
   await assert.rejects(reviewUnits(manySources.map(source => unit(source.id, [source.id])), manySources, {}, evaluator), /REVIEW_CONTEXT_TOO_LARGE/);
   assert.equal(calls, 0);
 });

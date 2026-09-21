@@ -13,6 +13,7 @@ const profile = { system_name:'Pladsanvisning', supplier_name:'Fiktiv leverandø
 const source = { id:'source-1', title:'Leverandørens præsentation', uploaded_at:'2026-09-20T10:00:00Z', original_filename:'præsentation.pptx', download_url:'/source-download', warnings:[], excerpts:[{id:'excerpt-1',locator:'Slide 2',text:'Løsningen leveres som SaaS fra EU.'}] };
 const fact = (id,field,value) => ({id,field,value,label:field,source_refs:[{source_id:'excerpt-1',quote:'Løsningen leveres som SaaS fra EU.'}]});
 const analysis = { id:'analysis-1', created_at:'2026-09-20T10:00:00Z', summary:'Forslag til gennemgang.', outdated:false, facts:[fact('f1','solution_type','saas'),fact('f2','hosting_region','eu_eea'),fact('f3','special_categories',false),fact('f4','data_subjects',['other']),fact('f5','personal_data_categories',['other'])], sources:[{id:'excerpt-1',title:source.title,locator:'Slide 2'}], questions:[{id:'q1',question:'Hvilke underdatabehandlere anvendes?',priority:'high'}], conflicts:[], review:{checks:[{id:'fact:f2',requires_review:true}]} };
+const analysisLimits = {batching_enabled:true,max_documents:25,max_total_text_chars:500000,max_document_text_chars:200000,max_batches:20,max_case_documents:100,max_case_text_chars:5000000,max_case_excerpts:10000};
 const reply = (body,ok=true) => Promise.resolve({ok,json:async()=>body});
 let authFetch;
 
@@ -73,12 +74,43 @@ test('uses the server analysis capacity and Danish number formatting', async()=>
   mockCase({analysisLimits:{max_documents:30,max_total_text_chars:600000,max_document_text_chars:250000}});
   mount('/anskaffelse?case=case-a&step=materials');
   expect(await screen.findByText('Analysen kan omfatte op til 30 dokumenter og 600.000 tegn i alt, højst 250.000 tegn pr. dokument.')).toBeInTheDocument();
+  expect(screen.queryByText(/Større dokumentpakker opdeles automatisk/)).not.toBeInTheDocument();
+});
+
+test('explains automatic batching with separate overall and per-part limits', async()=>{
+  mockCase({analysisLimits});
+  mount('/anskaffelse?case=case-a&step=materials');
+  expect(await screen.findByText(/Større dokumentpakker opdeles automatisk og samles til én analyse/)).toBeInTheDocument();
+  const capacity = screen.getByText('Kapacitet for automatisk analyse').closest('details');
+  expect(capacity).not.toHaveAttribute('open');
+  fireEvent.click(screen.getByText('Kapacitet for automatisk analyse'));
+  expect(screen.getByText('Én samlet analyse kan behandle op til 100 dokumenter og hjemmesider, 5.000.000 tegn og 10.000 kildeuddrag, fordelt på højst 20 dele.')).toBeVisible();
+  expect(screen.getByText('Hver del kan omfatte op til 25 dokumenter og 500.000 tegn, højst 200.000 tegn pr. kildeuddrag.')).toBeVisible();
+});
+
+test('shows the batching workflow while waiting without inventing completed steps', async()=>{
+  mockCase({analysisLimits,materials:[source]});
+  mount('/anskaffelse?case=case-a&step=materials');
+  await screen.findByRole('heading',{name:'Saml leverandørmaterialet'});
+  authFetch.mockImplementation(()=>new Promise(()=>{}));
+  fireEvent.click(screen.getByRole('button',{name:'Analysér leverandørmateriale →'}));
+  expect(screen.getByText('AI gennemgår materialet, samler eventuelle delanalyser og kører JEV-kontrol…')).toHaveAttribute('role','status');
+  expect(screen.queryByText(/delanalyser samlet til én analyse/)).not.toBeInTheDocument();
+});
+
+test('shows completed recorded batches on the saved analysis without calling AI again', async()=>{
+  mockCase({currentAnalysis:{...analysis,batching:{strategy:'map-reduce-v1',batch_count:3,source_count:1200,source_text_chars:620000}}});
+  mount('/anskaffelse?case=case-a&step=facts');
+  expect(await screen.findByText('3 delanalyser samlet til én analyse')).toBeInTheDocument();
+  expect(screen.getByText(/1.200 kildeuddrag er fordelt på delanalyserne/)).toHaveTextContent('620.000 tegn');
+  expect(authFetch.mock.calls.filter(([,options])=>options?.method==='POST')).toHaveLength(0);
 });
 
 test('displays field-specific Danish fact labels and requires explicit checkbox choices', async()=>{
   mockCase({currentAnalysis:analysis,materials:[source]});
   mount('/anskaffelse?case=case-a&step=facts');
   await screen.findByRole('heading',{name:'Gennemgå oplysninger og kilder'});
+  expect(screen.queryByText(/delanalyser samlet til én analyse/)).not.toBeInTheDocument();
   expect(screen.getByText('Cloud/SaaS-løsning')).toBeInTheDocument();
   expect(screen.getByText('EU/EØS')).toBeInTheDocument();
   expect(screen.getByText('Andre registrerede')).toBeInTheDocument();

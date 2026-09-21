@@ -1,11 +1,11 @@
-import { generateText, Output } from 'ai';
 import { z } from 'zod';
+import { assertGenerationContext, batchingMetadata, boundedMapResult, generateStructured, planSourceBatches, validateSourcePool, type StructuredGenerator } from './source-batches.mts';
 import { EVALUATOR_MODEL, reviewUnits, type ReviewUnit } from './review.mts';
 import { gatewayFailure } from './errors.mts';
 import { MAX_AI_INPUT_CHARS, MAX_AI_RAW_INPUT_CHARS } from './input-limits.mts';
 
 export const REPORT_MODEL = 'openai/gpt-5.5';
-export const PROMPT_VERSION = 'datatilsynet-dpia-draft-2026-09-21-v3';
+export const PROMPT_VERSION = 'datatilsynet-dpia-draft-2026-09-21-v4-batches';
 export const MAX_REPORT_INPUT_CHARS = MAX_AI_INPUT_CHARS;
 export const MAX_REPORT_RAW_INPUT_CHARS = MAX_AI_RAW_INPUT_CHARS;
 
@@ -132,35 +132,78 @@ export function validateReportInput(raw: unknown) {
   return input;
 }
 
-export async function generateReport(raw: unknown) {
+export const reportEvidenceSchema = z.object({
+  summary: z.string().min(20).max(8000),
+  findings: z.array(z.object({
+    topic: z.string().min(1).max(160), value: z.string().min(1).max(600), statement: z.string().min(10).max(1200),
+    source_refs: z.array(z.object({ source_id: z.string(), quote: z.string().min(1).max(1600) }).strict()).min(1).max(6),
+  }).strict()).max(40),
+  unresolved_questions: z.array(z.string().min(10).max(1000)).max(20),
+}).strict();
+type EvidenceMap = z.infer<typeof reportEvidenceSchema>;
+export function validateReportEvidence(sources: { id: string; text: string }[], raw: unknown): EvidenceMap {
+  const evidence = boundedMapResult(reportEvidenceSchema.parse(raw));
+  if (!evidence.findings.length && !evidence.unresolved_questions.length) throw new Error('BATCH_WITHOUT_FINDINGS');
+  const sourceMap = new Map(sources.map(source => [source.id, source.text]));
+  const normalize = (text: string) => text.trim().replace(/\s+/g, ' ');
+  for (const finding of evidence.findings) for (const ref of finding.source_refs) {
+    const original = sourceMap.get(ref.source_id);
+    if (!original || !normalize(original).includes(normalize(ref.quote))) throw new Error('INVALID_EXACT_QUOTE');
+  }
+  return evidence;
+}
+function reportBatchDisagreements(maps: EvidenceMap[]) {
+  const groups = new Map<string, EvidenceMap['findings']>();
+  for (const map of maps) for (const finding of map.findings) groups.set(finding.topic, [...(groups.get(finding.topic) || []), finding]);
+  return [...groups].filter(([, findings]) => new Set(findings.map(finding => finding.value)).size > 1)
+    .map(([topic, findings]) => ({ topic, source_ids: [...new Set(findings.flatMap(finding => finding.source_refs.map(ref => ref.source_id)))],
+      description: `Mulig modstrid om ${topic}: ${[...new Set(findings.map(finding => finding.value))].join(' / ')}. Afklar hvilke vilkår, versioner og anvendelser der gælder; delresultaterne kan ikke afgøre forskellen.` }));
+}
+export async function generateReport(raw: unknown, evaluator = reviewUnits, generator: StructuredGenerator = generateStructured) {
   const input = validateReportInput(raw);
-  const evidence = JSON.stringify({ request: input.request, sources: input.sources });
-  const common = {
-    model: REPORT_MODEL, system: SYSTEM, maxRetries: 0,
-    abortSignal: AbortSignal.timeout(160_000),
+  validateSourcePool(input.sources);
+  const sectionGround = { status: input.result.status, risk_level: input.result.risk_level, executive_summary: input.result.executive_summary, scope: input.result.scope, sections: input.result.sections, missing_information: input.result.missing_information, blockers: input.result.blockers, next_steps: input.result.next_steps };
+  const overhead = SYSTEM.length + JSON.stringify({ request: input.request, result: input.result }).length + 6000;
+  const batches = planSourceBatches(input.sources, overhead);
+  const maps: EvidenceMap[] = [];
+  const mapUsage: unknown[] = [];
+  const run = async (prompt: string, schema: z.ZodType, maxOutputTokens = 16000) => {
+    assertGenerationContext(SYSTEM, prompt);
+    return generator({ model: REPORT_MODEL, system: SYSTEM, prompt, schema, maxOutputTokens });
   };
-  const [sections, risks] = await Promise.all([
-    generateText({
-      ...common, output: Output.object({ schema: sectionsSchema }), maxOutputTokens: 16000,
-      prompt: `Udarbejd struktureret resumé, scope og samtlige ${input.result.sections.length} afsnit samt en særskilt recommendations-liste med relevante forslag. Bevar uafklarede forhold fra grundlaget. Skriv korte afsnit med 2-5 konkrete sætninger og punktlister, hvor det hjælper læseren. Henvis eksplicit til kilde-ID'er i source_ids.\nKilder: ${evidence}\nGrundlag: ${JSON.stringify({ status: input.result.status, risk_level: input.result.risk_level, executive_summary: input.result.executive_summary, scope: input.result.scope, sections: input.result.sections, missing_information: input.result.missing_information, blockers: input.result.blockers, next_steps: input.result.next_steps })}`,
-    }),
-    generateText({
-      ...common, output: Output.object({ schema: risksSchema }), maxOutputTokens: 16000,
-      prompt: `Udarbejd samtlige ${input.result.risks.length} risikoscenarier med tydelig hændelse, årsag, personkonsekvens, begrundelse og konkrete forslag til risikobegrænsning. Skriv kompakt med korte afsnit og punktlister. Hvert measures-felt skal adskille forslag og hvordan de efterprøves før anvendelse. Brug source_ids for sagens oplysninger, der gør scenariet relevant. Supplér kun med yderligere relevante risici uden for kataloget.\nKilder: ${evidence}\nRisikovurdering: ${JSON.stringify(input.result.risks)}`,
-    }),
-  ]);
-  const draft = { ...sections.output, ...risks.output };
+  if (batches.length > 1) for (const [index, sources] of batches.entries()) {
+    const result = await run(`EVIDENSDEL ${index + 1} AF ${batches.length}. Uddrag de relevante oplysninger til konsekvensanalyse og risikovurdering. Dette er ikke en rapport eller godkendelse. Hvert finding skal have oprindeligt source_id og ordret citat. Skeln leverandørudsagn, aftaler, udfyldt formular, lovtekst og dokumenteret implementering i statement. Brug præcise, stabile topic-nøgler for det samme forhold på tværs af dele, fx retention.active_documents, retention.backups, hosting.region, transfer.destination, contract.renewal, ai.training. value er en kort normaliseret værdi, aldrig en juridisk godkendelse. Forskellige datatyper, aftaler og anvendelser får forskellige topic-nøgler, hvis de faktisk beskriver forskellige forhold. Opfind ikke et negativt svar når oplysninger mangler. Fasthold modstrid og usikkerhed; andre dele kan have supplerende oplysninger. Ingen kilde-ID'er må omskrives.\nFormular og låst grundlag: ${JSON.stringify({ request: input.request, result: input.result })}\nKilder i denne del: ${JSON.stringify(sources)}`, reportEvidenceSchema, 14000);
+    maps.push(validateReportEvidence(sources, result.output)); mapUsage.push(result.usage);
+  }
+  const disagreements = reportBatchDisagreements(maps);
+  const evidence = batches.length === 1 ? JSON.stringify({ request: input.request, sources: input.sources }) : JSON.stringify({ request: input.request, evidence_batches: maps, unresolved_cross_batch_differences: disagreements });
+  const consolidation = batches.length > 1 ? 'Dette er den endelige samling af ALLE evidensdele. Delresultaterne er komprimerede, citerede evidensudtræk, ikke nye kilder. Sammenhold oplysninger på tværs af alle dele, bevar modstrid og centrale afklaringer og brug altid oprindelige source_ids. Modstrid må ikke løses ved flertalsafgørelse. En oplysning der ikke er nævnt i udtrækket, er ikke dokumentation for fravær. ' : '';
+  const sections = await run(`${consolidation}Udarbejd struktureret resumé, scope og samtlige ${input.result.sections.length} afsnit samt en særskilt recommendations-liste med relevante forslag. Bevar uafklarede forhold fra grundlaget. Skriv korte afsnit med 2-5 konkrete sætninger og punktlister, hvor det hjælper læseren. Henvis eksplicit til kilde-ID'er i source_ids.\nKilder: ${evidence}\nGrundlag: ${JSON.stringify(sectionGround)}`, sectionsSchema);
+  const risks = await run(`${consolidation}Udarbejd samtlige ${input.result.risks.length} risikoscenarier med tydelig hændelse, årsag, personkonsekvens, begrundelse og konkrete forslag til risikobegrænsning. Skriv kompakt med korte afsnit og punktlister. Hvert measures-felt skal adskille forslag og hvordan de efterprøves før anvendelse. Brug source_ids for sagens oplysninger, der gør scenariet relevant. Supplér kun med yderligere relevante risici uden for kataloget.\nKilder: ${evidence}\nRisikovurdering: ${JSON.stringify(input.result.risks)}`, risksSchema);
+  const draft = { ...sectionsSchema.parse(sections.output), ...risksSchema.parse(risks.output) };
   for (const section of draft.sections) {
     const original = input.result.sections.find(item => item.id === section.id);
     if (original && ['missing_information', 'not_applicable'].includes(String(original.review_status))) section.text = original.text;
   }
+  // A synthesis cannot silently discard cross-part discrepancies or local open issues.
+  if (maps.length) {
+    draft.open_questions = [...new Set([...draft.open_questions, ...maps.flatMap(map => map.unresolved_questions), ...disagreements.map(item => item.description)])];
+    if (draft.open_questions.length > 100) throw new Error('BATCH_QUESTIONS_REQUIRE_REVIEW');
+    draft.summary_source_ids = [...new Set([...draft.summary_source_ids, ...disagreements.flatMap(item => item.source_ids)])];
+    if (draft.summary_source_ids.length > 100) throw new Error('BATCH_CONFLICTS_REQUIRE_REVIEW');
+    if (disagreements.length) {
+      draft.executive_summary += `\n\nModstrid mellem kilder\n${disagreements.map(item => `- ${item.description}`).join('\n')}`;
+      if (draft.executive_summary.length > 5000) throw new Error('BATCH_CONFLICTS_REQUIRE_REVIEW');
+    }
+  }
   validateDraftIds(input.result, draft, input.sources);
   if (!draft.summary_source_ids.length || draft.summary_source_ids.some(id => !input.sources.some(source => source.id === id))) throw new Error('INVALID_SOURCE_REFERENCE');
-  const units = buildReviewUnits(input, draft);
-  const review = await reviewUnits(units, input.sources);
+  const review = await evaluator(buildReviewUnits(input, draft), input.sources);
+  const summaries = maps.map(map => ({ summary: map.summary, finding_count: map.findings.length, question_count: map.unresolved_questions.length }));
   return {
     draft, review, model: REPORT_MODEL, prompt_version: PROMPT_VERSION,
-    usage: { drafting: [sections.usage, risks.usage], evaluation: review.usage },
+    batching: batchingMetadata(batches, 2, maps.length, summaries, disagreements.length),
+    usage: { drafting: [...mapUsage, sections.usage, risks.usage], evaluation: review.usage },
   };
 }
 

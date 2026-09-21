@@ -65,23 +65,23 @@ test('accepts all five supplier sources with provenance and the full base report
   assert.equal(validated.sources.at(-1)?.id, 'document:dpa:10');
 });
 
-test('validated report input remains bounded at 1600000 characters', () => {
+test('validated report input remains bounded at 16000000 characters', () => {
   const input = {
     request: {}, result: { executive_summary: '', scope: '', sections: [], risks: [] },
     sources: [{ id: 'document:1', title: 'Kilde', text: '' }],
   };
   input.sources[0].text = 'x'.repeat(MAX_REPORT_INPUT_CHARS - JSON.stringify(input).length);
-  assert.equal(JSON.stringify(input).length, 1_600_000);
+  assert.equal(JSON.stringify(input).length, 16_000_000);
   assert.doesNotThrow(() => validateReportInput(input));
   input.sources[0].text += 'x';
   assert.throws(() => validateReportInput(input), /INPUT_TOO_LARGE/);
 });
 
-test('raw worker input is accepted up to 2000000 characters and rejected above it without a model call', () => {
+test('raw worker input is accepted up to 20000000 characters and rejected above it without a model call', () => {
   const input = { status_only: true, padding: '' };
   input.padding = 'x'.repeat(MAX_REPORT_RAW_INPUT_CHARS - JSON.stringify(input).length);
   const body = JSON.stringify(input);
-  assert.equal(body.length, 2_000_000);
+  assert.equal(body.length, 20_000_000);
   const options = { env: {}, encoding: 'utf8' as const, timeout: 10_000 };
   const worker = fileURLToPath(new URL('./generate-report.mts', import.meta.url));
   const accepted = spawnSync(process.execPath, [worker], { ...options, input: body });

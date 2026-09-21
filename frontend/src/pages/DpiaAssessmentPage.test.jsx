@@ -204,6 +204,65 @@ test('AI udarbejdes kun ved klik og skifter til en ny gemt version med JEV-opfø
   expect(authFetch.mock.calls.filter(([url]) => url === '/api/dpia/assessments/assessment-2')).toHaveLength(0);
 });
 
+test('store AI-kørsler afbrydes ikke efter fire minutter og får serverens fulde tidsramme', async () => {
+  let generationSignal;
+  const baseFetch = authFetch.getMockImplementation();
+  authFetch.mockImplementation((url, options) => url.endsWith('/generate')
+    ? new Promise((resolve, reject) => {
+      generationSignal = options.signal;
+      generationSignal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+    })
+    : baseFetch(url, options));
+  const view = mount();
+  const button = await screen.findByRole('button', { name: 'Udarbejd med AI' });
+  await waitFor(() => expect(button).toBeEnabled());
+  jest.useFakeTimers();
+  try {
+    fireEvent.click(button);
+    expect(screen.getByText(/Store kildegrundlag behandles i delanalyser og samles/)).toHaveAttribute('role', 'status');
+    await act(async () => jest.advanceTimersByTime(240000));
+    expect(generationSignal.aborted).toBe(false);
+    expect(screen.getByRole('button', { name: 'Udarbejder og kvalitetstjekker…' })).toBeDisabled();
+    await act(async () => jest.advanceTimersByTime(3360000));
+    expect(generationSignal.aborted).toBe(false);
+    await act(async () => jest.advanceTimersByTime(60000));
+    expect(generationSignal.aborted).toBe(true);
+    expect(screen.getByRole('alert')).toHaveTextContent('Genåbn sagen og kontrollér, om en ny version er gemt');
+    expect(screen.getByText(saved.executive_summary)).toBeInTheDocument();
+    expect(screen.getByLabelText('Aktuel adresse')).toHaveTextContent('assessment_id=assessment-1');
+    expect(jest.getTimerCount()).toBe(0);
+  } finally {
+    view.unmount();
+    jest.useRealTimers();
+  }
+});
+
+test('en lang AI-kørsel afbrydes og dens timer ryddes når siden forlades', async () => {
+  let generationSignal;
+  const baseFetch = authFetch.getMockImplementation();
+  authFetch.mockImplementation((url, options) => url.endsWith('/generate')
+    ? new Promise((resolve, reject) => {
+      generationSignal = options.signal;
+      generationSignal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+    })
+    : baseFetch(url, options));
+  const view = mount();
+  const button = await screen.findByRole('button', { name: 'Udarbejd med AI' });
+  await waitFor(() => expect(button).toBeEnabled());
+  jest.useFakeTimers();
+  try {
+    fireEvent.click(button);
+    await act(async () => jest.advanceTimersByTime(240000));
+    expect(generationSignal.aborted).toBe(false);
+    await act(async () => view.unmount());
+    expect(generationSignal.aborted).toBe(true);
+    expect(jest.getTimerCount()).toBe(0);
+  } finally {
+    view.unmount();
+    jest.useRealTimers();
+  }
+});
+
 test.each(['gpt-5.6-sol', 'gpt-6-astra'])('viser en gemt Codex-test med %s uden automatisk modelkald', async model => {
   const codexResult = {
     ...generated,

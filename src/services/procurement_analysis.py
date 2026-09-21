@@ -28,16 +28,15 @@ from src.services.dpia_ai import _Review
 from src.services.dpia_assessment import DPIAAssessmentRequest
 from src.services.analysis_limits import (
     ANALYSIS_TIMEOUT_SECONDS,
-    MAX_DOCUMENTS,
-    MAX_TOTAL_TEXT_CHARS,
-    MAX_TOTAL_EXCERPTS,
     MAX_SOURCE_PACK_CHARS,
-    danish_number,
+    validate_source_budget,
+    requires_batching,
+    validate_batching_metadata,
 )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PROMPT_VERSION = "municipal-ai-solution-evidence-2026-09-20-v2"
+PROMPT_VERSION = "municipal-ai-solution-evidence-2026-09-21-v3-batches"
 ALLOWED_CODEX_MODELS = {"gpt-5.6-sol", "gpt-6-astra"}
 ALLOWED_FIELDS = {
     "purpose",
@@ -167,43 +166,63 @@ def source_fingerprint(sources: list[dict]) -> str:
     )
 
 
+def document_manifest_for_case(db: Session, case_id: str) -> list[dict]:
+    from src.services.source_material import case_source_manifest
+
+    return case_source_manifest(db, case_id)
+
+
+def document_manifest_matches(db: Session, case_id: str, payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    current = document_manifest_for_case(db, case_id)
+    expected = payload.get("document_manifest_fingerprint")
+    if expected is not None:
+        return (
+            digest(payload.get("document_manifest")) == expected
+            and digest(current) == expected
+        )
+    # Historical snapshots predate the full manifest. Preserve them unchanged,
+    # but a currently linked input absent from their evidence is not current.
+    recorded_versions = {
+        source.get("document_version_id")
+        for source in payload.get("sources", [])
+        if source.get("document_version_id")
+    }
+    return all(item["document_version_id"] in recorded_versions for item in current)
+
+
 def prepare_source_pack(db: Session, case_id: str) -> dict:
     profile = db.get(ProcurementProfile, case_id)
     if not profile or not db.get(Case, case_id):
         raise MaterialAnalysisError(
             "Sagen har ingen profil for den løsning, der skal vurderes."
         )
-    sources = evidence_for_case(db, case_id)
+    manifest = document_manifest_for_case(db, case_id)
+    try:
+        sources = evidence_for_case(db, case_id)
+        validate_source_budget(sources)
+    except ValueError as exc:
+        raise MaterialAnalysisError(str(exc)) from exc
     if not sources:
         raise MaterialAnalysisError(
             "Tilføj mindst ét dokument eller en hjemmeside med læsbart indhold om løsningen og den AI-funktion, der skal vurderes."
         )
     if len({source["id"] for source in sources}) != len(sources):
         raise MaterialAnalysisError("Kilderne har gentagne identifikatorer.")
-    document_count = len({source["document_version_id"] for source in sources})
-    if (
-        document_count > MAX_DOCUMENTS
-        or len(sources) > MAX_TOTAL_EXCERPTS
-        or sum(len(source["text"]) for source in sources) > MAX_TOTAL_TEXT_CHARS
-    ):
-        # Intake is all-or-nothing: never silently drop selected evidence.
-        raise MaterialAnalysisError(
-            f"Kildematerialet er for omfattende til én analyse. Grænsen er {MAX_DOCUMENTS} "
-            f"dokumenter, {danish_number(MAX_TOTAL_TEXT_CHARS)} tegn og "
-            f"{danish_number(MAX_TOTAL_EXCERPTS)} kildeuddrag samlet. "
-            "Afgræns materialet før analysen startes. Ingen ny analyse er gemt."
-        )
     pack = {
         "case_id": case_id,
         "profile": profile.to_dict(),
         "sources": sources,
+        "document_manifest": manifest,
+        "document_manifest_fingerprint": digest(manifest),
         "profile_fingerprint": digest(profile.to_dict()),
         "source_fingerprint": source_fingerprint(sources),
         "prompt_version": PROMPT_VERSION,
     }
     if len(json.dumps(pack, ensure_ascii=False)) > MAX_SOURCE_PACK_CHARS:
         raise MaterialAnalysisError(
-            "Kildematerialet er for omfattende til én analyse. Afgræns de dokumenter, der indgår i sagen."
+            "Kildepakken overskrider den samlede transportgrænse. Ingen delvis analyse er gemt."
         )
     pack["source_pack_sha256"] = digest(pack)
     return pack
@@ -219,6 +238,10 @@ def check_pack(db: Session, pack: dict) -> None:
     ) or source_fingerprint(pack.get("sources", [])) != pack.get("source_fingerprint"):
         raise MaterialChangedError(
             "Kildepakken svarer ikke til det dokumenterede grundlag."
+        )
+    if not document_manifest_matches(db, pack["case_id"], pack):
+        raise MaterialChangedError(
+            "Sagens dokumenttilknytninger er ændret. Start analysen igen på det aktuelle grundlag."
         )
     current = prepare_source_pack(db, pack["case_id"])
     if any(
@@ -367,6 +390,7 @@ def latest_analysis(db: Session, case_id: str) -> dict | None:
             or digest(profile.to_dict()) != record.profile_fingerprint
             or source_fingerprint(evidence_for_case(db, case_id))
             != record.source_fingerprint
+            or not document_manifest_matches(db, case_id, record.generation_payload)
         )
     except (ValueError, OSError):
         payload["outdated"] = True
@@ -382,9 +406,16 @@ def save_analysis(
     model: str,
     provider: str,
     run_id: str | None = None,
+    batching: dict | None = None,
 ) -> dict:
     draft = validate_draft(pack, draft)
     review = validate_review(draft, review)
+    try:
+        batching = validate_batching_metadata(batching, pack["sources"])
+    except ValueError as exc:
+        raise MaterialAnalysisError(
+            "AI-kørslens batchoversigt dækker ikke hele materialet."
+        ) from exc
     analysis_id = (
         str(uuid5(NAMESPACE_URL, f"judge-dredd:procurement:{run_id}"))
         if run_id
@@ -409,6 +440,13 @@ def save_analysis(
             "Leverandørmateriale dokumenterer leverandørens udsagn og bekræfter ikke den faktiske drift eller kommunens konkrete anvendelse.",
         ],
     }
+    if "document_manifest" in pack:
+        generation["document_manifest"] = pack["document_manifest"]
+        generation["document_manifest_fingerprint"] = pack[
+            "document_manifest_fingerprint"
+        ]
+    if batching is not None:
+        generation["batching"] = batching
     try:
         db.rollback()
         if db.get_bind().dialect.name == "sqlite":
@@ -466,6 +504,10 @@ def analyze_case(db: Session, case_id: str, worker=run_worker) -> dict:
         raise MaterialAnalysisError(
             "AI-analysen har en ukendt model eller skabelonversion."
         )
+    if requires_batching(pack["sources"]) and output.get("batching") is None:
+        raise MaterialAnalysisError(
+            "AI-kørslen mangler dokumentation for alle analysebatches. Ingen analyse er gemt."
+        )
     return save_analysis(
         db,
         pack,
@@ -473,6 +515,7 @@ def analyze_case(db: Session, case_id: str, worker=run_worker) -> dict:
         output.get("review", {}),
         model=output["model"],
         provider="vercel-ai-gateway",
+        batching=output.get("batching"),
     )
 
 
@@ -529,4 +572,5 @@ def import_codex_analysis(
         model=model,
         provider="codex-local-test",
         run_id=run_id,
+        batching=output.get("batching"),
     )

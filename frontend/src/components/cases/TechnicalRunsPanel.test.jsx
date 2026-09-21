@@ -48,6 +48,33 @@ test('viser faktisk model, problemsignal og foldet kontrolgrundlag uden nye mode
   expect(axios.get).toHaveBeenCalledTimes(1);
   expect(axios.get).toHaveBeenCalledWith('/api/v3/cases/c1/technical-runs');
   expect(axios.post).not.toHaveBeenCalled();
+  expect(screen.queryByText(/Kildegrundlag fordelt på/)).not.toBeInTheDocument();
+});
+
+test('viser gemte delanalyser og samling som en foldbar oversigt uden ny kørsel', async () => {
+  mount([{...run,batching:{strategy:'map-reduce-v1',batch_count:2,source_count:3,source_text_chars:620000,map_call_count:2,synthesis_call_count:1,cross_batch_conflict_count:1,consolidation_note:'Modstridende slettefrister er bevaret til afklaring.',batches:[{index:1,source_ids:['document:1','document:2'],source_text_chars:400000,document_count:1,summary:'Aftalen beskriver en slettefrist på 30 dage.',fact_count:4,question_count:2},{index:2,source_ids:['document:3'],source_text_chars:220000,document_count:1}]}}]);
+  const label = await screen.findByText('Kildegrundlag fordelt på 2 dele');
+  expect(label.closest('details')).not.toHaveAttribute('open');
+  const summary = await expand('Kildegrundlag fordelt på 2 dele');
+  expect(await summary.findByText(/Materialet blev opdelt i delanalyser og samlet til ét resultat/)).toBeInTheDocument();
+  expect(summary.getByText('Kildeuddrag i alt').nextElementSibling).toHaveTextContent('3');
+  expect(summary.getByText('Tegn i tekstgrundlaget').nextElementSibling).toHaveTextContent('620.000');
+  expect(summary.getByText('Kald til samling').nextElementSibling).toHaveTextContent('1');
+  expect(summary.getByText('Modstridende slettefrister er bevaret til afklaring.')).toBeInTheDocument();
+  expect(summary.getByText('Registrerede modstridende oplysninger på tværs af delene: 1.')).toBeInTheDocument();
+  expect(summary.getByText('Del 1').closest('summary')).toHaveTextContent('2 kildeuddrag · 400.000 tegn · 1 dokument');
+  expect(summary.getByText('Del 2').closest('summary')).toHaveTextContent('1 kildeuddrag · 220.000 tegn · 1 dokument');
+  const part = await expand('Del 1', summary);
+  expect(await part.findByText('Aftalen beskriver en slettefrist på 30 dage.')).toBeInTheDocument();
+  expect(part.getByText('Udledte oplysninger').nextElementSibling).toHaveTextContent('4');
+  expect(axios.post).not.toHaveBeenCalled();
+});
+
+test('en enkelt behandling beskrives ikke som flere delanalyser', async () => {
+  mount([{...run,batching:{strategy:'single-pass-v1',batch_count:1,source_count:1,source_text_chars:900,batches:[]}}]);
+  const summary = await expand('Kildegrundlag fordelt på 1 del');
+  expect(await summary.findByText(/Materialet kunne behandles samlet uden delanalyser/)).toBeInTheDocument();
+  expect(summary.queryByText('Kald til samling')).not.toBeInTheDocument();
 });
 
 test('viser ikke manglende Codex-forbrug som nul og summerer JEV-poster kun én gang', async () => {

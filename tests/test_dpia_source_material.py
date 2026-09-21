@@ -148,12 +148,10 @@ def test_source_material_excerpt_ids_and_locators_survive_new_assessment_snapsho
 
 
 @pytest.mark.parametrize("intake", [False, True])
-def test_document_and_total_text_caps_are_visible_and_never_read_extra_files(
-    monkeypatch, intake
-):
+def test_large_documents_are_split_across_batches_without_omission(monkeypatch, intake):
     content = b"x" * 200_001
     metadata = (
-        {"source_material": {"extraction_version": "municipal-sources-1"}}
+        {"source_material": {"extraction_version": "municipal-sources-2"}}
         if intake
         else {}
     )
@@ -164,18 +162,13 @@ def test_document_and_total_text_caps_are_visible_and_never_read_extra_files(
     sources, warnings, reads = source_data(
         monkeypatch, links, {link.version.id: content for link in links}
     )
-    assert len(sources) == 3
-    assert sum(len(source["text"]) for source in sources) == 500_000
-    assert [len(source["text"]) for source in sources] == [200_000, 200_000, 100_000]
-    assert reads == ["doc-0", "doc-1", "doc-2"]
-    assert any(
-        "doc-3" in warning
-        and "udeladt" in warning
-        and "500.000 tegn" in warning
-        and "200.000 tegn" in warning
-        for warning in warnings
+    assert len(sources) == 8
+    assert sum(len(source["text"]) for source in sources) == 800_004
+    assert reads == [f"doc-{number}" for number in range(4)]
+    assert all(len(source["text"]) <= 200_000 for source in sources)
+    assert not any(
+        "afkortet" in warning or "udeladt" in warning for warning in warnings
     )
-    assert any("afkortet" in warning for warning in warnings)
 
 
 def test_five_supplier_documents_keep_all_149295_characters_including_last_dpa(
@@ -230,16 +223,14 @@ def test_five_supplier_documents_keep_all_149295_characters_including_last_dpa(
     )
 
 
-def test_document_count_cap_is_explicit(monkeypatch):
+def test_document_count_over_one_batch_keeps_all_documents(monkeypatch):
     content = b"Supplier statement"
     links = [evidence(f"doc-{number}", "purpose.txt", content) for number in range(26)]
     sources, warnings, reads = source_data(
         monkeypatch, links, {link.version.id: content for link in links}
     )
-    assert len(sources) == len(reads) == 25
-    assert any(
-        "doc-25" in warning and "25 dokumenter" in warning for warning in warnings
-    )
+    assert len(sources) == len(reads) == 26
+    assert not any("udeladt" in warning for warning in warnings)
 
 
 def test_full_expanded_budget_preserves_every_source_and_locator(monkeypatch):
@@ -278,7 +269,7 @@ def test_full_expanded_budget_preserves_every_source_and_locator(monkeypatch):
     )
 
 
-def test_excerpt_count_cap_is_explicit_across_multiple_new_documents(monkeypatch):
+def test_excerpt_count_over_one_batch_keeps_every_excerpt(monkeypatch):
     content = "\n\n".join(
         f"Supplier statement {number}" for number in range(350)
     ).encode()
@@ -290,11 +281,9 @@ def test_excerpt_count_cap_is_explicit_across_multiple_new_documents(monkeypatch
     sources, warnings, _ = source_data(
         monkeypatch, links, {link.version.id: content for link in links}
     )
-    assert len(sources) == 1000
-    assert sources[-1]["id"] == "document:doc-2:300"
-    assert any("1.000 kildeuddrag" in warning for warning in warnings)
-
-    assert not any(source["id"] == "document:doc-2:301" for source in sources)
+    assert len(sources) == 1050
+    assert sources[-1]["id"] == "document:doc-2:350"
+    assert not any("afkortet" in warning for warning in warnings)
 
 
 def test_presentation_marked_as_output_is_never_read_even_if_also_linked_as_evidence(
@@ -308,3 +297,22 @@ def test_presentation_marked_as_output_is_never_read_even_if_also_linked_as_evid
     sources, warnings, reads = source_data(monkeypatch, links, {})
     assert sources == [] and reads == []
     assert any("sagsoutput" in warning for warning in warnings)
+
+
+@pytest.mark.parametrize("reason", ["documents", "text", "incomplete"])
+def test_overall_safety_budget_fails_without_mutating_source_pool(monkeypatch, reason):
+    count = 101 if reason == "documents" else 3 if reason == "text" else 1
+    content = b"x" * (
+        1_800_000 if reason == "text" else 2_000_001 if reason == "incomplete" else 1
+    )
+    links = [evidence(f"doc-{number}", "file.txt", content) for number in range(count)]
+    import src.database.document_bank as bank
+    import src.services.document_bank_storage as storage
+
+    monkeypatch.setattr(bank, "list_case_documents", lambda *_: links)
+    monkeypatch.setattr(storage, "read_document_bytes", lambda *args, **kwargs: content)
+    sources = [{"id": "input:purpose", "text": "Original source"}]
+    before = deepcopy(sources)
+    with pytest.raises(dpia_ai.InvalidAIDraft, match="Ingen delvis analyse"):
+        dpia_ai.add_case_document_sources(None, "case", sources)
+    assert sources == before

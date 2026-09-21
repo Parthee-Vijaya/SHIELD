@@ -1155,6 +1155,19 @@ def generate_dpia_report(
         build_sources, generate_dpia_draft,
     )
     from src.services.dpia_revisions import _lock_case, latest_case_assessment
+    from src.services.procurement_analysis import source_fingerprint
+    from src.database.document_bank import list_case_documents
+
+    def document_manifest(case_id):
+        # Include unreadable/unsupported files as well as extracted evidence.
+        return sorted(
+            (
+                str(link.document_version_id), str(link.link_role),
+                link.version.content_sha256 if link.version else "",
+                link.version.original_filename if link.version else "",
+            )
+            for link in list_case_documents(db, case_id)
+        )
 
     original = get_assessment(db, assessment_id)
     if original is None:
@@ -1168,7 +1181,13 @@ def generate_dpia_report(
     request_model = DPIAAssessmentRequest.model_validate(original.request_payload)
     result_model = DPIAAssessmentResponse.model_validate(assessment_result_payload(original))
     sources = build_sources(request_model, result_model)
-    limitations = add_case_document_sources(db, case_db_id, sources)
+    try:
+        limitations = add_case_document_sources(db, case_db_id, sources)
+    except InvalidAIDraft as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    evidence_fingerprint = source_fingerprint(sources)
+    input_documents = document_manifest(case_db_id)
     # No database transaction is held open during the external model call.
     db.rollback()
     created_at = datetime.now(UTC)
@@ -1193,6 +1212,17 @@ def generate_dpia_report(
         latest = latest_case_assessment(db, case_db_id)
         if latest is None or latest.id != assessment_id:
             raise ValueError("Der er gemt en nyere version under AI-udarbejdelsen. Den nye version er bevaret; åbn den før du fortsætter.")
+        current_sources = build_sources(request_model, result_model)
+        try:
+            current_limitations = add_case_document_sources(db, case_db_id, current_sources)
+        except InvalidAIDraft:
+            raise ValueError("Kildematerialet er ændret eller kan ikke læses fuldt under AI-udarbejdelsen. Den tidligere vurdering er bevaret; gennemgå materialet og start igen.") from None
+        if (
+            source_fingerprint(current_sources) != evidence_fingerprint
+            or document_manifest(case_db_id) != input_documents
+            or current_limitations != limitations
+        ):
+            raise ValueError("Kildematerialet er ændret under AI-udarbejdelsen. Den tidligere vurdering er bevaret; start en ny analyse på det aktuelle grundlag.")
         generated.ai_generation["generated_by"] = user.oid
         saved = save_assessment(
             db, assessment_id=new_id, created_at=created_at,

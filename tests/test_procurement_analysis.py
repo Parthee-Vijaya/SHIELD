@@ -502,7 +502,7 @@ def test_realistic_eight_document_pack_keeps_all_245_excerpts(setup, monkeypatch
         service.check_pack(db, pack)
 
 
-def test_serialized_source_pack_metadata_is_bounded_at_1200000(setup, monkeypatch):
+def test_serialized_source_pack_metadata_is_bounded(setup, monkeypatch):
     import json
 
     _, factory, case_id = setup
@@ -529,10 +529,10 @@ def test_serialized_source_pack_metadata_is_bounded_at_1200000(setup, monkeypatc
                     ensure_ascii=False,
                 )
             )
-            == 1_200_000
+            == service.MAX_SOURCE_PACK_CHARS
         )
         sources[0]["title"] += "x"
-        with pytest.raises(service.MaterialAnalysisError, match="for omfattende"):
+        with pytest.raises(service.MaterialAnalysisError, match="transportgrænse"):
             service.prepare_source_pack(db, case_id)
         assert db.query(ProcurementAnalysis).count() == 0
 
@@ -576,7 +576,7 @@ def test_excess_material_stops_before_worker_and_database_write(
 ):
     _, factory, case_id = setup
     count = (
-        26 if over_limit == "documents" else 1_001 if over_limit == "excerpts" else 3
+        101 if over_limit == "documents" else 10_001 if over_limit == "excerpts" else 26
     )
     sources = [
         {
@@ -585,7 +585,7 @@ def test_excess_material_stops_before_worker_and_database_write(
             "document_version_id": (
                 f"version-{index}" if over_limit == "documents" else "version1"
             ),
-            "text": "x" * (166_667 if over_limit == "text" else 1),
+            "text": "x" * (200_000 if over_limit == "text" else 1),
         }
         for index in range(count)
     ]
@@ -597,7 +597,178 @@ def test_excess_material_stops_before_worker_and_database_write(
     with factory() as db:
         with pytest.raises(
             service.MaterialAnalysisError,
-            match="25 dokumenter, 500.000 tegn og 1.000 kildeuddrag",
+            match="100 dokumenter, 5.000.000 tegn og 10.000 kildeuddrag",
         ):
             service.analyze_case(db, case_id, worker=worker)
         assert db.query(ProcurementAnalysis).count() == 0
+
+
+def test_multiple_batches_reach_worker_and_persist_complete_provenance(
+    setup, monkeypatch
+):
+    _, factory, case_id = setup
+    sources = [
+        {
+            **SOURCE,
+            "id": f"document:version-{index // 20}:{index % 20 + 1}",
+            "document_version_id": f"version-{index // 20}",
+            "text": f"Source {index}:".ljust(500, "x"),
+        }
+        for index in range(1200)
+    ]
+    monkeypatch.setattr(service, "evidence_for_case", lambda *args: deepcopy(sources))
+    batches = []
+    for index, start in enumerate(range(0, len(sources), 500), 1):
+        items = sources[start : start + 500]
+        batches.append(
+            {
+                "index": index,
+                "source_ids": [item["id"] for item in items],
+                "source_text_chars": sum(len(item["text"]) for item in items),
+                "document_count": len({item["document_version_id"] for item in items}),
+                "summary": f"Dokumenteret batch {index}",
+                "fact_count": 0,
+            }
+        )
+    batching = {
+        "strategy": "map-reduce-v1",
+        "batch_count": 3,
+        "source_count": 1200,
+        "source_text_chars": 600_000,
+        "batches": batches,
+        "map_call_count": 3,
+        "synthesis_call_count": 1,
+        "cross_batch_conflict_count": 0,
+        "consolidation_note": "Alle kildeuddrag er gennemgået og samlet.",
+    }
+
+    def worker(payload):
+        assert payload["sources"] == sources
+        draft = {**DRAFT, "facts": []}
+        return {
+            "draft": draft,
+            "review": review(draft),
+            "model": "openai/gpt-5.5",
+            "prompt_version": service.PROMPT_VERSION,
+            "batching": deepcopy(batching),
+        }
+
+    with factory() as db:
+        saved = service.analyze_case(db, case_id, worker=worker)
+        assert saved["sources"] == sources
+        assert saved["batching"] == batching
+        before = deepcopy(db.get(ProcurementAnalysis, saved["id"]).to_dict())
+        batching["batches"][-1]["source_ids"].pop()
+        with pytest.raises(service.MaterialAnalysisError, match="batchoversigt"):
+            service.analyze_case(db, case_id, worker=worker)
+        assert db.query(ProcurementAnalysis).count() == 1
+        assert db.get(ProcurementAnalysis, saved["id"]).to_dict() == before
+
+
+def test_reextracted_previously_truncated_sources_mark_old_analysis_outdated(
+    setup, monkeypatch
+):
+    _, factory, case_id = setup
+    saved = save_example(factory, case_id)
+    with factory() as db:
+        previous = deepcopy(db.get(ProcurementAnalysis, saved["id"]).generation_payload)
+        expanded = [
+            SOURCE,
+            {
+                **SOURCE,
+                "id": SOURCE["id"] + ":part:2",
+                "text": "Previously omitted evidence.",
+            },
+        ]
+        monkeypatch.setattr(service, "evidence_for_case", lambda *_: deepcopy(expanded))
+        assert service.latest_analysis(db, case_id)["outdated"]
+        assert db.get(ProcurementAnalysis, saved["id"]).generation_payload == previous
+
+
+@pytest.mark.parametrize("mutation", ["add_unreadable", "change_role", "remove_link"])
+def test_document_manifest_detects_changes_even_when_readable_sources_are_unchanged(
+    setup, tmp_path, monkeypatch, mutation
+):
+    from src.database.document_bank import CaseDocumentLink
+    from src.services.source_material import save_case_source
+
+    client, factory, case_id = setup
+    monkeypatch.setenv("DOCUMENT_BANK_STORAGE_DIR", str(tmp_path / "manifest-files"))
+    with factory() as db:
+        source = save_case_source(
+            db, case_id, filename="blank.txt", content=b"\n\n", actor="Tester"
+        )
+        assert source["status"] == "unreadable"
+    initial = save_example(factory, case_id)
+    before = deepcopy(initial)
+
+    def worker(payload):
+        with factory() as changing_db:
+            if mutation == "add_unreadable":
+                added = save_case_source(
+                    changing_db,
+                    case_id,
+                    filename="new-blank.txt",
+                    content=b"\n\n",
+                    actor="Tester",
+                )
+                assert added["status"] == "unreadable"
+            else:
+                link = (
+                    changing_db.query(CaseDocumentLink)
+                    .filter_by(case_db_id=case_id)
+                    .one()
+                )
+                if mutation == "change_role":
+                    link.link_role = "attachment"
+                else:
+                    changing_db.delete(link)
+                changing_db.commit()
+        return {
+            "draft": DRAFT,
+            "review": review(DRAFT),
+            "model": "openai/gpt-5.5",
+            "prompt_version": service.PROMPT_VERSION,
+        }
+
+    with factory() as db:
+        with pytest.raises(service.MaterialChangedError, match="dokumenttilknytninger"):
+            service.analyze_case(db, case_id, worker=worker)
+        assert db.query(ProcurementAnalysis).count() == 1
+        assert service.latest_analysis(db, case_id)["outdated"]
+        stored = db.get(ProcurementAnalysis, initial["id"]).to_dict()
+        assert stored == {
+            key: value for key, value in before.items() if key != "outdated"
+        }
+    response = client.post(
+        f"/api/v3/cases/{case_id}/procurement/review",
+        json={
+            "analysis_id": initial["id"],
+            "accepted_fact_ids": ["hosting"],
+            "note": "",
+        },
+    )
+    assert response.status_code == 409
+
+
+def test_historical_analysis_without_manifest_remains_readable_and_detects_new_input(
+    setup, tmp_path, monkeypatch
+):
+    from src.services.source_material import save_case_source
+
+    _, factory, case_id = setup
+    saved = save_example(factory, case_id)
+    monkeypatch.setenv("DOCUMENT_BANK_STORAGE_DIR", str(tmp_path / "historical-files"))
+    with factory() as db:
+        record = db.get(ProcurementAnalysis, saved["id"])
+        historical = dict(record.generation_payload)
+        historical.pop("document_manifest")
+        historical.pop("document_manifest_fingerprint")
+        record.generation_payload = historical
+        db.commit()
+        assert service.latest_analysis(db, case_id)["outdated"] is False
+        save_case_source(
+            db, case_id, filename="new-blank.txt", content=b"\n\n", actor="Tester"
+        )
+        assert service.latest_analysis(db, case_id)["outdated"] is True
+        assert db.get(ProcurementAnalysis, saved["id"]).generation_payload == historical

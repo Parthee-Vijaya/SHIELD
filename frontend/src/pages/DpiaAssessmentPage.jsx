@@ -32,6 +32,8 @@ const STEPS = [
   ['Teknologi og overførsler', 'Leverandør, hosting, AI og automatisering'],
   ['Styring og kontrol', 'Hjemmel, sletning og eksisterende sikkerhed'],
 ];
+// Allow the server's maximum one-hour batch run plus one minute for its response.
+const AI_GENERATION_TIMEOUT_MS = 61 * 60 * 1000;
 
 const Page = styled.div`
   max-width: 1320px;
@@ -1138,7 +1140,7 @@ const DpiaAssessmentPage = () => {
     generationRequestRef.current = controller;
     setGenerating(true);
     setGenerationError('');
-    const timeout = window.setTimeout(() => controller.abort(), 240000);
+    const timeout = window.setTimeout(() => controller.abort(), AI_GENERATION_TIMEOUT_MS);
     try {
       const response = await authFetch(`/api/dpia/assessments/${encodeURIComponent(result.id)}/generate`, {
         method: 'POST',
@@ -1301,7 +1303,7 @@ const DpiaAssessmentPage = () => {
               </ResultActions>
               <SourceNote role={generating ? 'status' : undefined}>
                 {generating
-                  ? `${isCodex ? 'AI Gateway' : 'GPT'} udarbejder rapporten, og JEV kontrollerer den mod sagens grundlag. Det kan tage flere minutter. Den nye version gemmes på sagen.`
+                  ? `${isCodex ? 'AI Gateway' : 'GPT'} udarbejder rapporten. Store kildegrundlag behandles i delanalyser og samles, før JEV kontrollerer rapporten mod sagens grundlag. Det kan tage længere tid ved mange dokumenter. Den nye version gemmes på sagen, når behandlingen er færdig.`
                   : aiStatus?.configured
                     ? 'AI udarbejder en ny version ud fra det gemte grundlag. Denne version bevares i sagens historik.'
                     : 'AI-udarbejdelse er ikke tilgængelig på serveren i øjeblikket.'}

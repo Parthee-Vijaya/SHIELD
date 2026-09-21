@@ -17,6 +17,7 @@ from src.services.procurement_analysis import (
     digest,
     evidence_for_case,
     source_fingerprint,
+    document_manifest_matches,
 )
 from src.services.procurement_export import build_procurement_review_docx
 
@@ -40,6 +41,7 @@ def export_review(case_id: str, review_id: str, db: Database, actor: Actor):
             or digest(profile.to_dict()) != analysis.profile_fingerprint
             or source_fingerprint(evidence_for_case(db, case_id))
             != analysis.source_fingerprint
+            or not document_manifest_matches(db, case_id, analysis.generation_payload)
         )
     except (ValueError, OSError):
         outdated = True

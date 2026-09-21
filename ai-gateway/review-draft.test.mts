@@ -46,12 +46,12 @@ test('evaluation-only bridge passes every report unit and locked values to evalu
   assert.equal(result.model, 'typesafe-ai/jev');
 });
 
-test('the local report bridge shares the 1600000-character parsed input bound and fails before evaluation above it', async () => {
+test('the local report bridge shares the 16000000-character parsed input bound and fails before evaluation above it', async () => {
   const original = input();
   const candidate = { ...original, draft: { ...original.draft, recommendations: [] } };
   candidate.sources[0].text = '';
   candidate.sources[0].text = 'x'.repeat(MAX_AI_INPUT_CHARS - JSON.stringify(candidate).length);
-  assert.equal(JSON.stringify(candidate).length, 1_600_000);
+  assert.equal(JSON.stringify(candidate).length, 16_000_000);
   let calls = 0;
   const evaluator = async () => {
     calls++;

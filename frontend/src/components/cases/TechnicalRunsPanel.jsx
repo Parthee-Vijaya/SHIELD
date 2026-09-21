@@ -15,6 +15,7 @@ const normalise = value => text(value).normalize('NFKC').toLocaleLowerCase('da-D
 const date = value => value && Number.isFinite(new Date(value).getTime()) ? new Date(value).toLocaleString('da-DK', { dateStyle: 'medium', timeStyle: 'short' }) : NOT_RECORDED;
 const score = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1 ? value.toLocaleString('da-DK', { maximumFractionDigits: 3 }) : NOT_RECORDED;
 const kindLabel = kind => ({ dpia_ai: 'AI-udarbejdet vurdering', dpia_rules: 'Regelbaseret vurdering', dpia_revision: 'Fagligt redigeret rapport', material_analysis: 'Analyse af leverandørmateriale' }[kind] || 'Gemt kørsel');
+const count = value => Number.isInteger(value) && value >= 0 ? value.toLocaleString('da-DK') : NOT_RECORDED;
 
 const Panel = styled.div`
   min-width: 0; padding-top: 28px; overflow-wrap: anywhere;
@@ -197,6 +198,21 @@ function Usage({ value }) {
   return Object.keys(totals).length ? <><p>Summeret fra {rows.length} gemte forbrugsposter. Manglende tal indgår ikke i summen.</p><Fields>{Object.entries(totals).map(([key, count]) => <div key={key}><dt>{labels[key] || key}</dt><dd>{count.toLocaleString('da-DK')}</dd></div>)}</Fields></> : <p>{NOT_RECORDED}</p>;
 }
 
+function BatchSummary({ batching }) {
+  if (!['map-reduce-v1','single-pass-v1'].includes(batching?.strategy) || !Number.isInteger(batching.batch_count) || batching.batch_count < 1) return null;
+  const batches = array(batching.batches);
+  return <Fold label={`Kildegrundlag fordelt på ${count(batching.batch_count)} ${batching.batch_count === 1 ? 'del' : 'dele'}`}>
+    <p>{batching.strategy === 'map-reduce-v1' ? 'Materialet blev opdelt i delanalyser og samlet til ét resultat med kildehenvisninger.' : 'Materialet kunne behandles samlet uden delanalyser.'} Fordelingen viser det registrerede tekstgrundlag; den er ikke en godkendelse af indholdet.</p>
+    <Metadata><div><dt>Kildeuddrag i alt</dt><dd>{count(batching.source_count)}</dd></div><div><dt>Tegn i tekstgrundlaget</dt><dd>{count(batching.source_text_chars)}</dd></div>{Number.isInteger(batching.map_call_count) && <div><dt>Kald til delanalyser</dt><dd>{count(batching.map_call_count)}</dd></div>}{Number.isInteger(batching.synthesis_call_count) && <div><dt>Kald til samling</dt><dd>{count(batching.synthesis_call_count)}</dd></div>}</Metadata>
+    {batching.consolidation_note && <p>{text(batching.consolidation_note)}</p>}
+    {Number.isInteger(batching.cross_batch_conflict_count) && <p>Registrerede modstridende oplysninger på tværs af delene: {count(batching.cross_batch_conflict_count)}.</p>}
+    {batches.map((batch,index)=><Fold key={`${batch.index ?? index}-${index}`} label={<><strong>Del {count(Number.isInteger(batch.index) ? batch.index : index + 1)}</strong> · {Array.isArray(batch.source_ids) ? count(strings(batch.source_ids).length) : NOT_RECORDED} kildeuddrag · {count(batch.source_text_chars)} tegn{Number.isInteger(batch.document_count) ? ` · ${count(batch.document_count)} ${batch.document_count===1?'dokument':'dokumenter'}` : ''}</>}>
+      <p>{text(batch.summary) || 'Delens sammenfatning er ikke registreret.'}</p>
+      <Metadata>{[['fact_count','Udledte oplysninger'],['conflict_count','Modstridende oplysninger'],['question_count','Afklaringsspørgsmål'],['finding_count','Registrerede fund']].filter(([key])=>Number.isInteger(batch[key])).map(([key,label])=><div key={key}><dt>{label}</dt><dd>{count(batch[key])}</dd></div>)}</Metadata>
+    </Fold>)}
+  </Fold>;
+}
+
 function RunDetails({ run, caseId }) {
   const sources = array(run.sources);
   const items = array(run.output_items);
@@ -209,6 +225,7 @@ function RunDetails({ run, caseId }) {
     {run.assessment_id && <TextLink href={`/vurdering?assessment_id=${encodeURIComponent(run.assessment_id)}&case=${encodeURIComponent(caseId)}`}>Åbn denne rapportversion →</TextLink>}
     {run.editorial_revision && <Inset><strong>Fagligt redigeret version – ingen ny AI-kørsel</strong><p>{text(run.editorial_revision.note) || 'Rapportteksten er ændret efter den oprindelige kørsel.'} Modeloplysninger og tidligere kontrolresultater stammer fra den oprindelige AI-version. Ændrede kontrolpunkter kræver ny kontrol.</p></Inset>}
     {stages.length > 0 && <Steps aria-label="Kørslens procestrin">{stages.map((stage, index) => <li key={stage.id || index}><strong>{index + 1}. {text(stage.title)}</strong><p>{text(stage.description)}</p></li>)}</Steps>}
+    <BatchSummary batching={run.batching} />
     <Section><SectionHeader><div><h2>JEV-kontrol</h2><p>Se, hvilke formuleringer der blev kontrolleret, og hvilket registreret kildegrundlag der hører til.</p></div></SectionHeader><Review review={run.review} items={items} sources={sources} /></Section>
     <Section><SectionHeader><div><h2>Det udarbejdede indhold</h2><p>Det gemte output fra denne version med tilknyttede kilder. Anbefalinger vises som selvstændige outputpunkter.</p></div></SectionHeader>{items.length ? <OutputList items={items} sources={sources} /> : <StatePanel><strong>Output er ikke registreret</strong><p>Denne kørsel har ingen gemte outputpunkter.</p></StatePanel>}</Section>
     <Section><SectionHeader><div><h2>Kildegrundlag</h2><p>De gemte kildetekster fra kørslen. Et link kan siden være ændret; uddraget her viser det registrerede grundlag.</p></div></SectionHeader><SourceList sources={sources} /></Section>

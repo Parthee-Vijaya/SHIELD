@@ -47,11 +47,17 @@ from src.services.dpia_assessment import (  # noqa: E402
     RISK_DEFINITIONS,
     SECTION_TITLES,
 )
+from src.services.analysis_limits import (  # noqa: E402
+    ANALYSIS_TIMEOUT_SECONDS,
+    MAX_RAW_INPUT_CHARS,
+)
 
 ALLOWED_MODELS = {"gpt-5.6-sol", "gpt-6-astra"}
 PROMPT_VERSION = "codex-local-dpia-test-2026-09-20-v1"
 PLANNED_PROMPT_VERSION = "codex-local-dpia-planned-scenario-2026-09-21-v1"
 MAX_FILE_BYTES = 2_000_000
+# UTF-8 may need four bytes per character.
+MAX_SOURCE_PACK_FILE_BYTES = MAX_RAW_INPUT_CHARS * 4
 
 
 def digest(value: Any) -> str:
@@ -244,7 +250,7 @@ def run_jev(pack: dict, draft: dict) -> dict:
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=480,
+            timeout=ANALYSIS_TIMEOUT_SECONDS,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -420,8 +426,8 @@ def import_draft(
         raise
 
 
-def read_json(path: Path) -> dict:
-    if path.stat().st_size > MAX_FILE_BYTES:
+def read_json(path: Path, *, max_bytes: int = MAX_FILE_BYTES) -> dict:
+    if path.stat().st_size > max_bytes:
         raise ValueError("Filen overskrider størrelsesgrænsen.")
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -474,7 +480,7 @@ def main() -> int:
             else:
                 receipt = import_draft(
                     db,
-                    read_json(args.source_pack),
+                    read_json(args.source_pack, max_bytes=MAX_SOURCE_PACK_FILE_BYTES),
                     read_json(args.draft),
                     model=args.model,
                     run_id=args.run_id,

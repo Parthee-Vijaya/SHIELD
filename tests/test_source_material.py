@@ -153,6 +153,13 @@ def test_powerpoint_upload_keeps_real_slide_order_tables_original_and_unapproved
             "max_total_excerpts": 1_000,
             "max_document_excerpts": 500,
             "max_file_bytes": 5_000_000,
+            "batching_enabled": True,
+            "max_batches": 20,
+            "max_case_documents": 100,
+            "max_case_text_chars": 5_000_000,
+            "max_case_excerpts": 10_000,
+            "max_extraction_text_chars": 2_000_000,
+            "max_extraction_segments": 5_000,
         },
     }
     with factory() as db:
@@ -223,13 +230,15 @@ def test_pdf_page_text_keeps_page_locator():
 
 
 def test_text_and_segment_limits_are_disclosed():
-    result = material.extract_source(("x" * 200_002).encode(), "lang.txt")
-    assert sum(len(item["text"]) for item in result.excerpts) == 200_000
+    result = material.extract_source(("x" * 2_000_002).encode(), "lang.txt")
+    assert sum(len(item["text"]) for item in result.excerpts) == 2_000_000
+    assert not result.complete
     assert any("afkortet" in warning for warning in result.warnings)
     result = material.extract_source(
-        "\n\n".join(str(index) for index in range(505)).encode(), "lang.txt"
+        "\n\n".join(str(index) for index in range(5005)).encode(), "lang.txt"
     )
-    assert len(result.excerpts) == 500
+    assert len(result.excerpts) == 5000
+    assert not result.complete
     assert any("afkortet" in warning for warning in result.warnings)
 
 
@@ -529,9 +538,10 @@ def test_html_long_paragraphs_keep_words_urls_and_existing_character_limit():
     )
     assert long_url in content.decode().split("\n\n")
     extracted = material.extract_source(content, filename)
-    assert sum(len(item["text"]) for item in extracted.excerpts) == 200_000
+    assert sum(len(item["text"]) for item in extracted.excerpts) > 200_000
     assert len(extracted.excerpts) < 200
-    assert any("afkortet" in warning for warning in extracted.warnings)
+    assert extracted.complete
+    assert not any("afkortet" in warning for warning in extracted.warnings)
 
 
 def test_historical_text_snapshot_keeps_bytes_excerpt_ids_and_boundaries(setup):
@@ -673,3 +683,37 @@ def test_office_rejects_duplicate_entries_encryption_and_wrong_signature():
         validate_office_package(".pptx", bytes(encrypted))
     with pytest.raises(ValueError, match="match"):
         validate_office_package(".docx", source)
+
+
+def test_large_paragraph_keeps_every_character_in_stable_parts(setup):
+    _, factory, (case_id, _), _, _, _ = setup
+    text = "A" * 200_000 + "B" * 200_000 + "LAST EVIDENCE"
+    with factory() as db:
+        saved = material.save_case_source(
+            db, case_id, filename="large.txt", content=text.encode(), actor="Tester"
+        )
+        assert saved["extraction_complete"]
+        sources = material.case_source_evidence(db, case_id)
+        prefix = f"document:{saved['version_id']}:1"
+        assert [source["id"] for source in sources] == [
+            prefix,
+            prefix + ":part:2",
+            prefix + ":part:3",
+        ]
+        assert "".join(source["text"] for source in sources) == text
+        assert sources[-1]["locator"] == "Afsnit 1, tegn 400001–400013"
+
+
+def test_incomplete_extraction_cannot_become_a_partial_analysis(setup):
+    _, factory, (case_id, _), _, _, _ = setup
+    with factory() as db:
+        saved = material.save_case_source(
+            db,
+            case_id,
+            filename="oversized.txt",
+            content=b"x" * 2_000_001,
+            actor="Tester",
+        )
+        assert not saved["extraction_complete"]
+        with pytest.raises(ValueError, match="Ingen delvis analyse"):
+            material.case_source_evidence(db, case_id)

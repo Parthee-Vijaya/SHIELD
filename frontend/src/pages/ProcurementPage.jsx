@@ -48,6 +48,13 @@ const showValue = (field,value) => Array.isArray(value)
   : VALUE_LABELS[field]?.[value] || OPTION_LABELS[field]?.[value] || String(value ?? 'Ikke oplyst');
 const date = value => value ? new Date(value).toLocaleString('da-DK') : '';
 const providerLabel = provider => ({'codex-local-test':'Codex · lokal kørsel','vercel-ai-gateway':'Vercel AI Gateway'}[provider] || provider || 'Ikke oplyst');
+const positiveCount = value => Number.isInteger(value) && value > 0;
+const count = value => value.toLocaleString('da-DK');
+
+function AnalysisBatchSummary({ batching }) {
+  if (batching?.strategy !== 'map-reduce-v1' || !positiveCount(batching.batch_count) || !positiveCount(batching.source_count)) return null;
+  return <Notice><strong>{count(batching.batch_count)} delanalyser samlet til én analyse</strong><p>{count(batching.source_count)} kildeuddrag er fordelt på delanalyserne.{positiveCount(batching.source_text_chars) ? ` Det behandlede tekstgrundlag er ${count(batching.source_text_chars)} tegn.` : ''} Kildehenvisningerne følger med i det samlede resultat.</p><small>Se fordelingen og den gemte JEV-kontrol under sagens fane Teknisk kørsel. Analysen kræver fortsat faglig gennemgang.</small></Notice>;
+}
 
 export default function ProcurementPage() {
   const { authFetch } = useAuth();
@@ -142,6 +149,8 @@ export default function ProcurementPage() {
   const flagged = new Set([...flaggedChecks].filter(id=>id.startsWith('fact:')).map(id=>id.slice(5)));
   const currentReview = review && review.analysis_id===analysis?.id && !analysis?.outdated;
   const capacityAvailable = analysisLimits && ['max_documents','max_total_text_chars','max_document_text_chars'].every(key=>Number.isFinite(analysisLimits[key])&&analysisLimits[key]>0);
+  const batchingEnabled = analysisLimits?.batching_enabled === true;
+  const caseCapacityAvailable = analysisLimits && ['max_case_documents','max_case_text_chars','max_case_excerpts','max_batches'].every(key=>positiveCount(analysisLimits[key]));
   return <Page>
     <Eyebrow>AI-løsninger · anskaffelse og ændret anvendelse</Eyebrow>
     <h1>{profile.system_name || 'Opret en AI-løsning'}</h1>
@@ -168,7 +177,13 @@ export default function ProcurementPage() {
       </form>}
       {step===1 && <>
         <h2>Saml leverandørmaterialet</h2><p>Tilføj præsentationer, databehandleraftale, sikkerhedsdokumentation og links. Materialet gemmes som versionsbestemte kilder på denne sag.</p>
-        {capacityAvailable && <p><small>Analysen kan omfatte op til {analysisLimits.max_documents.toLocaleString('da-DK')} dokumenter og {analysisLimits.max_total_text_chars.toLocaleString('da-DK')} tegn i alt, højst {analysisLimits.max_document_text_chars.toLocaleString('da-DK')} tegn pr. dokument.</small></p>}
+        {batchingEnabled ? <>
+          <p>Større dokumentpakker opdeles automatisk og samles til én analyse. Hver del behandles med kildehenvisninger, og JEV kontrollerer det samlede resultats kildegrundlag.</p>
+          {(capacityAvailable || caseCapacityAvailable) && <details><summary>Kapacitet for automatisk analyse</summary>
+            {caseCapacityAvailable && <p>Én samlet analyse kan behandle op til {count(analysisLimits.max_case_documents)} dokumenter og hjemmesider, {count(analysisLimits.max_case_text_chars)} tegn og {count(analysisLimits.max_case_excerpts)} kildeuddrag, fordelt på højst {count(analysisLimits.max_batches)} dele.</p>}
+            {capacityAvailable && <p><small>Hver del kan omfatte op til {count(analysisLimits.max_documents)} dokumenter og {count(analysisLimits.max_total_text_chars)} tegn, højst {count(analysisLimits.max_document_text_chars)} tegn pr. kildeuddrag.</small></p>}
+          </details>}
+        </> : capacityAvailable && <p><small>Analysen kan omfatte op til {count(analysisLimits.max_documents)} dokumenter og {count(analysisLimits.max_total_text_chars)} tegn i alt, højst {count(analysisLimits.max_document_text_chars)} tegn pr. dokument.</small></p>}
         <MaterialCoverage sources={sources} onSelectCategory={value=>{setCategory(value);document.getElementById('material-category')?.focus();}} />
         <Grid>
           <Section><h3>Upload dokumenter</h3><label htmlFor="material-category">Dokumenttype</label><select id="material-category" value={category} onChange={e=>setCategory(e.target.value)}>{CATEGORIES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><label htmlFor="material-files" style={{marginTop:18}}>Vælg filer</label><input id="material-files" type="file" multiple accept=".pptx,.pdf,.docx,.txt" disabled={Boolean(busy)} onChange={upload} /><small>PowerPoint (PPTX), PDF, Word (DOCX) eller tekst. Højst 5 MB pr. fil. Billeder og scannede sider kræver tekstgenkendelse før upload.</small></Section>
@@ -178,11 +193,12 @@ export default function ProcurementPage() {
         {sources.length>0&&<details><summary>Søg i sagens dokumenter og kildeuddrag</summary><EvidenceNavigator sources={sources} compact /></details>}
         {!sources.length && <Notice>Start med en produktbeskrivelse og den databehandleraftale, der skal gælde for jeres anvendelse.</Notice>}
         {sources.map(source=><Section key={source.id}><h3>{source.title}</h3><p><small>{date(source.uploaded_at)} · {source.excerpts.length} tekstuddrag · Ikke fagligt godkendt</small></p>{source.source_url && <p><a href={source.source_url} target="_blank" rel="noreferrer">{source.source_url}</a></p>}{source.warnings.map((warning,i)=><Notice key={i}>{warning}</Notice>)}<details><summary>Se tekstgrundlag</summary>{source.excerpts.slice(0,8).map(excerpt=><div key={excerpt.id}><small>{excerpt.locator}</small><blockquote>{excerpt.text}</blockquote></div>)}{source.excerpts.length>8&&<p>Viser de første 8 uddrag. Hent dokumentet for at læse hele materialet.</p>}</details><Button $secondary disabled={Boolean(busy)} onClick={()=>run('Henter dokument…',()=>download(source.download_url,source.original_filename))}>Hent kilde</Button></Section>)}
-        <Actions><Button disabled={Boolean(busy)||!sources.some(source=>source.excerpts.length)} onClick={()=>run('AI gennemgår materialet, og JEV kontrollerer kildegrundlaget…',async()=>{const data=await request(`${base}/procurement/analyze`,{method:'POST'});setAnalysis(data);setReview(null);setAccepted([]);go(2);})}>Analysér leverandørmateriale →</Button>{analysis&&<Button $secondary disabled={Boolean(busy)} onClick={()=>go(2)}>Se seneste analyse</Button>}</Actions>
+        <Actions><Button disabled={Boolean(busy)||!sources.some(source=>source.excerpts.length)} onClick={()=>run(batchingEnabled ? 'AI gennemgår materialet, samler eventuelle delanalyser og kører JEV-kontrol…' : 'AI gennemgår materialet, og JEV kontrollerer kildegrundlaget…',async()=>{const data=await request(`${base}/procurement/analyze`,{method:'POST'});setAnalysis(data);setReview(null);setAccepted([]);go(2);})}>Analysér leverandørmateriale →</Button>{analysis&&<Button $secondary disabled={Boolean(busy)} onClick={()=>go(2)}>Se seneste analyse</Button>}</Actions>
         <p style={{marginTop:14}}><small>AI udleder forslag fra materialet. JEV markerer udsagn, der kan mangle belæg; den faglige og juridiske vurdering ligger hos kommunen.</small></p>
       </>}
       {step===2 && analysis && <>
         <h2>Gennemgå oplysninger og kilder</h2><Lead>{analysis.summary}</Lead>
+        <AnalysisBatchSummary batching={analysis.batching} />
         {flaggedChecks.has('summary')&&<Notice>JEV har markeret sammenfatningen til faglig gennemgang. Kontrollér den mod leverandørmaterialet og kommunens anvendelse.</Notice>}
         <p><small>Analyse fra {date(analysis.created_at)} · {analysis.facts.length} kildeunderbyggede forslag</small></p>
         <details><summary>Om analysen og kildekontrollen</summary>

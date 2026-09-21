@@ -26,6 +26,7 @@ from src.services.procurement_analysis import (
     evidence_for_case,
     latest_analysis,
     source_fingerprint,
+    document_manifest_matches,
 )
 
 
@@ -65,7 +66,9 @@ def require_profile(db: Session, case_id: str) -> ProcurementProfile:
         raise HTTPException(404, "Sagen blev ikke fundet.")
     profile = db.get(ProcurementProfile, case_id)
     if not profile:
-        raise HTTPException(404, "Sagen har ingen profil for den løsning, der skal vurderes.")
+        raise HTTPException(
+            404, "Sagen har ingen profil for den løsning, der skal vurderes."
+        )
     return profile
 
 
@@ -191,10 +194,11 @@ def ensure_current_analysis(
     profile: ProcurementProfile,
 ):
     try:
-        current = analysis.profile_fingerprint == digest(
-            profile.to_dict()
-        ) and analysis.source_fingerprint == source_fingerprint(
-            evidence_for_case(db, case_id)
+        current = (
+            analysis.profile_fingerprint == digest(profile.to_dict())
+            and analysis.source_fingerprint
+            == source_fingerprint(evidence_for_case(db, case_id))
+            and document_manifest_matches(db, case_id, analysis.generation_payload)
         )
     except (ValueError, OSError):
         current = False

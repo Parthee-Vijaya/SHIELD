@@ -18,11 +18,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from src.services.analysis_limits import (
     ANALYSIS_TIMEOUT_SECONDS,
-    MAX_DOCUMENTS,
-    MAX_TOTAL_TEXT_CHARS,
+    MAX_CASE_DOCUMENTS,
+    MAX_CASE_TEXT_CHARS,
     MAX_DOCUMENT_TEXT_CHARS,
-    MAX_TOTAL_EXCERPTS,
-    danish_number,
+    MAX_CASE_EXCERPTS,
+    BatchingMetadata,
+    validate_batching_metadata,
+    validate_source_budget,
+    requires_batching,
 )
 
 from src.services.dpia_assessment import (
@@ -37,9 +40,9 @@ from src.services.dpia_assessment import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GENERATION_TIMEOUT_SECONDS = ANALYSIS_TIMEOUT_SECONDS
 MAX_WORKER_OUTPUT_BYTES = 2_000_000
-MAX_DOCUMENT_SOURCE_CHARS = MAX_TOTAL_TEXT_CHARS
+MAX_DOCUMENT_SOURCE_CHARS = MAX_CASE_TEXT_CHARS
 MAX_SINGLE_DOCUMENT_SOURCE_CHARS = MAX_DOCUMENT_TEXT_CHARS
-MAX_DOCUMENT_SOURCE_EXCERPTS = MAX_TOTAL_EXCERPTS
+MAX_DOCUMENT_SOURCE_EXCERPTS = MAX_CASE_EXCERPTS
 
 
 class AIGenerationError(Exception):
@@ -108,7 +111,7 @@ class _Review(_StrictModel):
     status: Literal["findings_require_review", "requires_human_review"]
     threshold: float = Field(default=0.5, ge=0, le=1, allow_inf_nan=False)
     threshold_note: str = Field(default="", max_length=1000)
-    usage: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
+    usage: list[dict[str, Any]] = Field(default_factory=list, max_length=500)
 
 
 class _WorkerOutput(_StrictModel):
@@ -117,6 +120,7 @@ class _WorkerOutput(_StrictModel):
     model: str = Field(min_length=1, max_length=160)
     prompt_version: str = Field(min_length=1, max_length=160)
     usage: dict[str, Any] = Field(default_factory=dict)
+    batching: BatchingMetadata | None = None
 
 
 def _run_worker(payload: dict[str, Any], *, timeout: int) -> dict[str, Any]:
@@ -288,7 +292,11 @@ def add_case_document_sources(
     """
     from src.database.document_bank import list_case_documents
     from src.services.document_bank_storage import read_document_bytes
-    from src.services.source_material import SOURCE_EXTENSIONS, extract_source
+    from src.services.source_material import (
+        SOURCE_EXTENSIONS,
+        extract_source,
+        excerpt_source_id,
+    )
 
     limitations = [
         "AI-udkast og Jev-kontrol er beslutningsstøtte og kræver fagligt review.",
@@ -305,9 +313,8 @@ def add_case_document_sources(
             f"{len(output_versions)} dokumentversioner er sagsoutput og indgår ikke som AI-kilder."
         )
     seen: set[str] = set()
-    remaining = MAX_DOCUMENT_SOURCE_CHARS
     attempted_documents = 0
-    remaining_segments = MAX_DOCUMENT_SOURCE_EXCERPTS
+    additions: list[dict[str, Any]] = []
     known_ids = {item["id"] for item in sources}
     for link in links:
         version = link.version
@@ -325,18 +332,10 @@ def add_case_document_sources(
                 f"Dokumentversion {version.id} er udeladt: filen er større end 5 MB."
             )
             continue
-        if (
-            attempted_documents >= MAX_DOCUMENTS
-            or remaining <= 0
-            or remaining_segments <= 0
-        ):
-            limitations.append(
-                f"Dokumentversion {version.id} er udeladt: AI-grundlaget er begrænset "
-                f"til {MAX_DOCUMENTS} dokumenter, {danish_number(MAX_DOCUMENT_SOURCE_CHARS)} tegn "
-                f"og {danish_number(MAX_DOCUMENT_SOURCE_EXCERPTS)} kildeuddrag samlet, "
-                f"med højst {danish_number(MAX_SINGLE_DOCUMENT_SOURCE_CHARS)} tegn fra hvert dokument."
+        if attempted_documents >= MAX_CASE_DOCUMENTS:
+            raise InvalidAIDraft(
+                f"Kildegrundlaget overskrider {MAX_CASE_DOCUMENTS} dokumenter. Ingen delvis analyse er gemt."
             )
-            continue
         attempted_documents += 1
         try:
             content = read_document_bytes(
@@ -358,7 +357,11 @@ def add_case_document_sources(
                 f"Dokumentversion {version.id} indeholder ikke læsbar tekst."
             )
             continue
-        limit = min(MAX_SINGLE_DOCUMENT_SOURCE_CHARS, remaining)
+        if not getattr(extraction, "complete", True):
+            raise InvalidAIDraft(
+                f"Dokumentversion {version.id} overskrider grænsen for tekstudtræk. "
+                "Opdel originalen i mindre filer. Ingen delvis analyse er gemt."
+            )
         base_source = {
             "title": (
                 link.document.title if link.document else version.original_filename
@@ -373,73 +376,71 @@ def add_case_document_sources(
         metadata = version.version_metadata or {}
         use_excerpt_ids = bool(metadata.get("source_material")) or suffix == ".pptx"
         if use_excerpt_ids:
-            consumed = 0
             for number, excerpt in enumerate(extraction.excerpts, 1):
-                if consumed >= limit or remaining_segments <= 0:
-                    limitations.append(
-                        f"Dokumentversion {version.id} er afkortet til {consumed} tegn "
-                        f"eller grænsen på {danish_number(MAX_DOCUMENT_SOURCE_EXCERPTS)} kildeuddrag; resten indgår ikke i AI-grundlaget."
-                    )
-                    break
-                text = excerpt["text"][: limit - consumed]
-                source_id = f"document:{version.id}:{number}"
+                source_id = excerpt_source_id(version.id, excerpt, number)
                 if source_id not in known_ids:
-                    sources.append(
+                    additions.append(
                         {
                             **base_source,
                             "id": source_id,
                             "title": f"{base_source['title']} · {excerpt['locator']}",
-                            "text": text,
+                            "text": excerpt["text"],
                             "locator": excerpt["locator"],
                         }
                     )
                     known_ids.add(source_id)
-                    remaining_segments -= 1
-                consumed += len(text)
-                if len(text) < len(excerpt["text"]):
-                    limitations.append(
-                        f"Dokumentversion {version.id}, {excerpt['locator']}, "
-                        f"er afkortet; højst {limit} tegn fra dokumentet indgår."
-                    )
-            remaining -= consumed
         else:
-            # Preserve existing document-level references while including newly
-            # supported tables. Offsets point into this exact bounded text.
+            # Preserve legacy IDs and offsets byte-for-byte for ordinary
+            # documents. Oversized combined texts use stable part suffixes.
             pieces: list[str] = []
             locators: list[dict[str, Any]] = []
             consumed = 0
             for excerpt in extraction.excerpts:
-                prefix = "\n\n" if pieces else ""
-                if suffix != ".txt":
+                continued = ":part:" in str(excerpt.get("source_suffix", ""))
+                prefix = "\n\n" if pieces and not continued else ""
+                if suffix != ".txt" and not continued:
                     prefix += f"[{excerpt['locator']}]\n"
-                available = limit - consumed - len(prefix)
-                if available <= 0:
-                    break
-                excerpt_text = excerpt["text"][:available]
                 start = consumed + len(prefix)
-                pieces.append(prefix + excerpt_text)
-                consumed += len(prefix) + len(excerpt_text)
+                pieces.append(prefix + excerpt["text"])
+                consumed += len(prefix) + len(excerpt["text"])
                 locators.append(
                     {"locator": excerpt["locator"], "start": start, "end": consumed}
                 )
-                if len(excerpt_text) < len(excerpt["text"]):
-                    break
             text = "".join(pieces)
-            complete_length = sum(len(item["text"]) for item in extraction.excerpts)
-            included_length = sum(item["end"] - item["start"] for item in locators)
-            if included_length < complete_length:
-                limitations.append(
-                    f"Dokumentversion {version.id} er afkortet til {len(text)} tegn; "
-                    "resten indgår ikke i AI-grundlaget."
+            for offset in range(0, len(text), MAX_SINGLE_DOCUMENT_SOURCE_CHARS):
+                part = offset // MAX_SINGLE_DOCUMENT_SOURCE_CHARS + 1
+                source_id = f"document:{version.id}" + (
+                    f":part:{part}" if part > 1 else ""
                 )
-            source_id = f"document:{version.id}"
-            if text and source_id not in known_ids:
-                sources.append(
-                    {**base_source, "id": source_id, "text": text, "locators": locators}
-                )
+                if source_id in known_ids:
+                    continue
+                chunk = text[offset : offset + MAX_SINGLE_DOCUMENT_SOURCE_CHARS]
+                chunk_locators = [
+                    {
+                        "locator": item["locator"],
+                        "start": max(item["start"], offset) - offset,
+                        "end": min(item["end"], offset + len(chunk)) - offset,
+                    }
+                    for item in locators
+                    if item["end"] > offset and item["start"] < offset + len(chunk)
+                ]
+                source = {
+                    **base_source,
+                    "id": source_id,
+                    "text": chunk,
+                    "locators": chunk_locators,
+                }
+                if len(text) > MAX_SINGLE_DOCUMENT_SOURCE_CHARS:
+                    source["locator"] = (
+                        f"Dokumenttekst, tegn {offset + 1}–{offset + len(chunk)}"
+                    )
+                additions.append(source)
                 known_ids.add(source_id)
-                remaining_segments -= 1
-                remaining -= len(text)
+    try:
+        validate_source_budget([*sources, *additions])
+    except ValueError as exc:
+        raise InvalidAIDraft(str(exc)) from exc
+    sources.extend(additions)
     if not any(item["id"].startswith("document:") for item in sources):
         limitations.append(
             "Ingen dokumentbankfiler indgår; udkastet bygger på formularen og eventuelle gemte lovuddrag."
@@ -463,6 +464,19 @@ def apply_ai_draft(
     except ValidationError:
         raise InvalidAIDraft(
             "AI-udkastet overholder ikke rapportens datakontrakt."
+        ) from None
+    try:
+        batching = validate_batching_metadata(
+            (
+                output.batching.model_dump(mode="json", exclude_none=True)
+                if output.batching
+                else None
+            ),
+            sources,
+        )
+    except ValueError:
+        raise InvalidAIDraft(
+            "AI-kørslens batchoversigt dækker ikke hele kildegrundlaget."
         ) from None
     expected_sections = set(SECTION_TITLES)
     expected_risks = {definition.id for definition in RISK_DEFINITIONS}
@@ -581,6 +595,8 @@ def apply_ai_draft(
         "limitations": limitations or [],
         "human_review_required": True,
     }
+    if batching is not None:
+        candidate.ai_generation["batching"] = batching
     return DPIAAssessmentResponse.model_validate(candidate.model_dump(mode="json"))
 
 
@@ -594,6 +610,10 @@ def generate_dpia_draft(
     case_db_id: str,
     limitations: list[str] | None = None,
 ) -> DPIAAssessmentResponse:
+    try:
+        validate_source_budget(sources)
+    except ValueError as exc:
+        raise InvalidAIDraft(str(exc)) from exc
     # Past evidence snapshots are for audit, not recursive model context.
     worker_result = result.model_dump(
         mode="json", exclude={"ai_generation", "reading_guide"}
@@ -606,6 +626,10 @@ def generate_dpia_draft(
         },
         timeout=GENERATION_TIMEOUT_SECONDS,
     )
+    if requires_batching(sources) and output.get("batching") is None:
+        raise InvalidAIDraft(
+            "AI-kørslen mangler dokumentation for alle analysebatches. Den gemte vurdering er bevaret."
+        )
     return apply_ai_draft(
         result,
         output,

@@ -89,9 +89,9 @@ test('245 excerpts and 173966 text characters survive material validation and re
   assert(inspected);
 });
 
-test('material accepts 1600000 parsed characters plus wire whitespace up to 2000000 characters', async () => {
-  assert.equal(MAX_MATERIAL_INPUT_CHARS, 1_600_000);
-  assert.equal(MAX_MATERIAL_RAW_INPUT_CHARS, 2_000_000);
+test('material accepts 16000000 parsed characters plus wire whitespace up to 20000000 characters', async () => {
+  assert.equal(MAX_MATERIAL_INPUT_CHARS, 16_000_000);
+  assert.equal(MAX_MATERIAL_RAW_INPUT_CHARS, 20_000_000);
   const candidate = { profile: {}, sources: [{ id: 'document:1', title: 'Kilde', text: '' }] };
   candidate.sources[0].text = 'x'.repeat(MAX_MATERIAL_INPUT_CHARS - JSON.stringify(candidate).length);
   const boundary = JSON.stringify(candidate);

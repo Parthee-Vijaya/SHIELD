@@ -40,21 +40,42 @@ Sagens organisation står eksplicit ved titlen gennem hele anskaffelsesforløbet
 og på den samlede sag. Rapporten viser sin egen gemte dataansvarlige organisation.
 Kalundborg-brandingen i navigationen ændrer ikke sagens organisation.
 
-En analyse kan omfatte op til **25 dokumentversioner, 500.000 tegn og 1.000
-kildeuddrag samlet**. Hvert dokument tekstudtrækkes med højst **200.000 tegn og
-500 afsnit eller PDF-sider**. Filgrænsen er fortsat 5 MB. Materialetrinnet henter
-de gældende analysegrænser fra serveren og viser dem over dokumenterne.
+Større dokumentpakker behandles automatisk i **flere delanalyser**, som samles
+til ét resultat. En delpakke har højst 25 dokumentversioner, 500.000 tegn og
+1.000 kildeuddrag; tekst og metadata kan medføre mindre delpakker. Hele forløbet
+kan omfatte op til 100 dokumentversioner, 5 millioner kildetegn og 10.000 uddrag,
+fordelt over højst 20 delpakker. Disse samlede grænser beskytter driften og
+kontrolleres før modelkald; materiale udelades ikke i stilhed.
 
-Materialeanalysen stopper før modelkald, hvis den samlede pakke er for stor;
-den udelader ikke valgte dokumenter i stilhed. Konsekvensanalysens kildepakke
-angiver eventuelle afkortninger og udeladelser i den nye versions begrænsninger.
-JEV opdeler større kildegrundlag i afgrænsede delkontroller, hvor alle refererede
-kildetegn bevares. Delkontroller dokumenterer ikke en samlet kontrol af alle
-kilder på én gang. Større pakker kan tage længere tid; arbejdsgangen har en
-tidsgrænse på ti minutter. En fejl bevarer den eksisterende vurdering.
+AI gennemgår hver delpakke og udarbejder et kildebaseret delresultat. Derefter
+samles oplysninger, konflikter og afklaringspunkter. Forskellige svar om blandt
+andet hosting, modeltræning, sletning og leverandør
+bevares som uafklarede forskelle med begge kilder. De bliver ikke til et entydigt
+faktum ved sammenfatningen. Fritekst om formål og supplerende datakategorier kan
+være forenelige og sammenfattes med AI; semantiske modstrid kræver fortsat faglig
+gennemgang. Spørgsmål og konflikter registreret i delanalyserne bevares.
+Konsekvensanalysen bruger samme princip: delanalyser af kilderne efterfulgt af
+rapportens afsnit og risici. Låste mangler, risikoscorer og godkendelsesstatus
+bevares. JEV kontrollerer de endelige tekster mod de oprindelige henviste kilder.
 
-De større tekstgrænser gælder ved næste analyse af de gemte originalfiler.
-Tidligere rapportversioner og deres kildegrundlag omskrives ikke. Hvis en ny
+Samlingen bygger på delresultater; den er ikke et modelkald med alle originale
+kilder samtidig. JEV kan også dele sit kildegrundlag op. Delkontroller markerer
+uafklarede sammenhænge til faglig gennemgang og udgør ikke en juridisk godkendelse.
+Hvis et nødvendigt deltrin eller den endelige kontrol fejler, gemmes ingen ny
+færdig analyse. Den eksisterende vurdering bevares. Kildegrundlaget kontrolleres
+igen før lagring, så samtidige ændringer kræver en ny analyse.
+
+Antal delpakker, dækkede kilder, tekstmængde og gemte delresuméer følger nye
+kørsler under **Teknisk kørsel**. Ældre vurderinger får ikke efterkonstrueret
+batchhistorik. Materialetrinnet viser, at større pakker opdeles automatisk.
+
+Filgrænsen er fortsat 5 MB. Hvert dokument kan tekstudtrækkes op til 2 millioner
+tegn og 5.000 afsnit eller PDF-sider. Lange tekstafsnit deles i kildeuddrag med
+placering og tegnintervaller. Dokumenter, der overstiger udtræksgrænsen, kræver
+opdeling; de må ikke analyseres som om hele originalen indgår. Skannede sider
+og billedindhold kræver stadig tekstgenkendelse eller manuel gennemgang.
+
+Tidligere rapportversioner og deres kildegrundlag omskrives ikke. Når en ny
 udtrækning indeholder mere tekst, markeres den tidligere materialeanalyse som
 forældet, og oplysninger skal gennemgås på det nye grundlag.
 

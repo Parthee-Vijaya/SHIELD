@@ -21,6 +21,18 @@ Hvis en kørsel har delt kildegrundlaget op i flere kald, kan værdien være det
 
 Den aktuelle evaluering gemmer score og markering, men ingen individuel fritekstbegrundelse fra JEV. Fanen viser derfor det gemte resultat og kontrolgrundlaget uden at opfinde en begrundelse. En beskrivelse af behandlingsforløbet er heller ikke modellens interne tankegang eller en log over dens skjulte overvejelser.
 
+## Delanalyser og samling
+
+Nye batchkørsler viser, hvor mange delpakker der blev behandlet, hvilke kilde-ID'er
+hver del omfattede, og hvor meget kildetekst der indgik. Gemte delresuméer er
+AI-output fra den konkrete delanalyse, ikke rå modeltanker eller en selvstændig
+godkendelse. Samlingen udarbejder det endelige resultat på tværs af delresultaterne.
+
+Delpakker for tekstudarbejdelse og JEVs delkontroller er forskellige ting.
+Visningen af delanalysernes kilder er ikke en fuld log over hvert JEV-kald.
+Tidligere enkeltkørsler kan mangle batchmetadata; det vises ikke som nul udførte
+trin. Ved menneskelig revision er arvede batchoplysninger historiske.
+
 ## Ældre versioner og menneskelig redigering
 
 Manglende model-, forbrugs- eller kørselsoplysninger vises som ikke registreret. Der indsættes ikke opdigtede værdier i historiske sager. En grundvurdering uden AI bliver vist som regelbaseret.

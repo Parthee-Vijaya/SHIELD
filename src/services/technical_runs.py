@@ -145,6 +145,54 @@ def _usage(value: Any) -> Any:
     return None
 
 
+def _batching(value: Any) -> dict | None:
+    """Expose saved batch coverage and summaries, never arbitrary worker metadata."""
+    if not isinstance(value, dict) or value.get("strategy") not in {
+        "map-reduce-v1",
+        "single-pass-v1",
+    }:
+        return None
+    result = {"strategy": value["strategy"]}
+    for key in (
+        "batch_count",
+        "source_count",
+        "source_text_chars",
+        "map_call_count",
+        "synthesis_call_count",
+        "cross_batch_conflict_count",
+    ):
+        if (
+            isinstance(value.get(key), int)
+            and not isinstance(value[key], bool)
+            and value[key] >= 0
+        ):
+            result[key] = value[key]
+    if isinstance(value.get("consolidation_note"), str):
+        result["consolidation_note"] = value["consolidation_note"]
+    result["batches"] = []
+    for batch in _rows(value.get("batches")):
+        item = {"source_ids": _strings(batch.get("source_ids"))}
+        for key in (
+            "index",
+            "source_text_chars",
+            "document_count",
+            "fact_count",
+            "conflict_count",
+            "question_count",
+            "finding_count",
+        ):
+            if (
+                isinstance(batch.get(key), int)
+                and not isinstance(batch[key], bool)
+                and batch[key] >= 0
+            ):
+                item[key] = batch[key]
+        if isinstance(batch.get("summary"), str):
+            item["summary"] = batch["summary"]
+        result["batches"].append(item)
+    return result
+
+
 def _item(id: str, kind: str, label: str, fields: dict, source_ids=None) -> dict:
     return {
         "id": id,
@@ -550,6 +598,7 @@ def _dpia_run(record: DPIAAssessmentRecord, records: dict) -> dict:
             assessment_id=source_record.id if source_record else None,
         ),
         "usage": None if revision else _usage(generation.get("usage")),
+        "batching": _batching(generation.get("batching")),
         "limitations": _strings(generation.get("limitations")),
         "recording_notes": notes,
         "editorial_revision": (
@@ -634,6 +683,7 @@ def _material_run(record: ProcurementAnalysis) -> dict:
             generation.get("review"), outputs, [], generated_at=_iso(record.created_at)
         ),
         "usage": _usage(generation.get("usage")),
+        "batching": _batching(generation.get("batching")),
         "limitations": _strings(generation.get("limitations")),
         "recording_notes": notes,
         "editorial_revision": None,

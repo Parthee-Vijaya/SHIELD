@@ -1,11 +1,11 @@
-import { generateText, Output } from 'ai';
 import { z } from 'zod';
+import { assertGenerationContext, batchingMetadata, boundedMapResult, generateStructured, planSourceBatches, validateSourcePool, type StructuredGenerator } from './source-batches.mts';
 import { reviewUnits, type ReviewUnit } from './review.mts';
 import { gatewayFailure } from './errors.mts';
 import { MAX_AI_INPUT_CHARS, MAX_AI_RAW_INPUT_CHARS } from './input-limits.mts';
 
 export const MATERIAL_MODEL = 'openai/gpt-5.5';
-export const MATERIAL_PROMPT_VERSION = 'municipal-ai-solution-evidence-2026-09-20-v2';
+export const MATERIAL_PROMPT_VERSION = 'municipal-ai-solution-evidence-2026-09-21-v3-batches';
 export const MAX_MATERIAL_INPUT_CHARS = MAX_AI_INPUT_CHARS;
 export const MAX_MATERIAL_RAW_INPUT_CHARS = MAX_AI_RAW_INPUT_CHARS;
 const uniqueArray = (values: readonly [string, ...string[]]) => z.array(z.enum(values)).min(1).refine(items => new Set(items).size === items.length);
@@ -70,18 +70,83 @@ export function validateMaterialInput(raw: unknown) {
   return input;
 }
 
-export async function analyzeMaterial(raw: unknown, evaluator = reviewUnits) {
+/** Cross-batch disagreement is retained mechanically; synthesis cannot vote it away. */
+export function materialBatchDisagreements(drafts: Draft[]) {
+  const groups = new Map<string, Draft['facts']>();
+  const comparableFields = new Set(['retention_period', 'supplier_name', 'solution_type', 'hosting_region', 'model_training', 'special_categories', 'criminal_data', 'cpr_data', 'vulnerable_subjects', 'systematic_monitoring', 'automated_decisions', 'transfer_outside_eea', 'large_scale', 'human_oversight']);
+  for (const draft of drafts) for (const fact of draft.facts) if (comparableFields.has(fact.field) && fact.value !== null) groups.set(fact.field, [...(groups.get(fact.field) || []), fact]);
+  return [...groups].filter(([, facts]) => new Set(facts.map(fact => JSON.stringify(Array.isArray(fact.value) ? [...fact.value].sort() : fact.value))).size > 1)
+    .map(([field, facts], index) => ({ id: `batch_disagreement_${index + 1}`, field,
+      description: `Kilder i forskellige dele angiver forskellige oplysninger om ${field}: ${[...new Set(facts.map(fact => JSON.stringify(fact.value)))].join(' / ')}. Forskellen skal afklares før feltet udfyldes.`,
+      source_refs: [...new Map(facts.flatMap(fact => fact.source_refs).map(ref => [`${ref.source_id}:${ref.quote}`, ref])).values()],
+    }));
+}
+
+export async function analyzeMaterial(raw: unknown, evaluator = reviewUnits, generator: StructuredGenerator = generateStructured) {
   const input = validateMaterialInput(raw);
-  let rawDraft = input.draft;
-  let draftingUsage;
+  validateSourcePool(input.sources);
+  let rawDraft: unknown = input.draft;
+  let draftingUsage: unknown;
+  let batching;
+  const batchSummaries: { summary: string; fact_count: number; conflict_count: number; question_count: number }[] = [];
+  let conflictCount = 0;
   if (input.mode !== 'evaluate') {
-    const result = await generateText({ model: MATERIAL_MODEL, system: SYSTEM, output: Output.object({ schema: materialDraftSchema }), maxOutputTokens: 10000, maxRetries: 0, abortSignal: AbortSignal.timeout(160000), prompt: `Feltdefinitioner: ${JSON.stringify(Object.fromEntries(Object.entries(fieldSchemas).map(([field, schema]) => [field, z.toJSONSchema(schema, { unrepresentable: 'any' })])))}\nProfil og kildemateriale: ${JSON.stringify({ profile: input.profile, sources: input.sources })}` });
-    rawDraft = result.output;
-    draftingUsage = result.usage;
+    const definitions = `Feltdefinitioner: ${JSON.stringify(Object.fromEntries(Object.entries(fieldSchemas).map(([field, schema]) => [field, z.toJSONSchema(schema, { unrepresentable: 'any' })])))}`;
+    const prefix = `${definitions}\nProfil: ${JSON.stringify(input.profile)}\nKildemateriale: `;
+    const batches = planSourceBatches(input.sources, SYSTEM.length + prefix.length + 2000);
+    const run = async (prompt: string) => {
+      assertGenerationContext(SYSTEM, prompt);
+      return generator({ model: MATERIAL_MODEL, system: SYSTEM, schema: materialDraftSchema, maxOutputTokens: 14000, prompt });
+    };
+    if (batches.length === 1) {
+      const result = await run(`${prefix}${JSON.stringify(input.sources)}`);
+      rawDraft = result.output; draftingUsage = result.usage;
+    } else {
+      const maps: Draft[] = [], usages: unknown[] = [];
+      // Sequential execution aborts the whole result at the first failed part.
+      for (const [index, sources] of batches.entries()) {
+        const result = await run(`DEL ${index + 1} AF ${batches.length}. Analysér kun denne del. Manglende oplysninger er foreløbige og kan findes i andre dele. Gem faktapåstande med deres oprindelige source_id og ordrette citat. Fremhæv modstrid; ingen del må godkende sagen.\n${prefix}${JSON.stringify(sources)}`);
+        maps.push(boundedMapResult(validateMaterialDraft({ ...input, sources }, result.output)));
+        usages.push(result.usage);
+      }
+      for (const map of maps) batchSummaries.push({ summary: map.summary, fact_count: map.facts.length, conflict_count: map.conflicts.length, question_count: map.questions.length });
+      const disagreements = materialBatchDisagreements(maps);
+      conflictCount = disagreements.length;
+      if (disagreements.some(item => item.source_refs.length > 12) || disagreements.length > 20) throw new Error('BATCH_CONFLICTS_REQUIRE_REVIEW');
+      const result = await run(`${definitions}\nProfil: ${JSON.stringify(input.profile)}\nSAMLING AF ALLE ${maps.length} DELE. Sammenhold alle delresultater, fjern gentagelser og bevar oprindelige kilde-ID'er og citater. Delresultaterne er komprimerede evidensudtræk, ikke nye kilder. Et forhold der ikke nævnes, er ikke dokumentation for fravær. Afklar modstrid på tværs af dele; vælg ikke en vinder. Indsæt ikke et fact for felter med modstrid. Bevar centrale spørgsmål og alle konflikter.\nDelresultater: ${JSON.stringify(maps)}\nUafklarede forskelle der skal bevares: ${JSON.stringify(disagreements)}`);
+      const consolidated = validateMaterialDraft(input, result.output);
+      const fields = new Set(disagreements.map(item => item.field));
+      consolidated.facts = consolidated.facts.filter(fact => !fields.has(fact.field));
+      const usedIds = new Set([...consolidated.facts, ...consolidated.conflicts, ...consolidated.questions].map(item => item.id));
+      const uniqueId = (stem: string) => { let next = stem, suffix = 1; while (usedIds.has(next)) next = `${stem}_${++suffix}`; usedIds.add(next); return next; };
+      const normalize = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
+      const addQuestion = (question: Draft['questions'][number], stem: string) => {
+        const existing = consolidated.questions.find(item => normalize(item.question) === normalize(question.question));
+        if (existing) { if (question.priority === 'high') existing.priority = 'high'; }
+        else consolidated.questions.push({ ...question, id: uniqueId(stem) });
+      };
+      const addConflict = (conflict: Draft['conflicts'][number], stem: string) => {
+        if (!consolidated.conflicts.some(item => normalize(item.description) === normalize(conflict.description) && conflict.source_refs.every(ref => item.source_refs.some(other => other.source_id === ref.source_id && other.quote === ref.quote)))) consolidated.conflicts.push({ ...conflict, id: uniqueId(stem) });
+      };
+      for (const [index, map] of maps.entries()) {
+        for (const [number, conflict] of map.conflicts.entries()) addConflict(conflict, `batch_${index + 1}_conflict_${number + 1}`);
+        for (const [number, question] of map.questions.entries()) addQuestion(question, `batch_${index + 1}_question_${number + 1}`);
+      }
+      for (const disagreement of disagreements) {
+        const { field, ...conflict } = disagreement;
+        addConflict(conflict, conflict.id);
+        addQuestion({ id: `${conflict.id}_question`, topic: field, priority: 'high', question: `Afklar forskellene mellem delgrundlagene for ${field} og dokumentér hvilken aftale eller anvendelse der gælder.` }, `${conflict.id}_question`);
+      }
+      if (disagreements.length) consolidated.summary += `\n\nUafklarede forskelle mellem delgrundlagene: ${disagreements.map(item => item.field).join(', ')}. Felterne er ikke udfyldt som afklarede fakta; se modstridende oplysninger og afklaringsspørgsmål.`;
+      // Reject overflow instead of trimming conflicts, questions or citations.
+      rawDraft = validateMaterialDraft(input, consolidated);
+      draftingUsage = [...usages, result.usage];
+    }
+    batching = batchingMetadata(batches, 1, batches.length > 1 ? batches.length : 0, batchSummaries, conflictCount);
   }
   const draft = validateMaterialDraft(input, rawDraft);
   const review = await evaluator(materialReviewUnits(input, draft), input.sources.map(item => ({ ...item, title: `${item.title}${item.locator ? ` · ${item.locator}` : ''}` })), { perBatchTimeoutMs: 60000, maxRetries: 1 });
-  return { draft, review, model: MATERIAL_MODEL, prompt_version: MATERIAL_PROMPT_VERSION, usage: { drafting: draftingUsage, evaluation: review.usage } };
+  return { draft, review, model: MATERIAL_MODEL, prompt_version: MATERIAL_PROMPT_VERSION, ...(batching ? { batching } : {}), usage: { drafting: draftingUsage, evaluation: review.usage } };
 }
 
 export async function readMaterialInput(chunks: AsyncIterable<string>) {
