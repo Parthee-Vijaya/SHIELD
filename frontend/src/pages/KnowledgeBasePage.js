@@ -31,7 +31,6 @@ import {
 } from 'react-icons/fa';
 
 import fallbackKnowledgeItems from '../data/knowledgeBaseFallback.json';
-import rapporterData from '../data/rapporterFallback.json';
 import {
   PageShell,
   PageHeader,
@@ -120,8 +119,9 @@ const SearchAndFilter = styled.div`
 
 const SearchBox = styled.div`
   position: relative;
-  flex: 1;
-  min-width: 280px;
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 100%;
 
   input {
     width: 100%;
@@ -180,11 +180,13 @@ const CategoryButton = styled(OutlinePill)`
 
 const KnowledgeGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
   gap: 2rem;
 `;
 
 const TermCard = styled(motion.div)`
+  min-width: 0;
+  overflow-wrap: anywhere;
   background: ${(p) => p.theme.colors.surface};
   border: 1px solid ${(p) => p.theme.colors.border};
   border-radius: ${(p) => p.theme.borderRadius};
@@ -247,6 +249,7 @@ const TermHeader = styled.div`
 
   .content {
     flex: 1;
+    min-width: 0;
 
     h3 {
       color: ${props => props.theme.isDark
@@ -263,6 +266,7 @@ const TermHeader = styled.div`
         : props.theme.colors.gray[500]};
       font-size: 0.875rem;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 0.5rem;
     }
@@ -333,6 +337,7 @@ const TermFooter = styled.div`
 
   .tags {
     display: flex;
+    min-width: 0;
     gap: 0.25rem;
     flex-wrap: wrap;
   }
@@ -352,6 +357,8 @@ const TermFooter = styled.div`
 
   .references {
     display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
 
@@ -388,123 +395,8 @@ const VideoHeading = styled.h2`
 
 const VideoGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   gap: 2rem;
-`;
-
-const RapporterGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-`;
-
-const RapportCard = styled(motion.a)`
-  background: ${props => props.theme.isDark
-    ? 'rgba(45, 55, 72, 0.95)'
-    : 'rgba(255, 255, 255, 0.95)'};
-  backdrop-filter: blur(20px);
-  border-radius: ${props => props.theme.borderRadiusLarge};
-  padding: 1.5rem;
-  border: 1px solid ${props => props.theme.isDark
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(255, 255, 255, 0.2)'};
-  box-shadow: ${props => props.theme.shadows.glass};
-  transition: all 0.3s ease;
-  text-decoration: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  position: relative;
-  overflow: hidden;
-  border-left: 4px solid #C94416;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: ${props => props.theme.shadows.xl};
-    border-left-color: ${props => props.theme.colors.juridical.lightGold};
-    background: ${props => props.theme.isDark
-      ? 'rgba(55, 65, 81, 0.98)'
-      : 'rgba(255, 255, 255, 0.98)'};
-  }
-`;
-
-const RapportYear = styled.div`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: linear-gradient(135deg, #C94416 0%, #E85A28 100%);
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.35rem 0.75rem;
-  border-radius: 20px;
-`;
-
-const RapportTitle = styled.h3`
-  color: ${props => props.theme.isDark
-    ? props.theme.colors.gray[100]
-    : props.theme.colors.gray[800]};
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.4;
-  margin: 0;
-  padding-right: 3.5rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const RapportResume = styled.p`
-  color: ${props => props.theme.isDark
-    ? props.theme.colors.gray[300]
-    : props.theme.colors.gray[600]};
-  font-size: 0.85rem;
-  line-height: 1.5;
-  margin: 0.5rem 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const RapportMeta = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: auto;
-`;
-
-const RapportBadge = styled.span`
-  padding: 0.25rem 0.65rem;
-  background: ${props => props.theme.isDark
-    ? 'rgba(255, 255, 255, 0.1)'
-    : props.theme.colors.gray[100]};
-  color: ${props => props.theme.isDark
-    ? props.theme.colors.gray[300]
-    : props.theme.colors.gray[600]};
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 500;
-`;
-
-const RapportLink = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #C94416;
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-top: 0.5rem;
-
-  svg {
-    font-size: 0.75rem;
-    transition: transform 0.2s ease;
-  }
-
-  ${RapportCard}:hover & svg {
-    transform: translateX(4px);
-  }
 `;
 
 const StatsBar = styled.div`
@@ -815,14 +707,26 @@ const ModalActions = styled.div`
   }
 `;
 
+const PERSONAL_NOTES_KEY = 'shield.personal-knowledge-notes.v1';
+const loadPersonalNotes = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PERSONAL_NOTES_KEY) || '[]');
+    return Array.isArray(stored) ? stored.filter(item => item && typeof item.id === 'string' && item.id.startsWith('personal-') && typeof item.term === 'string' && typeof item.definition === 'string') : [];
+  } catch { return []; }
+};
+
 const KnowledgeBasePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [knowledgeItems, setKnowledgeItems] = useState(() => mapItemsWithIcons(fallbackKnowledgeItems));
+  const [catalogueItems, setKnowledgeItems] = useState(() => mapItemsWithIcons(fallbackKnowledgeItems));
+  const [personalNotes, setPersonalNotes] = useState(loadPersonalNotes);
+  const [personalError, setPersonalError] = useState('');
+  const knowledgeItems = useMemo(() => [...catalogueItems, ...mapItemsWithIcons(personalNotes).map(item => ({ ...item, personal: true }))], [catalogueItems, personalNotes]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const location = useLocation();
+  const queryFromUrl = new URLSearchParams(location.search).get('query') || '';
 
   const categories = useMemo(() => {
     const unique = new Set(knowledgeItems.map(item => item.category).filter(Boolean));
@@ -842,15 +746,9 @@ const KnowledgeBasePage = () => {
   }, [categories, activeCategory]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const queryParam = params.get('query');
-    if (queryParam && queryParam !== searchTerm) {
-      setSearchTerm(queryParam);
-      if (activeCategory !== 'all') {
-        setActiveCategory('all');
-      }
-    }
-  }, [location.search, activeCategory, searchTerm]);
+    setSearchTerm(queryFromUrl);
+    setActiveCategory('all');
+  }, [queryFromUrl]);
 
   useEffect(() => {
     let isMounted = true;
@@ -881,7 +779,7 @@ const KnowledgeBasePage = () => {
           setErrorMessage('');
         } else if (Array.isArray(data) && data.length === 0) {
           setKnowledgeItems([]);
-          setErrorMessage('Vidensbasen er tom. Tilføj nye termer eller kør en opdatering.');
+          setErrorMessage('Det fælles opslagsværk har endnu ingen begreber. Egne noter gemmes særskilt i denne browser.');
         }
       } catch (error) {
         if (!isMounted || controller.signal.aborted) {
@@ -906,20 +804,23 @@ const KnowledgeBasePage = () => {
   }, []);
 
 
-  const handleAddTerm = (newTerm) => {
-    const nextId = knowledgeItems.length
-      ? Math.max(...knowledgeItems.map(item => Number(item.id) || 0)) + 1
-      : 1;
-
-    const termWithId = {
-      ...newTerm,
-      id: nextId,
+  const savePersonalNotes = (notes) => {
+    try {
+      localStorage.setItem(PERSONAL_NOTES_KEY, JSON.stringify(notes));
+      setPersonalNotes(notes);
+      setPersonalError('');
+      return true;
+    } catch {
+      setPersonalError('Browseren kunne ikke gemme ændringen. Noten er ikke gemt. Kontrollér, om lokal lagring er tilladt.');
+      return false;
+    }
+  };
+  const handleAddTerm = ({ icon, ...newTerm }) => {
+    const note = {
+      ...newTerm, id: `personal-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       references: (newTerm.references || []).filter(ref => ref.text && ref.url),
     };
-
-    const enriched = mapItemsWithIcons([termWithId])[0];
-    setKnowledgeItems(prev => [...prev, enriched]);
-    setShowAddModal(false);
+    if (savePersonalNotes([...personalNotes, note])) setShowAddModal(false);
   };
 
   const filteredItems = useMemo(() => {
@@ -1008,6 +909,7 @@ const KnowledgeBasePage = () => {
           </div>
         </TermHeader>
 
+        {item.personal && <p>Egen opslagsnote · kun gemt i denne browser <button type="button" onClick={() => savePersonalNotes(personalNotes.filter(note => note.id !== item.id))} aria-label={`Slet egen note: ${item.term}`}>Slet note</button></p>}
         <TermDefinition>{item.definition}</TermDefinition>
 
         {item.context && (
@@ -1062,8 +964,8 @@ const KnowledgeBasePage = () => {
     <PageShell>
       <PageHeader
         eyebrow="S.H.I.E.L.D. · videnbase"
-        title="Vidensdatabase"
-        lede="Opslagsværk med juridiske termer, AI-teknologi, compliance-begreber og videoressourcer. Kuration der gør det nemmere at orientere sig før du beslutter dig."
+        title="Begreber og opslagsværk"
+        lede="Forklaringer på juridiske begreber, AI-teknologi og arbejdsprocesser. Brug originalkilderne til faglig kontrol. Egne opslagsnoter gemmes kun i denne browserprofil og deles ikke med andre eller knyttes til en sag."
       />
 
       <StatsBar>
@@ -1097,6 +999,7 @@ const KnowledgeBasePage = () => {
         <SearchBox>
           <input
             type="text"
+            aria-label="Søg i opslagsværket"
             placeholder="Søg i vidensdatabasen efter termer, definitioner eller tags..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -1109,6 +1012,7 @@ const KnowledgeBasePage = () => {
             <CategoryButton
               key={category.id}
               $active={activeCategory === category.id}
+              aria-pressed={activeCategory === category.id}
               onClick={() => setActiveCategory(category.id)}
             >
               <category.icon />
@@ -1119,9 +1023,10 @@ const KnowledgeBasePage = () => {
 
       <AddButton onClick={() => setShowAddModal(true)}>
         <FaPlus />
-        Tilføj nyt term
+        Tilføj egen opslagsnote
       </AddButton>
 
+      {personalError && !showAddModal && <p role="alert">{personalError}</p>}
       {(loading || errorMessage) && (
         <StatusMessage $variant={errorMessage ? 'error' : 'info'}>
           {errorMessage ? (
@@ -1152,41 +1057,6 @@ const KnowledgeBasePage = () => {
         </VideoSection>
       )}
 
-      {(activeCategory === 'all') && (
-        <VideoSection>
-          <VideoHeading>
-            <FaFileAlt />
-            Relevante Rapporter & Publikationer
-          </VideoHeading>
-          <RapporterGrid>
-            {rapporterData.map(rapport => (
-              <RapportCard
-                key={rapport.id}
-                as="a"
-                href={rapport.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <RapportYear>{rapport.aar}</RapportYear>
-                <RapportTitle>{rapport.titel}</RapportTitle>
-                <RapportResume>{rapport.resume}</RapportResume>
-                <RapportMeta>
-                  <RapportBadge>{rapport.udgiver}</RapportBadge>
-                  <RapportBadge>{rapport.omraade}</RapportBadge>
-                </RapportMeta>
-                <RapportLink>
-                  Læs rapport
-                  <FaExternalLinkAlt />
-                </RapportLink>
-              </RapportCard>
-            ))}
-          </RapporterGrid>
-        </VideoSection>
-      )}
-
       {filteredItems.length === 0 && (
         <div style={{
           textAlign: 'center',
@@ -1207,6 +1077,7 @@ const KnowledgeBasePage = () => {
             onClose={() => setShowAddModal(false)}
             onSave={handleAddTerm}
             categories={categories}
+            error={personalError}
           />
         )}
       </AnimatePresence>
@@ -1214,7 +1085,7 @@ const KnowledgeBasePage = () => {
   );
 };
 
-const AddTermModal = ({ onClose, onSave, categories }) => {
+const AddTermModal = ({ onClose, onSave, categories, error }) => {
   const [formData, setFormData] = useState({
     term: '',
     category: 'legal',
@@ -1266,6 +1137,9 @@ const AddTermModal = ({ onClose, onSave, categories }) => {
   return (
     <ModalOverlay onClick={onClose}>
       <ModalContent
+        role="dialog"
+        aria-modal="true"
+        aria-label="Tilføj egen opslagsnote"
         onClick={(e) => e.stopPropagation()}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1275,18 +1149,21 @@ const AddTermModal = ({ onClose, onSave, categories }) => {
         <ModalHeader>
           <h2>
             <FaPlus />
-            Tilføj nyt term
+            Tilføj egen opslagsnote
           </h2>
           <CloseButton onClick={onClose}>
             <FaTimes />
           </CloseButton>
         </ModalHeader>
 
+        <p>Noten gemmes kun i denne browserprofil. Den er ikke en fælles eller fagligt godkendt kilde.</p>
+        {error && <p role="alert">{error}</p>}
         <form onSubmit={handleSubmit}>
           <FormGroup>
-            <label>Term *</label>
+            <label htmlFor="personal-note-term">Begreb *</label>
             <input
               type="text"
+              id="personal-note-term"
               value={formData.term}
               onChange={(e) => handleInputChange('term', e.target.value)}
               placeholder="Fx: Risikoklassificering"
@@ -1391,7 +1268,7 @@ const AddTermModal = ({ onClose, onSave, categories }) => {
             </button>
             <button type="submit" className="save">
               <FaSave />
-              Gem term
+              Gem note i denne browser
             </button>
           </ModalActions>
         </form>

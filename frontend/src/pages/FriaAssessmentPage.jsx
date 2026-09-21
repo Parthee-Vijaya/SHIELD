@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useMutation } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import AssessmentCaseSelect from '../components/workflow/AssessmentCaseSelect';
 import {
   Button,
   Card,
@@ -83,10 +84,11 @@ const WizardNav = styled.ol`
 
 const WizardStep = styled.li`
   min-height: 94px;
-  padding: 18px;
   border-right: 1px solid ${(p) => p.theme.colors.line};
   border-bottom: 3px solid ${(p) => (p.$active ? p.theme.colors.secondary : p.theme.colors.line)};
   background: ${(p) => (p.$active ? p.theme.colors.surface : p.theme.colors.paperSoft)};
+  button { padding: 18px; width: 100%; min-height: inherit; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  button:focus-visible { outline: 3px solid ${(p) => p.theme.colors.primary}; outline-offset: -4px; }
 
   span { color: ${(p) => p.theme.colors.inkFaded}; font: 0.66rem ${(p) => p.theme.fonts.mono}; }
   strong { display: block; margin-top: 9px; color: ${(p) => p.theme.colors.ink}; font-size: 0.82rem; }
@@ -329,7 +331,7 @@ function ContextStep({ form, setField, toggleGroup }) {
         <legend>Anvendelsen</legend>
         <Grid $columns={2}>
           <Field><label htmlFor="fria-system">Systemnavn</label><input id="fria-system" value={form.system_name} onChange={(event) => setField('system_name', event.target.value)} required /></Field>
-          <Field><label htmlFor="fria-case">Sags-ID</label><input id="fria-case" value={form.case_id} onChange={(event) => setField('case_id', event.target.value)} required /></Field>
+          <AssessmentCaseSelect id="fria-case" value={form.case_id} onChange={value => setField('case_id', value)} />
         </Grid>
         <Field><label htmlFor="fria-purpose">Formål og forventet fordel</label><textarea id="fria-purpose" value={form.purpose} onChange={(event) => setField('purpose', event.target.value)} required /></Field>
         <Field><label htmlFor="fria-context">Konkret anvendelseskontekst</label><textarea id="fria-context" value={form.deployment_context} onChange={(event) => setField('deployment_context', event.target.value)} placeholder="Beskriv hvor, hvornår og hvordan output anvendes, samt hvilken betydning det får…" required /></Field>
@@ -551,6 +553,62 @@ function ResultPage({ payload, onReset }) {
   );
 }
 
+export function validateFriaStep(form, step) {
+  const errors = [];
+  const need = (field, label, length = 20) => { if (String(form[field] || '').trim().length < length) errors.push(`${label}: angiv mindst ${length} tegn.`); };
+  const lines = (field, label, length) => {
+    const items = form[field].split('\n').map(item => item.trim()).filter(Boolean);
+    if (!items.length || items.some(item => item.length < length)) errors.push(`${label}: angiv mindst ét punkt med mindst ${length} tegn pr. linje.`);
+  };
+  const selectedRights = RIGHTS.filter(right => form.rights[right.id].selected);
+  if (step === 0) {
+    need('case_id', 'Sag', 2); need('system_name', 'Systemnavn', 2);
+    need('purpose', 'Formål og forventet fordel'); need('deployment_context', 'Konkret anvendelseskontekst');
+    need('duration', 'Periode og hyppighed'); need('decision_owner', 'Ansvarlig for beslutningen', 2);
+    if (!form.affected_group_ids.length) errors.push('Vælg mindst én berørt gruppe.');
+    need('affected_group_detail', 'Særlige sårbarheder og afhængighedsforhold');
+    if (form.groups_consulted) need('consultation_details', 'Beskriv inddragelsen af de berørte grupper');
+  } else if (step === 1) {
+    if (!selectedRights.length) errors.push('Vælg mindst én relevant grundlæggende rettighed.');
+    selectedRights.forEach(right => {
+      const impact = form.rights[right.id];
+      if (impact.impact_description.trim().length < 20) errors.push(`${right.label}: beskriv påvirkningen med mindst 20 tegn.`);
+      if (!impact.harm_scenarios.split('\n').some(item => item.trim().length >= 5)) errors.push(`${right.label}: angiv et konkret skadescenario med mindst 5 tegn.`);
+    });
+  } else if (step === 2) {
+    need('legitimate_objective', 'Legitimt og konkret mål'); need('legal_mandate', 'Præcis hjemmel eller mandat', 5);
+    need('why_necessary', 'Hvorfor løsningen er egnet'); lines('alternatives_considered', 'Mindre indgribende alternativer', 10);
+    need('data_and_function_minimisation', 'Data- og funktionsminimering'); need('expected_public_benefit', 'Forventet offentlig fordel');
+    need('expected_rights_cost', 'Forventet omkostning for rettigheder'); need('proportionality_reasoning', 'Samlet afvejning', 40);
+  } else {
+    if (form.oversight_enabled) {
+      need('oversight_authority', 'Ansvarlig rolle og mandat'); need('competence_and_training', 'Kompetencer og uddannelse');
+      need('review_and_override_procedure', 'Review-, tilsidesættelses- og stopprocedure'); need('automation_bias_controls', 'Kontrol mod automation bias');
+    }
+    if (form.accessible_complaint_channel) {
+      need('complaint_contact_point', 'Klagens kontaktpunkt', 5); need('complaint_response_target', 'Svarmål', 5);
+      need('accessibility_accommodations', 'Tilgængelighed og støtte');
+    }
+    need('responsible_owner', 'Ansvarlig funktion', 2);
+    if (!form.review_date) errors.push('Angiv dato for næste review.');
+    lines('monitoring_metrics', 'Målinger', 5); lines('change_triggers', 'Ændringer der udløser nyt review', 5);
+    need('incident_and_escalation_process', 'Hændelses- og eskalationsproces');
+    const measures = form.measures.filter(measure => measure.title.trim());
+    measures.forEach((measure, index) => {
+      if (measure.description.trim().length < 20) errors.push(`Foranstaltning ${index + 1}: beskriv den med mindst 20 tegn.`);
+      if (measure.owner.trim().length < 2) errors.push(`Foranstaltning ${index + 1}: angiv en ansvarlig.`);
+      if (['planned', 'in_progress'].includes(measure.status) && !measure.due_date) errors.push(`Foranstaltning ${index + 1}: angiv en frist.`);
+      if (measure.status === 'implemented_verified' && measure.evidence.trim().length < 20) errors.push(`Foranstaltning ${index + 1}: dokumentér verificering med mindst 20 tegn.`);
+    });
+    const claimsReduction = selectedRights.some(right => {
+      const impact = form.rights[right.id];
+      return impact.residual_severity < impact.severity || impact.residual_likelihood < impact.likelihood;
+    });
+    if (claimsReduction && !measures.length) errors.push('En angivet risikoreduktion kræver mindst én konkret foranstaltning.');
+  }
+  return errors;
+}
+
 function FriaAssessmentPage() {
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(0);
@@ -579,73 +637,22 @@ function FriaAssessmentPage() {
   const addMeasure = () => setForm((current) => ({ ...current, measures: [...current.measures, { title: '', description: '', owner: '', due_date: '', status: 'planned', evidence: '' }] }));
   const removeMeasure = (index) => setForm((current) => ({ ...current, measures: current.measures.filter((_, measureIndex) => measureIndex !== index) }));
 
-  const selectedRights = useMemo(() => RIGHTS.filter((right) => form.rights[right.id].selected), [form.rights]);
-  const canContinue = useMemo(() => {
-    if (step === 0) return form.case_id.trim().length >= 2
-      && form.system_name.trim().length >= 2
-      && form.purpose.trim().length >= 20
-      && form.deployment_context.trim().length >= 20
-      && form.duration.trim().length >= 20
-      && form.decision_owner.trim().length >= 2
-      && form.affected_group_ids.length > 0
-      && form.affected_group_detail.trim().length >= 20
-      && (!form.groups_consulted || form.consultation_details.trim().length >= 20);
-    if (step === 1) return selectedRights.length > 0 && selectedRights.every((right) => {
-      const impact = form.rights[right.id];
-      return impact.impact_description.trim().length >= 20
-        && impact.harm_scenarios.split('\n').some((item) => item.trim().length >= 5);
-    });
-    if (step === 2) {
-      const alternatives = form.alternatives_considered.split('\n').map((item) => item.trim()).filter(Boolean);
-      return form.legitimate_objective.trim().length >= 20
-        && form.legal_mandate.trim().length >= 5
-        && form.why_necessary.trim().length >= 20
-        && alternatives.length > 0
-        && alternatives.every((item) => item.length >= 10)
-        && form.data_and_function_minimisation.trim().length >= 20
-        && form.expected_public_benefit.trim().length >= 20
-        && form.expected_rights_cost.trim().length >= 20
-        && form.proportionality_reasoning.trim().length >= 40;
-    }
-    const oversightReady = !form.oversight_enabled || [form.oversight_authority, form.competence_and_training, form.review_and_override_procedure, form.automation_bias_controls].every((value) => value.trim().length >= 20);
-    const complaintsReady = !form.accessible_complaint_channel || (form.complaint_contact_point.trim().length >= 5 && form.complaint_response_target.trim().length >= 5 && form.accessibility_accommodations.trim().length >= 20);
-    const metrics = form.monitoring_metrics.split('\n').map((item) => item.trim()).filter(Boolean);
-    const triggers = form.change_triggers.split('\n').map((item) => item.trim()).filter(Boolean);
-    const measures = form.measures.filter((measure) => measure.title.trim());
-    const measuresReady = measures.every((measure) => measure.description.trim().length >= 20
-      && measure.owner.trim().length >= 2
-      && (!['planned', 'in_progress'].includes(measure.status) || Boolean(measure.due_date))
-      && (measure.status !== 'implemented_verified' || measure.evidence.trim().length >= 20));
-    const claimsReduction = selectedRights.some((right) => {
-      const impact = form.rights[right.id];
-      return impact.residual_severity < impact.severity || impact.residual_likelihood < impact.likelihood;
-    });
-    return oversightReady
-      && complaintsReady
-      && form.responsible_owner.trim().length >= 2
-      && Boolean(form.review_date)
-      && metrics.length > 0
-      && metrics.every((item) => item.length >= 5)
-      && triggers.length > 0
-      && triggers.every((item) => item.length >= 5)
-      && form.incident_and_escalation_process.trim().length >= 20
-      && measuresReady
-      && (!claimsReduction || measures.length > 0);
-  }, [form, selectedRights, step]);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const goToStep = next => { setStep(next); setValidationErrors([]); };
 
   const submit = (event) => {
     event.preventDefault();
-    if (step < STEPS.length - 1) {
-      setStep((current) => current + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
+    if (step < STEPS.length - 1) { goToStep(step + 1); return; }
+    const firstInvalid = STEPS.findIndex((_, index) => validateFriaStep(form, index).length > 0);
+    if (firstInvalid >= 0) { setStep(firstInvalid); setValidationErrors(validateFriaStep(form, firstInvalid)); return; }
+    setValidationErrors([]);
     mutation.mutate(form);
   };
 
   const reset = () => {
     mutation.reset();
     setStep(0);
+    setValidationErrors([]);
     setForm(initialForm(searchParams.get('case_id') || ''));
   };
 
@@ -654,15 +661,16 @@ function FriaAssessmentPage() {
   return (
     <Page>
       <PageHeader>
-        <div><Eyebrow>S.H.I.E.L.D. · AI Act artikel 27</Eyebrow><Title>Grundrettighedsvurdering</Title><Lede>Dokumentér hvem der påvirkes, hvilke rettigheder der er på spil, om løsningen er nødvendig, og hvordan personer kan få menneskelig kontrol og afhjælpning.</Lede></div>
+        <div><Eyebrow>S.H.I.E.L.D. · AI Act artikel 27</Eyebrow><Title>Grundrettighedsvurdering (FRIA)</Title><Lede>Dokumentér hvem der påvirkes, hvilke rettigheder der er på spil, om løsningen er nødvendig, og hvordan personer kan få menneskelig kontrol og afhjælpning. Vurderingen gemmes på den valgte sag.</Lede></div>
       </PageHeader>
 
       <WizardNav aria-label="Grundrettighedsvurderingens trin">
-        {STEPS.map((item, index) => <WizardStep key={item.label} $active={index === step} aria-current={index === step ? 'step' : undefined}><span>Trin {index + 1} af {STEPS.length}</span><strong>{item.label}</strong></WizardStep>)}
+        {STEPS.map((item, index) => <WizardStep key={item.label} $active={index === step}><button type="button" disabled={mutation.isLoading} aria-current={index === step ? 'step' : undefined} onClick={() => goToStep(index)}><span>Trin {index + 1} af {STEPS.length}</span><strong>{item.label}</strong></button></WizardStep>)}
       </WizardNav>
 
-      <Form onSubmit={submit}>
-        <FormIntro><h2>{STEPS[step].label}</h2><p>{STEPS[step].description}</p></FormIntro>
+      <Form onSubmit={submit} noValidate>
+        <FormIntro><h2>{STEPS[step].label}</h2><p>{STEPS[step].description}</p><p>Du kan frit se alle trin. Det samlede grundlag kontrolleres, før vurderingen gemmes.</p></FormIntro>
+        {validationErrors.length > 0 && <ErrorPanel role="alert"><strong>Udfyld grundlaget under {STEPS[step].label}</strong><ul>{validationErrors.map(error => <li key={error}>{error}</li>)}</ul></ErrorPanel>}
         {step === 0 ? <ContextStep form={form} setField={setField} toggleGroup={toggleGroup} /> : null}
         {step === 1 ? <RightsStep form={form} toggleRight={toggleRight} updateRight={updateRight} /> : null}
         {step === 2 ? <NecessityStep form={form} setField={setField} /> : null}
@@ -671,8 +679,8 @@ function FriaAssessmentPage() {
         {mutation.isError ? <ErrorPanel role="alert"><strong>Vurderingen kunne ikke gemmes</strong><p>{String(mutation.error?.response?.data?.detail || mutation.error?.message || 'Ukendt fejl')}</p></ErrorPanel> : null}
 
         <FormActions>
-          <SecondaryButton type="button" onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0 || mutation.isLoading}>Tilbage</SecondaryButton>
-          <Button type="submit" disabled={!canContinue || mutation.isLoading}>{mutation.isLoading ? 'Vurderer…' : step === STEPS.length - 1 ? 'Vis samlet FRIA' : 'Næste'}</Button>
+          <SecondaryButton type="button" onClick={() => goToStep(Math.max(0, step - 1))} disabled={step === 0 || mutation.isLoading}>Tilbage</SecondaryButton>
+          {step === STEPS.length - 1 ? <Button type="submit" disabled={mutation.isLoading}>{mutation.isLoading ? 'Vurderer…' : 'Vis samlet FRIA'}</Button> : <Button type="button" disabled={mutation.isLoading} onClick={() => goToStep(step + 1)}>Næste</Button>}
         </FormActions>
       </Form>
     </Page>

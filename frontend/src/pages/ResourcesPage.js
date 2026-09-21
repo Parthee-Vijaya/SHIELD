@@ -13,7 +13,7 @@ import {
   SearchField,
 } from '../components/page-chrome/PageChrome';
 
-import resourcesCatalog from '../data/resourcesCatalog.json';
+import resourcesCatalog from '../data/resourceLibrary';
 
 // ---- Stat-bar -------------------------------------------------------------
 
@@ -248,6 +248,14 @@ const CardHost = styled.div`
   word-break: break-all;
 `;
 
+const PublicationMeta = styled.div`
+  font-size: 0.76rem;
+  color: ${(p) => p.theme.colors.textMuted};
+  line-height: 1.5;
+  margin-bottom: 0.55rem;
+  overflow-wrap: anywhere;
+`;
+
 const CardDescription = styled.p`
   font-family: ${(p) => p.theme.fonts.body};
   font-size: 0.86rem;
@@ -334,26 +342,29 @@ const ResourcesPage = () => {
   const [selectedLang, setSelectedLang] = useState('all');
 
   const categories = useMemo(() => {
-    const c = new Set(resourcesCatalog.map((r) => r.category).filter(Boolean));
+    const c = new Set(resourcesCatalog.flatMap((r) => r.categories));
     return ['all', ...Array.from(c).sort((a, b) => a.localeCompare(b, 'da'))];
   }, []);
 
   const types = useMemo(() => {
-    const t = new Set(resourcesCatalog.map((r) => r.type).filter(Boolean));
+    const t = new Set(resourcesCatalog.flatMap((r) => r.types));
     return ['all', ...Array.from(t).sort((a, b) => a.localeCompare(b, 'da'))];
   }, []);
+
+  const languages = useMemo(() => ['all', ...Array.from(new Set(resourcesCatalog.flatMap(r => r.languages))).sort()], []);
+  const languageLabel = code => ({ all: 'Alle', da: 'Dansk', en: 'Engelsk', unknown: 'Ikke angivet' }[code] || code);
 
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase().trim();
     return resourcesCatalog.filter((r) => {
       const haystack = [
-        r.title, r.description, r.url, r.category, r.type,
-        ...(r.tags || []),
+        ...r.titles, ...r.descriptions, r.url, ...r.categories, ...r.types,
+        ...r.tags, ...r.publishers, ...r.years, ...r.areas,
       ].join(' ').toLowerCase();
       const matchesSearch = !q || haystack.includes(q);
-      const matchesCategory = selectedCategory === 'all' || r.category === selectedCategory;
-      const matchesType = selectedType === 'all' || r.type === selectedType;
-      const matchesLang = selectedLang === 'all' || r.language === selectedLang;
+      const matchesCategory = selectedCategory === 'all' || r.categories.includes(selectedCategory);
+      const matchesType = selectedType === 'all' || r.types.includes(selectedType);
+      const matchesLang = selectedLang === 'all' || r.languages.includes(selectedLang);
       return matchesSearch && matchesCategory && matchesType && matchesLang;
     });
   }, [searchTerm, selectedCategory, selectedType, selectedLang]);
@@ -376,8 +387,8 @@ const ResourcesPage = () => {
     <PageShell>
       <PageHeader
         eyebrow="S.H.I.E.L.D. · ressource-kartotek"
-        title="Relevante links"
-        lede="Kurateret kartotek af lovkilder, vejledninger, standarder og værktøjer relevante for kommunal AI-compliance. Søg, filtrér på kategori og type, eller klik direkte på et kort."
+        title="Vejledninger og links"
+        lede="Samlet kartotek af lovkilder, vejledninger, rapporter, publikationer, standarder og værktøjer til arbejdet med kommunale AI-løsninger. Søg, filtrér eller åbn en kilde direkte."
       />
 
       <StatsBar>
@@ -404,7 +415,8 @@ const ResourcesPage = () => {
           <FaSearch />
           <input
             type="text"
-            placeholder="Søg titel, beskrivelse, tag eller URL…"
+            aria-label="Søg i vejledninger og publikationer"
+            placeholder="Søg titel, udgiver, årstal, emne eller URL…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -415,7 +427,7 @@ const ResourcesPage = () => {
         <span className="label">Kategori</span>
         <FilterPills>
           {categories.map((c) => (
-            <OutlinePill key={c} $active={selectedCategory === c} onClick={() => setSelectedCategory(c)}>
+            <OutlinePill key={c} type="button" aria-pressed={selectedCategory === c} $active={selectedCategory === c} onClick={() => setSelectedCategory(c)}>
               {c === 'all' ? 'Alle' : c}
             </OutlinePill>
           ))}
@@ -426,7 +438,7 @@ const ResourcesPage = () => {
         <span className="label">Type</span>
         <FilterPills>
           {types.map((t) => (
-            <OutlinePill key={t} $active={selectedType === t} onClick={() => setSelectedType(t)}>
+            <OutlinePill key={t} type="button" aria-pressed={selectedType === t} $active={selectedType === t} onClick={() => setSelectedType(t)}>
               {t === 'all' ? 'Alle' : t}
             </OutlinePill>
           ))}
@@ -436,9 +448,9 @@ const ResourcesPage = () => {
       <FilterRow>
         <span className="label">Sprog</span>
         <FilterPills>
-          {['all', 'da', 'en'].map((l) => (
-            <OutlinePill key={l} $active={selectedLang === l} onClick={() => setSelectedLang(l)}>
-              {l === 'all' ? 'Alle' : l === 'da' ? 'Dansk' : 'English'}
+          {languages.map((l) => (
+            <OutlinePill key={l} type="button" aria-pressed={selectedLang === l} $active={selectedLang === l} onClick={() => setSelectedLang(l)}>
+              {languageLabel(l)}
             </OutlinePill>
           ))}
         </FilterPills>
@@ -472,7 +484,7 @@ const ResourcesPage = () => {
           )}
           {selectedLang !== 'all' && (
             <ActiveTag>
-              {selectedLang === 'da' ? 'Dansk' : 'English'}
+              {languageLabel(selectedLang)}
               <button onClick={() => setSelectedLang('all')} aria-label="Fjern sprog">
                 <FaTimes />
               </button>
@@ -503,23 +515,24 @@ const ResourcesPage = () => {
             >
               <CardTopRow>
                 <span className="meta">
-                  {r.type}
+                  {r.types.join(' · ')}
                   {r.language && <LangChip>{r.language}</LangChip>}
                 </span>
                 <FaExternalLinkAlt className="external-icon" aria-hidden="true" />
               </CardTopRow>
-              <CardTitle>{r.title}</CardTitle>
+              <CardTitle>{r.titles.join(' / ')}</CardTitle>
               <CardHost>{hostFromUrl(r.url)}</CardHost>
-              {r.description && <CardDescription>{r.description}</CardDescription>}
+              {(r.publishers.length > 0 || r.years.length > 0) && <PublicationMeta>{[r.publishers.join(', '), r.years.join(', '), r.areas.join(', ')].filter(Boolean).join(' · ')}</PublicationMeta>}
+              {r.descriptions.length > 0 && <CardDescription>{r.descriptions.join(' ')}</CardDescription>}
               <CardFooter>
                 {(r.tags || []).slice(0, 3).map((t) => (
                   <Tag key={t}>{t}</Tag>
                 ))}
-                {r.lastUpdated && (
-                  <Tag style={{ marginLeft: 'auto', opacity: 0.7 }}>
-                    {formatDanishDate(r.lastUpdated)}
+                {r.updatedDates.map(date => (
+                  <Tag key={date} style={{ marginLeft: 'auto', opacity: 0.7 }}>
+                    {formatDanishDate(date)}
                   </Tag>
-                )}
+                ))}
               </CardFooter>
             </Card>
           ))}

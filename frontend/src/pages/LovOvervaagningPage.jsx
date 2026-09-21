@@ -779,11 +779,11 @@ const LovOvervaagningPage = () => {
       <Hero>
         <div>
           <Eyebrow>S.H.I.E.L.D. · juridisk kildekontrol</Eyebrow>
-          <Title>Lovovervågning med dokumenteret friskhed</Title>
+          <Title>Kontrol af lovkilder</Title>
           <Lede>
-            S.H.I.E.L.D. kontrollerer dagligt, om hvert lovcitat stadig findes i den
-            officielle kilde. Afvigelser sendes til juridisk review, så kommunens
-            vurderinger bygger på et synligt og efterprøvbart retsgrundlag.
+            Se den seneste kontrol af lovhenvisninger og de sager, der kræver ny
+            gennemgang efter ændringer. Kontrollen undersøger kildens tilgængelighed
+            og indhold; den godkender ikke den juridiske fortolkning i en sag.
           </Lede>
         </div>
 

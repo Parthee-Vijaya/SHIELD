@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { modelLabel } from '../utils/modelPresentation';
 import {
   FaSearch,
   FaSpinner,
@@ -21,7 +22,6 @@ import {
   FaLink,
   FaChevronDown
 } from 'react-icons/fa';
-import axios from 'axios';
 import {
   PageShell,
   PageHeader,
@@ -259,18 +259,6 @@ const AnswerCard = styled.div`
         transform: translateY(-1px);
       }
     }
-  }
-
-  .confidence-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-top: 0.5rem;
   }
 
   .key-points {
@@ -850,16 +838,6 @@ const CitationItem = styled.div`
     font-weight: 500;
   }
 
-  .confidence {
-    display: inline-block;
-    background: ${props => props.confidence > 0.8 ? props.theme.colors.success + '20' : 'rgba(201, 68, 22, 0.15)'};
-    color: ${props => props.confidence > 0.8 ? props.theme.colors.success : '#7f1d1d'};
-    padding: 0.125rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-left: 0.5rem;
-  }
 `;
 
 const LoadingSpinner = styled.div`
@@ -884,14 +862,26 @@ const LoadingSpinner = styled.div`
   }
 `;
 
+function SourceText({ value }) {
+  if (typeof value !== 'string') return null;
+  return <div>{value.split(/\n+/).filter(Boolean).map((line, index) => <p key={index}>{line.split(/(\*\*[^*]+\*\*)/g).map((part, key) => part.startsWith('**') && part.endsWith('**') ? <strong key={key}>{part.slice(2, -2)}</strong> : part)}</p>)}</div>;
+}
+
+const sourceUrl = value => {
+  try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : undefined; }
+  catch { return undefined; }
+};
+
 const ResearchPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [selectedFocusAreas, setSelectedFocusAreas] = useState(['EU AI Act', 'GDPR']);
   const [progressMessage, setProgressMessage] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [progressStatus, setProgressStatus] = useState('');
   const [expandedEngines, setExpandedEngines] = useState({});
+  const streamRef = useRef(null);
+  const [researchError, setResearchError] = useState('');
+  useEffect(() => () => streamRef.current?.close(), []);
 
   const { register, handleSubmit } = useForm();
 
@@ -915,22 +905,28 @@ const ResearchPage = () => {
   };
 
   const onSubmit = async (data) => {
+    if (!selectedFocusAreas.length) {
+      toast.error('Vælg mindst ét fokusområde.');
+      return;
+    }
     if (!data.emne.trim()) {
       toast.error('Indtast venligst et research emne');
       return;
     }
 
+    streamRef.current?.close();
+    setResearchError('');
     setIsLoading(true);
     setResults(null);
     setProgressMessage('Starter research...');
     setProgressPercent(0);
-    setProgressStatus('initializing');
 
     try {
       // Use EventSource for Server-Sent Events
-      const eventSource = new EventSource(
-        `/api/research/juridisk/stream?emne=${encodeURIComponent(data.emne)}`
-      );
+      const params = new URLSearchParams({ emne: data.emne.trim() });
+      selectedFocusAreas.forEach(area => params.append('focus_areas', area));
+      const eventSource = new EventSource(`/api/research/juridisk/stream?${params}`);
+      streamRef.current = eventSource;
 
       eventSource.onmessage = (event) => {
         try {
@@ -938,37 +934,38 @@ const ResearchPage = () => {
 
           setProgressMessage(progressData.message);
           setProgressPercent(progressData.progress);
-          setProgressStatus(progressData.status);
 
           // Check if research is complete
           if (progressData.status === 'complete' && progressData.result) {
             setResults(progressData.result);
-            toast.success(`Research afsluttet - ${progressData.result.sources.length} kilder fundet`);
+            toast.success(`Kildesøgning afsluttet – ${progressData.result.sources?.length || 0} kilder fundet`);
             eventSource.close();
             setIsLoading(false);
           }
 
           // Handle error
           if (progressData.status === 'error') {
-            toast.error(progressData.message);
+            setResearchError(progressData.message || 'Kildesøgningen kunne ikke fuldføres.');
             eventSource.close();
             setIsLoading(false);
           }
         } catch (err) {
-          console.error('Error parsing SSE data:', err);
+          setResearchError('Kildesøgningen returnerede et ugyldigt svar. Prøv igen.');
+          eventSource.close();
+          setIsLoading(false);
         }
       };
 
       eventSource.onerror = (error) => {
         console.error('EventSource error:', error);
-        toast.error('Der opstod en fejl under research. Prøv igen.');
+        setResearchError('Forbindelsen til kildesøgningen blev afbrudt. Prøv igen.');
         eventSource.close();
         setIsLoading(false);
       };
 
     } catch (error) {
       console.error('Research fejl:', error);
-      toast.error('Der opstod en fejl under research. Prøv igen.');
+      setResearchError('Kildesøgningen kunne ikke startes. Prøv igen.');
       setIsLoading(false);
     }
   };
@@ -991,8 +988,8 @@ const ResearchPage = () => {
     <PageShell>
       <PageHeader
         eyebrow="S.H.I.E.L.D. · juridisk research"
-        title="Juridisk research"
-        lede="Dyb research i relevant lovgivning med præcise kildehenvisninger. Søg i autoritative kilder — EUR-Lex, Datatilsynet, EDPB guidelines og kommunale vejledninger."
+        title="Søg i juridiske kilder"
+        lede="Find offentlige kilder til et juridisk emne. Kontrollér relevans, indhold og dato i originalkilden, før du bruger den i en sag. Søgeresultaterne er ikke en vurdering og gemmes ikke automatisk på sagen."
       />
 
       <SearchSection>
@@ -1006,8 +1003,9 @@ const ResearchPage = () => {
 
         <SearchForm onSubmit={handleSubmit(onSubmit)}>
           <FormGroup>
-            <label htmlFor="emne">Research Emne</label>
+            <label htmlFor="emne">Emne</label>
             <SearchInput
+              aria-label="Emne for kildesøgning"
               {...register('emne', { required: true })}
               placeholder="F.eks. 'højrisiko AI systemer i sundhedssektoren' eller 'automatiserede beslutninger GDPR'"
             />
@@ -1021,6 +1019,8 @@ const ResearchPage = () => {
                   key={area}
                   type="button"
                   selected={selectedFocusAreas.includes(area)}
+                  aria-pressed={selectedFocusAreas.includes(area)}
+                  disabled={isLoading}
                   onClick={() => toggleFocusArea(area)}
                 >
                   {area}
@@ -1033,22 +1033,24 @@ const ResearchPage = () => {
             {isLoading ? (
               <>
                 <FaSpinner className="spinner" />
-                Researcher...
+                Søger efter kilder…
               </>
             ) : (
               <>
                 <FaSearch />
-                Start Research
+                Søg efter kilder
               </>
             )}
           </SearchButton>
         </SearchForm>
       </SearchSection>
 
+      {researchError && <p role="alert">{researchError}</p>}
+
       {/* Progress Bar */}
       <ProgressContainer show={isLoading}>
         <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 600 }}>
-          Research i gang...
+          Søger efter kilder…
         </h3>
         <ProgressBarWrapper>
           <ProgressBarFill percent={progressPercent}>
@@ -1080,9 +1082,9 @@ const ResearchPage = () => {
         {results && (
           <>
             <ResultsHeader>
-              <h2>Research Resultater: "{results.query}"</h2>
+              <h2>Kilder til "{results.query}"</h2>
               <div className="summary">
-                {results.summary}
+                <SourceText value={results.summary} />
               </div>
               {results.focus_areas && results.focus_areas.length > 0 && (
                 <div className="meta">
@@ -1093,22 +1095,21 @@ const ResearchPage = () => {
               )}
             </ResultsHeader>
 
+            {Array.isArray(results.warnings) && results.warnings.length > 0 && <aside aria-label="Forbehold for kildesøgningen"><h3>Forbehold</h3><ul>{results.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></aside>}
+            <section aria-label="Fundne kilder"><h3>Fundne kilder ({results.sources?.length || 0})</h3><p>Søgeresultaterne kræver faglig kontrol. Åbn originalkilden for at kontrollere indhold, dato og relevans.</p>
+              {results.sources?.length ? <CitationList>{results.sources.map((source, index) => <li key={source.url || index}>{sourceUrl(source.url) ? <a href={sourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title || source.url}</a> : <strong>{source.title || 'Kilde uden gyldigt link'}</strong>}{source.snippet && <SourceText value={source.snippet} />}</li>)}</CitationList> : <p>Der blev ikke fundet dokumenterede kilder til søgningen. Det betyder ikke, at emnet er afklaret.</p>}
+            </section>
+
             {results.llm_answer && (
               <AnswerCard>
                 <h3>
-                  <FaBookOpen /> AI-Genereret Svar
+                  <FaBookOpen /> AI-udkast
                 </h3>
+                <p>Udarbejdet med {modelLabel(results.model)} · kræver faglig kontrol.</p>
 
                 <div className="answer-content">
-                  {results.llm_answer}
+                  <SourceText value={results.llm_answer} />
                 </div>
-
-                {results.llm_answer_confidence && (
-                  <div className="confidence-badge">
-                    <FaCheckCircle />
-                    Confidence: {Math.round(results.llm_answer_confidence * 100)}%
-                  </div>
-                )}
 
                 {results.llm_answer_key_points && results.llm_answer_key_points.length > 0 && (
                   <div className="key-points">
@@ -1126,7 +1127,7 @@ const ResearchPage = () => {
                     {results.llm_answer_citations.map((citation, index) => (
                       <li key={`answer-citation-${index}`}>
                         <a
-                          href={citation.url}
+                          href={sourceUrl(citation.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1144,12 +1145,6 @@ const ResearchPage = () => {
                               <FaTag size={10} />
                               {citation.relevance}
                             </span>
-                            {citation.confidence && (
-                              <span>
-                                <FaCheckCircle size={10} />
-                                {Math.round(citation.confidence * 100)}% relevant
-                              </span>
-                            )}
                           </div>
                         )}
                       </li>
@@ -1180,13 +1175,13 @@ const ResearchPage = () => {
 
                 <SystemStat>
                   <div className="stat-label">
-                    <FaLink /> Citationer
+                    <FaLink /> Henvisninger i AI-svaret
                   </div>
                   <div className="stat-value">
-                    {results.citations?.length || 0}
+                    {results.llm_answer_citations?.length || 0}
                   </div>
                   <div className="stat-detail">
-                    Referencer brugt
+                    Henvisninger angivet af modellen
                   </div>
                 </SystemStat>
 
@@ -1198,7 +1193,7 @@ const ResearchPage = () => {
                     {results.sources?.filter(s => s.authority).length || 0}
                   </div>
                   <div className="stat-detail">
-                    Verificerede domæner
+                    Kilder med registreret afsender
                   </div>
                 </SystemStat>
 
@@ -1264,7 +1259,7 @@ const ResearchPage = () => {
                             {sources.map((source, idx) => (
                               <div key={`${engineName}-${idx}`} className="source-item">
                                 <a
-                                  href={source.url}
+                                  href={sourceUrl(source.url)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="source-link"
@@ -1316,21 +1311,17 @@ const ResearchPage = () => {
                 <CitationsHeader>
                   <h3>
                     <FaQuoteLeft />
-                    Citationer ({results.citations.length})
+                    Tekstuddrag fra kilder ({results.citations.length})
                   </h3>
                 </CitationsHeader>
                 <CitationsList>
                   {results.citations.map((citation, index) => (
                     <CitationItem
                       key={index}
-                      confidence={citation.confidence}
                     >
                       <div className="quote">"{citation.text}"</div>
                       <div className="citation-source">
                         — {citation.source.title} ({citation.source.authority || citation.source.domain})
-                        <span className="confidence">
-                          {Math.round(citation.confidence * 100)}% sikkerhed
-                        </span>
                       </div>
                     </CitationItem>
                   ))}

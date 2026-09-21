@@ -5,15 +5,9 @@ import {
   FaCog,
   FaPalette,
   FaBell,
-  FaChartBar,
-  FaSearch,
-  FaDesktop,
-  FaShieldAlt,
-  FaUniversalAccess,
   FaDownload,
   FaUpload,
   FaRedo,
-  FaSave,
   FaCheck,
   FaTimes,
   FaToggleOn,
@@ -47,20 +41,19 @@ const PageHeader = styled.div`
 
 const SettingsGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2rem;
 
   @media (min-width: 1024px) {
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 300px minmax(0, 1fr);
   }
 `;
 
 const SettingsNav = styled.nav`
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(20px);
+  background: ${props => props.theme.colors.surface};
   border-radius: ${props => props.theme.borderRadiusLarge};
   padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid ${props => props.theme.colors.line};
   box-shadow: ${props => props.theme.shadows.glass};
   height: fit-content;
   position: sticky;
@@ -93,12 +86,15 @@ const NavItem = styled.button`
 `;
 
 const SettingsContent = styled.div`
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
+  min-width: 0;
+  background: ${props => props.theme.colors.surface};
+  color: ${props => props.theme.colors.ink};
   border-radius: ${props => props.theme.borderRadiusLarge};
   padding: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid ${props => props.theme.colors.line};
   box-shadow: ${props => props.theme.shadows.glass};
+
+  @media (max-width: 560px) { padding: 1rem; }
 `;
 
 const SectionTitle = styled.h2`
@@ -121,6 +117,8 @@ const SettingRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   padding: 1rem;
   background: ${props => props.theme.colors.gray[50]};
   border-radius: ${props => props.theme.borderRadius};
@@ -133,6 +131,8 @@ const SettingRow = styled.div`
 
 const SettingInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 
   h4 {
     margin: 0 0 0.25rem 0;
@@ -168,7 +168,8 @@ const Select = styled.select`
   padding: 0.5rem;
   border: 1px solid ${props => props.theme.colors.gray[300]};
   border-radius: ${props => props.theme.borderRadius};
-  background: white;
+  background: ${props => props.theme.colors.inputBackground};
+  color: ${props => props.theme.colors.ink};
   font-size: 0.875rem;
   min-width: 120px;
 
@@ -180,6 +181,7 @@ const Select = styled.select`
 
 const ButtonGroup = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-top: 2rem;
   padding-top: 2rem;
@@ -246,12 +248,12 @@ const SaveStatus = styled(motion.div)`
   font-weight: 500;
 
   &.success {
-    background: ${props => props.theme.colors.successLight};
+    background: ${props => props.theme.colors.successSoft};
     color: ${props => props.theme.colors.success};
   }
 
   &.error {
-    background: ${props => props.theme.colors.dangerLight};
+    background: ${props => props.theme.colors.dangerSoft};
     color: ${props => props.theme.colors.danger};
   }
 `;
@@ -274,12 +276,7 @@ const SettingsPage = () => {
 
   const sections = [
     { id: 'appearance', label: 'Udseende', icon: FaPalette },
-    { id: 'notifications', label: 'Notifikationer', icon: FaBell },
-    { id: 'dashboard', label: 'Dashboard', icon: FaChartBar },
-    { id: 'search', label: 'Søgning', icon: FaSearch },
-    { id: 'display', label: 'Display', icon: FaDesktop },
-    { id: 'privacy', label: 'Privatliv', icon: FaShieldAlt },
-    { id: 'accessibility', label: 'Tilgængelighed', icon: FaUniversalAccess }
+    { id: 'notifications', label: 'Notifikationsønsker', icon: FaBell },
   ];
 
   const handleUpdatePreference = async (path, value) => {
@@ -321,42 +318,38 @@ const SettingsPage = () => {
 
   const renderAppearanceSettings = () => (
     <SettingGroup>
-      <SectionTitle><FaPalette /> Udseende</SectionTitle>
+      <SectionTitle id="settings-section-title"><FaPalette /> Udseende</SectionTitle>
 
       <SettingRow>
         <SettingInfo>
-          <h4>Tema</h4>
+          <h4><label htmlFor="settings-theme">Tema</label></h4>
           <p>Vælg lyst eller mørkt tema for applikationen</p>
         </SettingInfo>
         <Select
-          value={preferences.theme}
+          id="settings-theme"
+          value={preferences.theme === 'dark' ? 'dark' : 'light'}
+          disabled={saving}
           onChange={(e) => handleUpdatePreference('theme', e.target.value)}
         >
           <option value="light">Lyst</option>
           <option value="dark">Mørkt</option>
-          <option value="auto">Automatisk</option>
         </Select>
       </SettingRow>
 
       <SettingRow>
         <SettingInfo>
           <h4>Sprog</h4>
-          <p>Vælg sproget for brugergrænsefladen</p>
+          <p>Brugergrænsefladen er på dansk. Andre sprog er ikke tilgængelige endnu.</p>
         </SettingInfo>
-        <Select
-          value={preferences.language}
-          onChange={(e) => handleUpdatePreference('language', e.target.value)}
-        >
-          <option value="da">Dansk</option>
-          <option value="en">English</option>
-        </Select>
+        <span>Dansk</span>
       </SettingRow>
     </SettingGroup>
   );
 
   const renderNotificationSettings = () => (
     <SettingGroup>
-      <SectionTitle><FaBell /> Notifikationer</SectionTitle>
+      <SectionTitle id="settings-section-title"><FaBell /> Notifikationsønsker</SectionTitle>
+      <p>Ønskerne gemmes kun i denne browser. De aktiverer endnu ikke udsendelse af e-mail, browser- eller desktopnotifikationer.</p>
 
       {Object.entries(preferences.notifications).map(([key, value]) => (
         <SettingRow key={key}>
@@ -366,6 +359,11 @@ const SettingsPage = () => {
           </SettingInfo>
           <Toggle
             active={value}
+            type="button"
+            role="switch"
+            aria-label={getNotificationLabel(key)}
+            aria-checked={Boolean(value)}
+            disabled={saving}
             onClick={() => handleUpdatePreference(`notifications.${key}`, !value)}
           >
             {value ? <FaToggleOn /> : <FaToggleOff />}
@@ -377,11 +375,11 @@ const SettingsPage = () => {
 
   const getNotificationLabel = (key) => {
     const labels = {
-      browser: 'Browser notifikationer',
-      email: 'Email notifikationer',
-      desktop: 'Desktop notifikationer',
+      browser: 'Browsernotifikationer',
+      email: 'E-mailnotifikationer',
+      desktop: 'Desktopnotifikationer',
       newsUpdates: 'Nyhedsopdateringer',
-      complianceAlerts: 'Compliance alerts',
+      complianceAlerts: 'Beskeder om krav og vurderinger',
       systemUpdates: 'Systemopdateringer'
     };
     return labels[key] || key;
@@ -389,12 +387,12 @@ const SettingsPage = () => {
 
   const getNotificationDescription = (key) => {
     const descriptions = {
-      browser: 'Modtag notifikationer i browseren',
-      email: 'Modtag notifikationer via email',
-      desktop: 'Vis desktop notifikationer',
-      newsUpdates: 'Få besked om nye nyheder',
-      complianceAlerts: 'Få besked om vigtige compliance opdateringer',
-      systemUpdates: 'Få besked om system vedligeholdelse'
+      browser: 'Ønske om beskeder i browseren',
+      email: 'Ønske om beskeder via e-mail',
+      desktop: 'Ønske om beskeder på computeren',
+      newsUpdates: 'Ønske om beskeder ved nyheder',
+      complianceAlerts: 'Ønske om beskeder om ændrede krav og vurderinger',
+      systemUpdates: 'Ønske om beskeder ved vedligeholdelse'
     };
     return descriptions[key] || '';
   };
@@ -426,17 +424,20 @@ const SettingsPage = () => {
       <PageHeader>
         <h1><FaCog /> Indstillinger</h1>
         <p>Tilpas din oplevelse af S.H.I.E.L.D.</p>
+        <p>Ændringer gemmes automatisk i denne browser. De ændrer ikke sager, godkendelser eller organisationens fælles indstillinger.</p>
         {canStartTutorial && <Button className="secondary" type="button" disabled={savingTutorial} onClick={restartTutorial}>Start introduktionsguide igen</Button>}
       </PageHeader>
 
       <SettingsGrid>
-        <SettingsNav>
+        <SettingsNav aria-label="Indstillingsområder">
           {sections.map(section => {
             const IconComponent = section.icon;
             return (
               <NavItem
                 key={section.id}
                 active={activeSection === section.id}
+                type="button"
+                aria-pressed={activeSection === section.id}
                 onClick={() => setActiveSection(section.id)}
               >
                 <IconComponent />
@@ -446,18 +447,10 @@ const SettingsPage = () => {
           })}
         </SettingsNav>
 
-        <SettingsContent>
+        <SettingsContent aria-labelledby="settings-section-title">
           {renderContent()}
 
           <ButtonGroup>
-            <Button
-              className="primary"
-              disabled={saving}
-            >
-              <FaSave />
-              {saving ? 'Gemmer...' : 'Gem ændringer'}
-            </Button>
-
             <Button
               className="secondary"
               onClick={exportPreferences}
@@ -485,6 +478,7 @@ const SettingsPage = () => {
 
           {saveStatus && (
             <SaveStatus
+              role="status"
               className={saveStatus.type}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

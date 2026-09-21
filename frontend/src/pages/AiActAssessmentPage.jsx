@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useMutation } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import AssessmentCaseSelect from '../components/workflow/AssessmentCaseSelect';
 import {
   Button,
   Card,
@@ -101,10 +102,11 @@ const StepNav = styled.ol`
 
 const StepItem = styled.li`
   min-height: 96px;
-  padding: 18px;
   border-right: 1px solid ${(p) => p.theme.colors.line};
   border-bottom: 3px solid ${(p) => (p.$active ? p.theme.colors.primary : p.theme.colors.line)};
   background: ${(p) => (p.$active ? p.theme.colors.primaryShallow : p.theme.colors.surface)};
+  button { padding: 18px; width: 100%; min-height: inherit; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  button:focus-visible { outline: 3px solid ${(p) => p.theme.colors.primary}; outline-offset: -4px; }
 
   span { display: block; color: ${(p) => p.theme.colors.inkFaded}; font: 0.66rem ${(p) => p.theme.fonts.mono}; }
   strong { display: block; margin-top: 9px; color: ${(p) => p.theme.colors.ink}; font-size: 0.82rem; }
@@ -246,7 +248,7 @@ function ContextStep({ form, setField, toggle }) {
         <legend>Systemets identitet</legend>
         <Grid $columns={2}>
           <Field><label htmlFor="ai-system-name">Systemnavn</label><input id="ai-system-name" value={form.system_name} onChange={(event) => setField('system_name', event.target.value)} required /></Field>
-          <Field><label htmlFor="ai-case-id">Sags-ID</label><input id="ai-case-id" value={form.case_id} onChange={(event) => setField('case_id', event.target.value)} required /></Field>
+          <AssessmentCaseSelect id="ai-case-id" value={form.case_id} onChange={value => setField('case_id', value)} />
         </Grid>
         <Field><label htmlFor="ai-purpose">Tilsigtet formål</label><textarea id="ai-purpose" value={form.intended_purpose} onChange={(event) => setField('intended_purpose', event.target.value)} placeholder="Beskriv den opgave systemet løser, for hvem og med hvilken virkning…" required /></Field>
         <Field><label htmlFor="ai-context">Anvendelseskontekst</label><textarea id="ai-context" value={form.deployment_context} onChange={(event) => setField('deployment_context', event.target.value)} placeholder="Fx borgerservice, socialområdet, HR eller intern administration…" required /></Field>
@@ -425,32 +427,41 @@ function itemDescription(item) {
   return item?.description || item?.summary || item?.reason || item?.explanation || '';
 }
 
+export function validateAiActForm(form) {
+  const errors = [];
+  if (form.case_id.trim().length < 2) errors.push('Vælg en eksisterende sag eller angiv dens sagsreference.');
+  if (form.system_name.trim().length < 2) errors.push('Angiv systemnavn med mindst 2 tegn.');
+  if (form.intended_purpose.trim().length < 20) errors.push('Beskriv det tilsigtede formål med mindst 20 tegn.');
+  if (form.deployment_context.trim().length < 20) errors.push('Beskriv anvendelseskonteksten med mindst 20 tegn.');
+  if (form.is_ai_system === null) errors.push('Tag stilling til, om løsningen er et AI-system.');
+  if (form.is_ai_system && !form.declared_roles.length) errors.push('Vælg mindst én rolle for kommunen.');
+  return errors;
+}
+
 function AiActAssessmentPage() {
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(() => initialForm(searchParams.get('case_id') || ''));
   const mutation = useMutation(assessAiAct);
+  const [validationErrors, setValidationErrors] = useState([]);
 
   const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const toggle = (field, value) => setForm((current) => toggleList(current, field, value));
-  const canContinue = useMemo(() => {
-    if (step === 0) return form.case_id.trim().length >= 2 && form.system_name.trim().length >= 2 && form.intended_purpose.trim().length >= 20 && form.deployment_context.trim().length >= 20 && form.is_ai_system !== null && (!form.is_ai_system || form.declared_roles.length > 0);
-    return true;
-  }, [form.case_id, form.declared_roles.length, form.deployment_context, form.intended_purpose, form.is_ai_system, form.system_name, step]);
+  const goToStep = next => { setStep(next); setValidationErrors([]); };
 
   const submit = (event) => {
     event.preventDefault();
-    if (step < STEPS.length - 1) {
-      setStep((current) => current + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
+    if (step < STEPS.length - 1) { goToStep(step + 1); return; }
+    const errors = validateAiActForm(form);
+    if (errors.length) { setStep(0); setValidationErrors(errors); return; }
+    setValidationErrors([]);
     mutation.mutate(form);
   };
 
   const reset = () => {
     mutation.reset();
     setStep(0);
+    setValidationErrors([]);
     setForm(initialForm(searchParams.get('case_id') || ''));
   };
 
@@ -459,15 +470,16 @@ function AiActAssessmentPage() {
   return (
     <Page>
       <PageHeader>
-        <div><Eyebrow>S.H.I.E.L.D. · AI-forordningen</Eyebrow><Title>AI Act-vurdering</Title><Lede>Fastlæg først rolle, dernæst forbud, risikoklasse og konkrete transparenspligter. Resultatet viser både konklusionen og hvorfor.</Lede></div>
+        <div><Eyebrow>S.H.I.E.L.D. · AI-forordningen</Eyebrow><Title>AI Act-vurdering på en sag</Title><Lede>Fastlæg først rolle, dernæst forbud, risikoklasse og konkrete transparenspligter. Resultatet gemmes på den valgte sag og viser både konklusionen og hvorfor.</Lede></div>
       </PageHeader>
 
       <StepNav aria-label="Vurderingens trin">
-        {STEPS.map((item, index) => <StepItem key={item.id} $active={index === step} aria-current={index === step ? 'step' : undefined}><span>Trin {index + 1} af {STEPS.length}</span><strong>{item.label}</strong></StepItem>)}
+        {STEPS.map((item, index) => <StepItem key={item.id} $active={index === step}><button type="button" disabled={mutation.isLoading} aria-current={index === step ? 'step' : undefined} onClick={() => goToStep(index)}><span>Trin {index + 1} af {STEPS.length}</span><strong>{item.label}</strong></button></StepItem>)}
       </StepNav>
 
-      <Form onSubmit={submit}>
-        <FormIntro><h2>{STEPS[step].label}</h2><p>{STEPS[step].description}</p></FormIntro>
+      <Form onSubmit={submit} noValidate>
+        <FormIntro><h2>{STEPS[step].label}</h2><p>{STEPS[step].description}</p><p>Du kan frit se alle trin. Oplysningerne kontrolleres, når du vælger at udarbejde vurderingen.</p></FormIntro>
+        {validationErrors.length > 0 && <ErrorPanel role="alert"><strong>Vurderingen kan ikke udarbejdes endnu</strong><ul>{validationErrors.map(error => <li key={error}>{error}</li>)}</ul></ErrorPanel>}
         {step === 0 ? <ContextStep form={form} setField={setField} toggle={toggle} /> : null}
         {step === 1 ? <ProhibitedStep form={form} setField={setField} toggle={toggle} /> : null}
         {step === 2 ? <RiskStep form={form} setField={setField} toggle={toggle} /> : null}
@@ -476,9 +488,9 @@ function AiActAssessmentPage() {
         {mutation.isError ? <ErrorPanel role="alert"><strong>Vurderingen kunne ikke gennemføres</strong><p>{String(mutation.error?.response?.data?.detail || mutation.error?.message || 'Ukendt fejl')}</p></ErrorPanel> : null}
 
         <FormActions>
-          <SecondaryButton type="button" onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0 || mutation.isLoading}>Tilbage</SecondaryButton>
+          <SecondaryButton type="button" onClick={() => goToStep(Math.max(0, step - 1))} disabled={step === 0 || mutation.isLoading}>Tilbage</SecondaryButton>
           <div>
-            <Button type="submit" disabled={!canContinue || mutation.isLoading}>{mutation.isLoading ? 'Vurderer…' : step === STEPS.length - 1 ? 'Vis rolle, risiko og pligter' : 'Næste'}</Button>
+            {step === STEPS.length - 1 ? <Button type="submit" disabled={mutation.isLoading}>{mutation.isLoading ? 'Vurderer…' : 'Vis rolle, risiko og pligter'}</Button> : <Button type="button" disabled={mutation.isLoading} onClick={() => goToStep(step + 1)}>Næste</Button>}
           </div>
         </FormActions>
       </Form>

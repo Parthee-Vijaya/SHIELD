@@ -298,6 +298,10 @@ const EuAiActCheckerPage = () => {
       try {
         const r = await axios.get('/api/eu-ai-act-checker?lang=en');
         if (cancelled) return;
+        if (!r.data?.ready) {
+          setError('Vejviserens spørgsmål er ikke tilgængelige på serveren. Prøv senere, eller kontakt den driftsansvarlige.');
+          return;
+        }
         setPayload(r.data);
       } catch (err) {
         setError(err.message || 'Kunne ikke hente checker-data');
@@ -404,10 +408,10 @@ const EuAiActCheckerPage = () => {
       <PageShell>
         <PageHeader
           eyebrow="S.H.I.E.L.D. · EU compliance checker"
-          title="EU AI Act Compliance Checker"
-          lede="EC's officielle wizard kunne ikke hentes."
+          title="EU AI Act-vejviser (engelsk)"
+          lede="Vejviseren kunne ikke hentes. Der er ikke foretaget en vurdering."
         />
-        <div style={{ color: '#a02020', fontFamily: 'monospace' }}>Fejl: {error}</div>
+        <p role="alert">{error}</p>
       </PageShell>
     );
   }
@@ -417,11 +421,11 @@ const EuAiActCheckerPage = () => {
       <PageShell>
         <PageHeader
           eyebrow="S.H.I.E.L.D. · EU compliance checker"
-          title="EU AI Act Compliance Checker"
-          lede="Henter checker-data fra EC…"
+          title="EU AI Act-vejviser (engelsk)"
+          lede="Henter den gemte udgave af Europa-Kommissionens vejviser…"
         />
         <div style={{ fontFamily: 'monospace', opacity: 0.6 }}>
-          Henter logic.json + content_en.json…
+          Henter spørgsmål…
         </div>
       </PageShell>
     );
@@ -433,13 +437,13 @@ const EuAiActCheckerPage = () => {
     <PageShell>
       <PageHeader
         eyebrow="S.H.I.E.L.D. · EU compliance checker"
-        title="EU AI Act Compliance Checker"
-        lede="Officiel beslutningsstøtte fra Europa-Kommissionen. 33 spørgsmål der kortlægger om dit AI-system falder under AI Act, og hvilke obligationer der gælder. Cached lokalt fra ai-act-service-desk.ec.europa.eu og opdateres ugentligt."
+        title="EU AI Act-vejviser (engelsk)"
+        lede="En engelsk vejviser baseret på Europa-Kommissionens spørgsmål om AI-forordningen. Den hjælper med at afklare mulige krav; den giver ikke en godkendelse. Svarene bevares, mens du skifter mellem AI Act-fanerne, men nulstilles, når du forlader arbejdsområdet eller genindlæser. De gemmes ikke på en sag."
       />
 
       <Toolbar>
         <span>
-          EC last update: <VersionBadge>{meta.last_update_date || '?'}</VersionBadge>{' '}
+          Kildens opdateringsdato: <VersionBadge>{meta.last_update_date || '?'}</VersionBadge>{' '}
           synkroniseret {meta.fetched_at ? new Date(meta.fetched_at).toLocaleString('da-DK') : '—'}
         </span>
         {history.length > 0 && (

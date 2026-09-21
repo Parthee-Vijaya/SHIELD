@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useQuery } from 'react-query';
 import axios from 'axios';
+import { modelLabel } from '../utils/modelPresentation';
 
 // ---- Layout primitives ----------------------------------------------------
 
@@ -289,19 +290,19 @@ const formatNextRun = (iso) => {
 const DriftPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { data: health, isFetching: healthLoading } = useQuery(
+  const { data: health, isFetching: healthLoading, isError: healthError } = useQuery(
     ['ops-health', refreshKey],
     () => axios.get('/health').then((r) => r.data),
     { refetchInterval: 30_000, staleTime: 25_000 },
   );
 
-  const { data: ops, isFetching: opsLoading } = useQuery(
+  const { data: ops, isFetching: opsLoading, isError: opsError } = useQuery(
     ['ops-summary', refreshKey],
     () => axios.get('/api/v3/admin/ops-summary').then((r) => r.data),
     { refetchInterval: 30_000, staleTime: 25_000 },
   );
 
-  const { data: errorsResp } = useQuery(
+  const { data: errorsResp, isError: errorsError } = useQuery(
     ['ops-errors', refreshKey],
     () => axios.get('/api/v3/admin/errors?limit=10').then((r) => r.data),
     { refetchInterval: 30_000, staleTime: 25_000 },
@@ -321,7 +322,7 @@ const DriftPage = () => {
   return (
     <Page>
       <Eyebrow>S.H.I.E.L.D. · drift</Eyebrow>
-      <Title>Driftoverblik</Title>
+      <Title>Driftsstatus</Title>
       <Lede>
         Status på tværs af services, planlagte jobs og seneste fejl. Opdateres automatisk
         hvert 30. sekund. Bruges til hurtig morgentjek — tjek banneret nedenfor og
@@ -352,6 +353,7 @@ const DriftPage = () => {
         </button>
       </Meta>
 
+      {(healthError || opsError || errorsError) && <p role="alert">Driftsoplysningerne kunne ikke hentes fuldt. Kontrollér forbindelsen og din adgang. Manglende oplysninger er ikke en bekræftelse på fejlfri drift.</p>}
       <Grid>
         <StatCard $tone={overallTone}>
           <div className="label">Sager (24h / total)</div>
@@ -363,7 +365,7 @@ const DriftPage = () => {
         <StatCard $tone="success">
           <div className="label">Vurderinger (24h)</div>
           <div className="value">{ops?.assessments_24h ?? '—'}</div>
-          <div className="delta">{ops?.assessments_total ?? 0} i alt</div>
+          <div className="delta">{ops?.assessments_total ?? '—'} i alt</div>
         </StatCard>
         <StatCard $tone={ops?.freshness?.flagged > 0 ? 'warn' : 'success'}>
           <div className="label">Citat-friskhed</div>
@@ -371,13 +373,13 @@ const DriftPage = () => {
             {ops?.freshness?.ok ?? '—'} / {ops?.freshness?.total ?? '—'}
           </div>
           <div className="delta">
-            {ops?.freshness?.flagged ?? 0} flagget · sidst {formatRelative(ops?.freshness?.last_checked_at)}
+            {ops?.freshness?.flagged ?? '—'} flagget · sidst {formatRelative(ops?.freshness?.last_checked_at)}
           </div>
         </StatCard>
         <StatCard $tone={ops?.errors?.last_24h_count > 0 ? 'danger' : 'success'}>
           <div className="label">Fejl seneste 24h</div>
-          <div className="value">{ops?.errors?.last_24h_count ?? 0}</div>
-          <div className="delta">{ops?.errors?.buffer_size ?? 0} i alt i bufferen</div>
+          <div className="value">{ops?.errors?.last_24h_count ?? '—'}</div>
+          <div className="delta">{ops?.errors?.buffer_size ?? '—'} i alt i bufferen</div>
         </StatCard>
         <StatCard>
           <div className="label">Disk: data-mappe</div>
@@ -394,7 +396,7 @@ const DriftPage = () => {
           <div className="value">
             {ops?.backups?.latest
               ? formatRelative(ops.backups.latest.timestamp)
-              : 'Aldrig'}
+              : ops ? 'Ingen registreret' : 'Ikke tilgængelig'}
           </div>
           <div className="delta">
             {ops?.backups?.latest
@@ -419,6 +421,11 @@ const DriftPage = () => {
         </StatCard>
       </Grid>
 
+      {health?.ai?.model && <section aria-label="AI-forbindelse">
+        <SectionH>AI-forbindelse</SectionH>
+        <p><strong>{modelLabel(health.ai.model)}</strong>{health.ai.connection === 'local_temporary' ? ' · midlertidig lokal AI-forbindelse' : ''}</p>
+        <p>{health.ai.status === 'configured' ? 'Aktiveret; modelkald kontrolleres ved brug. Denne status er ikke en gennemført svartest.' : 'Forbindelsens status skal kontrolleres. En registreret model er ikke i sig selv en gennemført svartest.'}</p>
+      </section>}
       <SectionH>Services</SectionH>
       <ServicesTable>
         {services.map((s) => (
@@ -463,8 +470,10 @@ const DriftPage = () => {
       </ServicesTable>
 
       <SectionH>Seneste fejl</SectionH>
-      {errors.length === 0 ? (
-        <Empty>Ingen fejl i bufferen — alt er stille.</Empty>
+      {errorsError || !errorsResp ? (
+        <Empty>Fejlloggen er ikke tilgængelig.</Empty>
+      ) : errors.length === 0 ? (
+        <Empty>Ingen fejl er registreret i den hentede log.</Empty>
       ) : (
         errors.map((e, idx) => (
           <ErrorRow key={idx}>

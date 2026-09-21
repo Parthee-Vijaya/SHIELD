@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import PageErrorBoundary from './components/PageErrorBoundary';
 import PortalFooter from './components/PortalFooter';
 import PortalHeader from './components/PortalHeader';
+import ToolWorkspace from './components/ToolWorkspace';
 import PrivacyNotice from './components/PrivacyNotice';
 import { SectionLoader } from './components/LoadingSpinner';
 
@@ -309,9 +310,6 @@ const AppInner = () => {
                   {/* Drift-dashboard — observability + ops (Modul 4) */}
                   <Route path="/drift" element={<DriftPage />} />
 
-                  {/* EU AI Act Compliance Checker — wizard fra europa.eu */}
-                  <Route path="/eu-checker" element={<EuAiActCheckerPage />} />
-
                   {/* Primary assessment page (replaces Hurtig Tjek + Compliance Control) */}
                   <Route path="/vurdering" element={<ProtectedPage><VurderingPage /></ProtectedPage>} />
                   <Route path="/anskaffelse" element={<ProtectedPage><ProcurementPage /></ProtectedPage>} />
@@ -331,7 +329,13 @@ const AppInner = () => {
                   <Route path="/sager/:caseId" element={<ProtectedPage><CaseWorkspacePage /></ProtectedPage>} />
 
                   {/* Sammenhængende vurderingsspor, som gemmes på den valgte sag. */}
-                  <Route path="/ai-act-vurdering" element={<ProtectedPage><AiActAssessmentPage /></ProtectedPage>} />
+                  <Route element={<ToolWorkspace title="AI Act" views={[
+                    { path: '/ai-act-vurdering', label: 'Vurdering på en sag', element: <ProtectedPage><AiActAssessmentPage /></ProtectedPage> },
+                    { path: '/eu-checker', label: 'Supplerende EU-vejviser (engelsk)', element: <EuAiActCheckerPage /> },
+                  ]} />}>
+                    <Route path="/ai-act-vurdering" element={<></>} />
+                    <Route path="/eu-checker" element={<></>} />
+                  </Route>
                   <Route path="/grundrettigheder" element={<ProtectedPage><FriaAssessmentPage /></ProtectedPage>} />
                   <Route path="/dokumentbank" element={<ProtectedPage><DocumentBankPage /></ProtectedPage>} />
 
@@ -345,11 +349,21 @@ const AppInner = () => {
                   <Route path="/dashboard" element={<Navigate to="/" replace />} />
                   <Route path="/ai-sager" element={<Navigate to="/sager" replace />} />
 
-                  <Route path="/videnbase" element={<KnowledgeBasePage />} />
+                  <Route element={<ToolWorkspace title="Viden og vejledning" views={[
+                    { path: '/videnbase', label: 'Begreber', element: <KnowledgeBasePage /> },
+                    { path: '/ressourcer', label: 'Vejledninger og rapporter', element: <ResourcesPage /> },
+                  ]} />}>
+                    <Route path="/videnbase" element={<></>} />
+                    <Route path="/ressourcer" element={<></>} />
+                  </Route>
                   <Route path="/ai-losninger" element={<AIProjectsPage />} />
-                  <Route path="/research" element={<ResearchPage />} />
-                  <Route path="/lov-assistent" element={<LawAssistantPage />} />
-                  <Route path="/ressourcer" element={<ResourcesPage />} />
+                  <Route element={<ToolWorkspace title="Juridisk arbejdsrum" views={[
+                    { path: '/research', label: 'Find kilder', element: <ResearchPage /> },
+                    { path: '/lov-assistent', label: 'Spørg til lovgivning', element: <LawAssistantPage /> },
+                  ]} />}>
+                    <Route path="/research" element={<></>} />
+                    <Route path="/lov-assistent" element={<></>} />
+                  </Route>
                   <Route path="/indstillinger" element={<SettingsPage />} />
                 </Routes>
               </Suspense>

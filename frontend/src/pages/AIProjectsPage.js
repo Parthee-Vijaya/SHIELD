@@ -324,6 +324,7 @@ const AIProjectsPage = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [projects, setProjects] = useState(bundledProjectsFallback);
   const [fetchedAt, setFetchedAt] = useState(null);
+  const [isLocalCopy, setIsLocalCopy] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
@@ -338,6 +339,7 @@ const AIProjectsPage = () => {
         const items = r.data?.items || [];
         if (items.length > 0) {
           setProjects(items);
+          setIsLocalCopy(false);
           setFetchedAt(r.data?.fetched_at || null);
         }
       } catch (err) {
@@ -385,6 +387,7 @@ const AIProjectsPage = () => {
       if (r.data?.cache_updated) {
         const list = await axios.get('/api/ai-projects');
         setProjects(list.data?.items || []);
+        setIsLocalCopy(false);
         setFetchedAt(list.data?.fetched_at || null);
       } else if (r.data?.error) {
         setError(r.data.error);
@@ -411,8 +414,8 @@ const AIProjectsPage = () => {
     <PageShell>
       <PageHeader
         eyebrow="S.H.I.E.L.D. · ai-løsninger"
-        title="AI-løsninger i det offentlige"
-        lede="Udforsk danske offentlige AI-projekter — find inspiration, lær af andres erfaringer, og se hvilke løsninger der allerede er i drift på tværs af kommuner og styrelser."
+        title="Inspiration til AI-løsninger"
+        lede="Et inspirationskatalog fra offentlig-ai.dk med offentlige AI-projekter. Oplysningerne er ikke SHIELD-vurderinger eller godkendelser. Kontrollér aktuelle forhold hos kilden, før de bruges i en anskaffelse."
       />
 
       <Toolbar>
@@ -494,13 +497,13 @@ const AIProjectsPage = () => {
 
       <ResultsCount style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem' }}>
         <span>Viser {filteredProjects.length} af {projects.length} projekter</span>
-        {fetchedAt ? (
+        {!isLocalCopy ? (
           <span style={{ fontFamily: 'monospace', fontSize: '0.74rem', opacity: 0.7 }}>
-            Synkroniseret {formatRelative(fetchedAt)} · offentlig-ai.dk
+            {fetchedAt ? `Hentet ${formatRelative(fetchedAt)}` : 'Hentetidspunkt ikke registreret'} · offentlig-ai.dk
           </span>
         ) : (
           <span style={{ fontFamily: 'monospace', fontSize: '0.74rem', opacity: 0.7 }}>
-            Bundlet fallback (12 projekter) — klik "Opdatér fra kilde" for fuld liste
+            Viser en lokal kopi ({projects.length} projekter). Oplysningerne kan være forældede; opdatér fra kilden.
           </span>
         )}
       </ResultsCount>
@@ -516,7 +519,7 @@ const AIProjectsPage = () => {
           fontFamily: 'monospace',
           fontSize: '0.84rem',
         }}>
-          Refresh fejlede: {error}
+          Opdateringen mislykkedes: {error}
         </div>
       )}
 

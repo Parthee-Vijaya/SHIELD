@@ -13,6 +13,8 @@ import {
   FaBook
 } from 'react-icons/fa';
 import axios from 'axios';
+import { modelLabel } from '../utils/modelPresentation';
+import { lawSourceText } from '../utils/lawSourcePresentation';
 import {
   PageShell,
   PageHeader,
@@ -138,28 +140,6 @@ const AnswerText = styled.div`
   @keyframes blink {
     50% { opacity: 0; }
   }
-`;
-
-const ConfidenceBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: transparent;
-  border: 1px solid;
-  ${({ confidence, theme }) => {
-    if (confidence >= 0.8)
-      return `border-color: ${theme.colors.success}; color: ${theme.colors.success};`;
-    if (confidence >= 0.6)
-      return `border-color: ${theme.colors.warning}; color: ${theme.colors.warning};`;
-    return `border-color: ${theme.colors.danger}; color: ${theme.colors.danger};`;
-  }}
 `;
 
 const KeyPointsList = styled.ul`
@@ -319,12 +299,14 @@ const LawAssistantPage = () => {
   const [phase, setPhase] = useState('idle'); // idle | retrieving | streaming | done | error
   const [result, setResult] = useState(null); // {answer, key_points, citations, follow_up_questions, sources, retrieval, provider}
   const [categories, setCategories] = useState([]);
+  const [streamError, setStreamError] = useState('');
   const [expandedSources, setExpandedSources] = useState(new Set());
   const abortRef = useRef(null);
 
   // Load categories on mount
   useEffect(() => {
     loadCategories();
+    return () => abortRef.current?.abort();
   }, []);
 
   const loadCategories = async () => {
@@ -352,6 +334,7 @@ const LawAssistantPage = () => {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    setStreamError('');
     setPhase('retrieving');
     setResult({
       answer: '',
@@ -377,12 +360,14 @@ const LawAssistantPage = () => {
       });
 
       if (!response.ok || !response.body) {
-        throw new Error(`HTTP ${response.status}`);
+        const detail = await response.json().catch(() => null);
+        throw new Error(typeof detail?.detail === 'string' ? detail.detail : `Svartjenesten kunne ikke fuldføre forespørgslen (HTTP ${response.status}).`);
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
+      let completed = false;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -401,24 +386,25 @@ const LawAssistantPage = () => {
             .map((l) => l.slice(6));
           if (!dataLines.length) continue;
           const payload = dataLines.join('\n');
-          try {
-            const event = JSON.parse(payload);
-            handleStreamEvent(event);
-          } catch (err) {
-            console.warn('SSE parse failed:', err, payload);
-          }
+          let event;
+          try { event = JSON.parse(payload); }
+          catch { throw new Error('Svartjenesten returnerede et ugyldigt svar. Prøv igen.'); }
+          if (event.event === 'error') throw new Error(event.message || 'Svartjenesten kunne ikke fuldføre svaret.');
+          if (event.event === 'final') completed = true;
+          handleStreamEvent(event);
         }
       }
 
-      setPhase((p) => (p === 'error' ? p : 'done'));
+      if (!completed) throw new Error('Forbindelsen blev afbrudt, før svaret var færdigt. Prøv igen.');
+      setPhase('done');
     } catch (error) {
       if (error.name === 'AbortError') {
         // Aborted by a new query — silently end
         return;
       }
-      console.error('Law assistant stream error:', error);
+      controller.abort();
       setPhase('error');
-      toast.error('Der opstod en fejl under streaming');
+      setStreamError(error.message || 'Svaret kunne ikke færdiggøres. Prøv igen.');
     }
   };
 
@@ -444,10 +430,8 @@ const LawAssistantPage = () => {
             citations: event.citations || [],
             follow_up_questions: event.follow_up_questions || [],
             provider: event.provider,
+            model: event.model,
           };
-        case 'error':
-          toast.error(event.message || 'Stream-fejl');
-          return prev;
         default:
           return prev;
       }
@@ -482,8 +466,8 @@ const LawAssistantPage = () => {
     <PageShell>
       <PageHeader
         eyebrow="S.H.I.E.L.D. · lov-assistent"
-        title="Lov-assistent"
-        lede="AI-genererede svar på juridiske spørgsmål forankret i 295 danske love. Kilder fremgår altid eksplicit, så du kan verificere mod regelrytter.dk og Retsinformation."
+        title="Spørg til lovgivning"
+        lede="Stil spørgsmål til det indlæste lovindeks, og få et AI-udkast med kilder til faglig kontrol. Et svar er ikke juridisk rådgivning eller en godkendelse og gemmes ikke automatisk på en sag."
       />
 
       {/* Search Card */}
@@ -493,6 +477,7 @@ const LawAssistantPage = () => {
             <FaSearch className="search-icon" />
             <SearchInput
               type="text"
+              aria-label="Juridisk spørgsmål"
               placeholder="Stil et juridisk spørgsmål, fx 'Hvad siger ferieloven om feriepenge?'"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -501,6 +486,7 @@ const LawAssistantPage = () => {
           </SearchInputWrapper>
 
           <CategorySelect
+            aria-label="Lovkategori"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             disabled={isLoading}
@@ -555,8 +541,8 @@ const LawAssistantPage = () => {
             exit={{ opacity: 0, y: -20 }}
           >
             <h3>
-              <FaCheckCircle className="icon" />
-              AI-genereret svar
+              {phase === 'done' && <FaCheckCircle className="icon" />}
+              {phase === 'error' ? 'Svaret kunne ikke færdiggøres' : 'AI-genereret svar'}
               {phase === 'retrieving' && (
                 <span style={{ marginLeft: '0.7rem', fontSize: '0.8rem', fontWeight: 400, opacity: 0.7 }}>
                   · Søger i love…
@@ -580,23 +566,16 @@ const LawAssistantPage = () => {
               }}>
                 {result.retrieval.mode === 'rag' ? 'Semantisk søgning' : 'Keyword-søgning'}
                 {result.retrieval.matched_chunks && ` · ${result.retrieval.matched_chunks} passager → ${result.retrieval.matched_laws} love`}
-                {result.provider && ` · ${result.provider}`}
+                {result.model && ` · ${modelLabel(result.model)}`}
               </div>
             )}
 
-            {phase === 'done' && typeof result.confidence === 'number' && (
-              <ConfidenceBadge confidence={result.confidence}>
-                <FaCheckCircle />
-                {Math.round(result.confidence * 100)}% konfidensgrad
-              </ConfidenceBadge>
-            )}
+            {Array.isArray(result.retrieval?.warnings) && result.retrieval.warnings.length > 0 && <aside aria-label="Forbehold for lovkilderne"><h4>Forbehold for kildegrundlaget</h4><ul>{result.retrieval.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></aside>}
 
-            <AnswerText
-              dangerouslySetInnerHTML={{
-                __html: (result.answer || '').replace(/\n/g, '<br/>') +
-                  (phase === 'streaming' ? '<span class="cursor">▍</span>' : ''),
-              }}
-            />
+            {streamError && <p role="alert">{streamError} Eventuel tekst nedenfor er ufuldstændig og må ikke bruges som et færdigt svar.</p>}
+            <AnswerText style={{ whiteSpace: 'pre-wrap' }}>
+              {result.answer || ''}{phase === 'streaming' && <span className="cursor" aria-hidden="true">▍</span>}
+            </AnswerText>
 
             {result.key_points && result.key_points.length > 0 && (
               <>
@@ -650,6 +629,7 @@ const LawAssistantPage = () => {
               const isExpanded = expandedSources.has(source.slug);
               const lawNumber = source.law_number || source.lawNumber;
               const passages = source.passages || [];
+              const summary = lawSourceText(source.summary);
               return (
                 <SourceItem
                   key={source.slug || sourceIdx}
@@ -677,8 +657,8 @@ const LawAssistantPage = () => {
                           {lawNumber}
                         </div>
                       )}
-                      {source.summary && (
-                        <div className="law-summary">{source.summary}</div>
+                      {summary && (
+                        <div className="law-summary">{summary}</div>
                       )}
                     </div>
                     <div className="expand-icon">
@@ -705,14 +685,14 @@ const LawAssistantPage = () => {
                           }}>
                             Passage #{p.chunk_index} · sim {typeof p.similarity === 'number' ? p.similarity.toFixed(2) : '—'}
                           </div>
-                          <div>{p.text}</div>
+                          <div>{lawSourceText(p.text)}</div>
                         </div>
                       ))}
                     </div>
                   )}
 
                   {isExpanded && passages.length === 0 && source.content && (
-                    <div className="law-content">{source.content}</div>
+                    <div className="law-content">{lawSourceText(source.content)}</div>
                   )}
 
                   {source.url && (

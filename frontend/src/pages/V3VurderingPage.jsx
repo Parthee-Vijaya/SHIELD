@@ -94,7 +94,7 @@ const EXAMPLE_GO = {
     'fordi systemet behandler personoplysninger, men alle forhold er dokumenteret: ' +
     'formål, dataminimering, opbevaringsfrist, sikkerhedsforanstaltninger, gyldigt ' +
     'retsgrundlag og DPIA — så hver regel resolverer til GO-branch (ingen krav). ' +
-    'Aggregat-status bliver GO. Systemet kan idriftsættes uden særlige tiltag.',
+    'Reglerne giver GO på eksemplets forudsætninger. En faktisk idriftsættelse kræver kommunens særskilte faglige godkendelse.',
 };
 
 const EXAMPLE_BETINGET_GO = {
@@ -1236,10 +1236,11 @@ async function postAssess(body) {
   return res.data;
 }
 
-async function postDocumentAnalyze({ file, caseId, note }) {
+async function postDocumentAnalyze({ file, caseId, caseDbId, note }) {
   const fd = new FormData();
   fd.append('file', file);
   if (caseId) fd.append('case_id', caseId);
+  if (caseDbId) fd.append('case_db_id', caseDbId);
   if (note) fd.append('note', note);
   const res = await axios.post('/api/v3/document/analyze', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -1460,6 +1461,7 @@ const V3VurderingPage = () => {
     if (!file) return;
     documentMutation.mutate({
       file,
+      caseDbId: caseDbId || undefined,
       caseId: caseId.trim() || undefined,
       note: note.trim() || `Document analysis: ${file.name}`,
     });
@@ -1557,17 +1559,18 @@ const V3VurderingPage = () => {
     return (
       <Page>
         <Eyebrow>S.H.I.E.L.D. · juridisk screening</Eyebrow>
-        <Title>Vurdering</Title>
+        <Title>Indledende juridisk screening</Title>
         <Lede>
-          Beskriv AI-systemet i fri tekst. Backend kører den deterministiske
-          regelmotor og spørger valgfrit en LLM om at fortolke fritekst til
-          signaler. Hver afgørelse hjemles i en konkret lovartikel — citater
-          står i marginen til højre.
+          Beskriv den planlagte AI-løsning, eller upload et dokument. Screeningen
+          peger på relevante regelkrav og viser de kilder, reglerne bygger på.
+          Brug resultatet til den første afklaring med jura. Det erstatter ikke
+          konsekvensanalysen eller en faglig godkendelse.
         </Lede>
 
         <DropZone $active={documentMutation.isLoading}>
           <input
             type="file"
+            aria-label="Dokument til juridisk screening"
             accept=".pdf,.docx"
             onChange={onFileInputChange}
             disabled={documentMutation.isLoading}
@@ -1581,8 +1584,8 @@ const V3VurderingPage = () => {
             </DropTitle>
             <DropHint>
               Træk en PDF eller DOCX hertil — eller klik for at vælge en fil.
-              Backend chunker dokumentet, kører LLM-baseret signal-extraction
-              per afsnit og evaluerer reglerne mod den samlede signal-mængde.
+              AI udleder oplysninger fra teksten, som kontrolleres mod regelgrundlaget.
+              Du skal gennemgå de udledte oplysninger og konklusionen.
             </DropHint>
             <DropMeta>
               .pdf · .docx · max 10 MB · tekst skal være søgbar (ikke scannet billede)

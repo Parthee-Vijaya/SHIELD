@@ -89,13 +89,24 @@ const DocumentCard = styled(Card)`
   flex-direction: column;
   gap: 16px;
   min-height: 300px;
+  overflow-wrap: anywhere;
 `;
 
 const CardHeader = styled.div`
   display: flex;
+  flex-wrap: wrap;
   align-items: start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px 16px;
+  min-width: 0;
+
+  > div { flex: 1 1 180px; min-width: 0; }
+  > ${StatusPill} {
+    flex: 0 1 auto;
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.35;
+  }
 `;
 
 const Metadata = styled.dl`
@@ -115,6 +126,7 @@ const Tags = styled.div`
 `;
 
 const Tag = styled.span`
+  max-width: 100%;
   padding: 4px 7px;
   background: ${(p) => p.theme.colors.paperSoft};
   color: ${(p) => p.theme.colors.inkSoft};
@@ -371,7 +383,7 @@ function DocumentBankPage() {
   return (
     <Page>
       <PageHeader data-tour="document-bank">
-        <div><Eyebrow>S.H.I.E.L.D. · fælles evidens</Eyebrow><Title>Kommunal dokumentbank</Title><Lede>Genbrug godkendt dokumentation med tydelig ejer, version, gyldighed og reviewdato – uden at kopiere en tidligere godkendelse ukritisk.</Lede></div>
+        <div><Eyebrow>S.H.I.E.L.D. · fælles evidens</Eyebrow><Title>Dokumenter og skabeloner</Title><Lede>Genbrug godkendt dokumentation med tydelig ejer, version, gyldighed og reviewdato – uden at kopiere en tidligere godkendelse ukritisk.</Lede></div>
         <HeaderActions><Button type="button" aria-expanded={showCreate} aria-controls="document-create-panel" onClick={() => { setShowCreate((current) => !current); setLinkTarget(null); setApprovalTarget(null); createMutation.reset(); }}>Registrér dokument</Button></HeaderActions>
       </PageHeader>
 

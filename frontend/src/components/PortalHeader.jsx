@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 
 import BRAND from '../config/brand';
-import { PRIMARY_NAVIGATION, TOOL_NAVIGATION } from '../config/navigation';
+import { PRIMARY_NAVIGATION, TOOL_NAVIGATION_GROUPS } from '../config/navigation';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -192,10 +192,14 @@ const More = styled.details`
 `;
 
 const MorePanel = styled.div`
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 270px;
+  position: fixed;
+  top: 78px;
+  right: max(20px, calc((100vw - 1360px) / 2));
+  width: min(900px, calc(100vw - 40px));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  box-sizing: border-box;
   max-height: calc(100dvh - 90px);
   overflow-y: auto;
   padding: 8px;
@@ -206,9 +210,13 @@ const MorePanel = styled.div`
 
 const ToolLink = styled(NavLink)`
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
   min-height: 42px;
-  padding: 8px 11px;
+  padding: 10px 11px;
+  overflow-wrap: anywhere;
+  small { margin-top: 4px; font-size: 0.73rem; font-weight: 400; line-height: 1.45; color: ${p => p.theme.colors.textMuted}; }
   color: ${p => p.theme.colors.textMuted};
   font-size: 0.82rem;
   font-weight: 560;
@@ -259,12 +267,27 @@ const MobileGroup = styled.div`
 const PortalHeader = ({ onOpenCommandPalette }) => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const moreRef = useRef(null);
+  const mobileButtonRef = useRef(null);
   const { preferences, updatePreference } = useUserPreferences();
   const { user, isAuthenticated, isDevelopmentIdentity, login, logout } = useAuth();
   const { restart, canStart, saving } = useTutorial();
   const isDark = preferences?.theme === 'dark';
 
-  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  useEffect(() => { setMobileOpen(false); if (moreRef.current) moreRef.current.open = false; }, [location.pathname, location.search]);
+  useEffect(() => {
+    const dismiss = event => {
+      const menu = moreRef.current;
+      if (event.type === 'keydown' && event.key === 'Escape') {
+        if (menu?.open) { menu.open = false; menu.querySelector('summary')?.focus(); }
+        if (mobileButtonRef.current?.getAttribute("aria-expanded") === "true") mobileButtonRef.current.focus();
+        setMobileOpen(false);
+      } else if (event.type === 'pointerdown' && menu?.open && !menu.contains(event.target)) menu.open = false;
+    };
+    document.addEventListener('keydown', dismiss);
+    document.addEventListener('pointerdown', dismiss);
+    return () => { document.removeEventListener('keydown', dismiss); document.removeEventListener('pointerdown', dismiss); };
+  }, []);
 
   return (
     <Header>
@@ -293,11 +316,11 @@ const PortalHeader = ({ onOpenCommandPalette }) => {
           <UtilityButton type="button" onClick={() => updatePreference('theme', isDark ? 'light' : 'dark')} aria-label={isDark ? 'Skift til lyst tema' : 'Skift til mørkt tema'}>
             {isDark ? '☀' : '◐'}
           </UtilityButton>
-          <More key={location.pathname}>
+          <More ref={moreRef}>
             <summary>Flere</summary>
             <MorePanel>
-              {TOOL_NAVIGATION.map(item => <ToolLink key={item.id} to={item.path}>{item.label}</ToolLink>)}
-              {canStart && <GuideButton type="button" disabled={saving} onClick={event => { const menu = event.currentTarget.closest('details'); menu?.removeAttribute('open'); menu?.querySelector('summary')?.focus(); restart(); }}>Start introduktionsguide</GuideButton>}
+              {TOOL_NAVIGATION_GROUPS.map(group => <MobileGroup as="section" key={group.id} aria-label={group.label}><h2>{group.label}</h2>{group.items.map(item => <ToolLink key={item.id} to={item.path} onClick={() => { if (moreRef.current) moreRef.current.open = false; setMobileOpen(false); }}><span>{item.label}</span><small>{item.description}</small></ToolLink>)}</MobileGroup>)}
+              {canStart && <GuideButton style={{gridColumn:"1 / -1"}} type="button" disabled={saving} onClick={event => { const menu = event.currentTarget.closest('details'); menu?.removeAttribute('open'); menu?.querySelector('summary')?.focus(); restart(); }}>Start introduktionsguide</GuideButton>}
             </MorePanel>
           </More>
           <Profile aria-label={`Logget ind som ${user?.name || 'ingen bruger'}`}>
@@ -312,7 +335,7 @@ const PortalHeader = ({ onOpenCommandPalette }) => {
               {isAuthenticated ? 'Log ud' : 'Log ind'}
             </UtilityButton>
           )}
-          <MenuButton type="button" onClick={() => setMobileOpen(open => !open)} aria-expanded={mobileOpen} aria-controls="portal-mobile-navigation" aria-label={mobileOpen ? 'Luk navigation' : 'Åbn navigation'}>
+          <MenuButton ref={mobileButtonRef} type="button" onClick={() => setMobileOpen(open => !open)} aria-expanded={mobileOpen} aria-controls="portal-mobile-navigation" aria-label={mobileOpen ? 'Luk navigation' : 'Åbn navigation'}>
             {mobileOpen ? '×' : '☰'}
           </MenuButton>
         </HeaderActions>
@@ -324,11 +347,11 @@ const PortalHeader = ({ onOpenCommandPalette }) => {
             <h2>Arbejdsgang</h2>
             {PRIMARY_NAVIGATION.map(item => <ToolLink key={item.id} to={item.path} end={item.path === '/'}>{item.label}</ToolLink>)}
           </MobileGroup>
-          <MobileGroup>
-            <h2>Viden & værktøjer</h2>
-            {TOOL_NAVIGATION.map(item => <ToolLink key={item.id} to={item.path}>{item.label}</ToolLink>)}
-            {canStart && <GuideButton type="button" disabled={saving} onClick={() => { setMobileOpen(false); restart(); }}>Start introduktionsguide</GuideButton>}
-          </MobileGroup>
+          {TOOL_NAVIGATION_GROUPS.map(group => <MobileGroup as="section" key={group.id} aria-label={group.label}>
+            <h2>{group.label}</h2>
+            {group.items.map(item => <ToolLink key={item.id} to={item.path} onClick={() => { if (moreRef.current) moreRef.current.open = false; setMobileOpen(false); }}><span>{item.label}</span><small>{item.description}</small></ToolLink>)}
+          </MobileGroup>)}
+          {canStart && <GuideButton type="button" disabled={saving} onClick={() => { setMobileOpen(false); restart(); }}>Start introduktionsguide</GuideButton>}
         </MobilePanel>
       ) : null}
     </Header>
