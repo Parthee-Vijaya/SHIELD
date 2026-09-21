@@ -28,7 +28,7 @@ interface EvaluationResult {
   usage: unknown;
 }
 
-const PARTITION_NOTE = 'Only this evidence partition is supplied in this call. Other referenced evidence exists in separate calls. Check this draft against the supplied partition; missing support here is unresolved, not proof of a false claim. Do not infer support from unseen partitions. No call checks the complete evidence together.';
+const PARTITION_NOTE = 'Only this evidence partition is supplied in this call. Draft source_ids list only evidence in this partition; the complete original references are retained outside this call for audit and results. Other referenced evidence exists in separate calls. Check this draft against the supplied partition; missing support here is unresolved, not proof of a false claim. Do not infer support from unseen partitions. No call checks the complete evidence together.';
 const PARTITION_RESULT_NOTE = 'Opdelt kildegrundlag kontrolleres i separate kald. Værdien er det højeste problemsignal fra delkontrollerne, ikke en samlet eller kalibreret sandsynlighed. Manglende støtte i én del er uafklaret; sammenhængen mellem alle kilder kræver faglig gennemgang.';
 
 /** Plan all calls before evaluation, retaining every referenced source character. */
@@ -56,8 +56,15 @@ export function buildReviewBatches(units: ReviewUnit[], sources: Source[]): Revi
     }
     flush();
     // Reserve three digits for numbering before the final partition count is known.
+    // Do not repeat the complete source-id list in every partition: with 1,000
+    // UUID-backed references it would consume almost the entire context budget.
+    // Only the serialized view is scoped; batch.units and the original draft
+    // retain every reference for validation, result mapping and audit.
+    const totalReferencedSources = new Set(unit.source_ids).size;
     const stateFor = (evidence: Source[], part = MAX_REVIEW_BATCHES, count = MAX_REVIEW_BATCHES) => JSON.stringify({
-      evidence, draft: [unit], review_scope: { kind: 'partitioned_evidence', part, count, note: PARTITION_NOTE },
+      evidence, draft: [{ ...unit, source_ids: [...new Set(evidence.map(source => source.id))] }],
+      review_scope: { kind: 'partitioned_evidence', part, count,
+        total_referenced_sources: totalReferencedSources, note: PARTITION_NOTE },
     });
     if (stateFor([]).length >= MAX_REVIEW_CONTEXT) throw new Error('REVIEW_CONTEXT_TOO_LARGE');
     const parts: Source[][] = [];

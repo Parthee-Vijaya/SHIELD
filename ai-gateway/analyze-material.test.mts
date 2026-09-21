@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeMaterial, validateMaterialDraft, validateMaterialInput, readMaterialInput, MAX_MATERIAL_INPUT_CHARS, MAX_MATERIAL_RAW_INPUT_CHARS } from './analyze-material.mts';
-import { reviewUnits } from './review.mts';
+import { MAX_REVIEW_CONTEXT, reviewUnits } from './review.mts';
+import { largeEvidenceSources } from './large-evidence.fixture.mts';
 
 const source = { id: 'document:1:1', title: 'Materiale', text: 'Kundens data hostes i Danmark.', locator: 'Side 2' };
 const input = { profile: { system_name: 'Fagsystem' }, sources: [source] };
@@ -88,9 +89,9 @@ test('245 excerpts and 173966 text characters survive material validation and re
   assert(inspected);
 });
 
-test('material parsed and raw input bounds agree at 400000 characters', async () => {
-  assert.equal(MAX_MATERIAL_INPUT_CHARS, 400000);
-  assert.equal(MAX_MATERIAL_RAW_INPUT_CHARS, MAX_MATERIAL_INPUT_CHARS);
+test('material accepts 1600000 parsed characters plus wire whitespace up to 2000000 characters', async () => {
+  assert.equal(MAX_MATERIAL_INPUT_CHARS, 1_600_000);
+  assert.equal(MAX_MATERIAL_RAW_INPUT_CHARS, 2_000_000);
   const candidate = { profile: {}, sources: [{ id: 'document:1', title: 'Kilde', text: '' }] };
   candidate.sources[0].text = 'x'.repeat(MAX_MATERIAL_INPUT_CHARS - JSON.stringify(candidate).length);
   const boundary = JSON.stringify(candidate);
@@ -98,12 +99,41 @@ test('material parsed and raw input bounds agree at 400000 characters', async ()
   assert.doesNotThrow(() => validateMaterialInput(candidate));
   async function* chunks(value: string) { yield value.slice(0, 200000); yield value.slice(200000); }
   assert.equal(await readMaterialInput(chunks(boundary)), boundary);
-  await assert.rejects(readMaterialInput(chunks(boundary + ' ')), /INPUT_TOO_LARGE/);
+  const wireBoundary = boundary.padEnd(MAX_MATERIAL_RAW_INPUT_CHARS, ' ');
+  assert.equal(await readMaterialInput(chunks(wireBoundary)), wireBoundary);
+  assert.deepEqual(validateMaterialInput(JSON.parse(wireBoundary)), candidate);
+  await assert.rejects(readMaterialInput(chunks(wireBoundary + ' ')), /INPUT_TOO_LARGE/);
   candidate.sources[0].text += 'x';
   assert.throws(() => validateMaterialInput(candidate), /INPUT_TOO_LARGE/);
   let called = false;
   await assert.rejects(analyzeMaterial(candidate, async () => { called = true; throw Error('must not run'); }), /INPUT_TOO_LARGE/);
   assert.equal(called, false);
+});
+
+test('25 documents with 1000 excerpts and 500000 source characters reach bounded JEV review intact', async () => {
+  const sources = largeEvidenceSources();
+  assert.equal(new Set(sources.map(item => item.document_version_id)).size, 25);
+  assert.equal(sources.length, 1_000);
+  assert.equal(sources.reduce((sum, item) => sum + item.text.length, 0), 500_000);
+  const candidate = { ...input, sources, mode: 'evaluate', draft: { ...draft, facts: [] } };
+  assert(JSON.stringify(candidate).length > 400_000);
+  const received: any[] = [];
+  let calls = 0;
+  const result = await analyzeMaterial(candidate, (units, evidence, options) => reviewUnits(units, evidence, options, async request => {
+    calls++;
+    assert(request.state.length <= MAX_REVIEW_CONTEXT);
+    const state = JSON.parse(request.state);
+    assert.equal(state.draft[0].id, 'summary');
+    assert.match(state.review_scope.note, /No call checks the complete evidence together/);
+    received.push(...state.evidence);
+    return { answers: { summary: { probability: 0.2 } }, usage: {} };
+  }));
+  assert(calls > 1 && calls <= 100);
+  assert.deepEqual(received.map(item => [item.id, item.text]), sources.map(item => [item.id, item.text]));
+  assert.equal(received.at(-1).id, sources.at(-1)?.id);
+  assert.equal(result.review.checks.length, 1);
+  assert.equal(result.review.status, 'requires_human_review');
+  assert.match(result.review.threshold_note, /ikke en samlet eller kalibreret sandsynlighed/);
 });
 
 

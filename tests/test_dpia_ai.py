@@ -177,13 +177,15 @@ def recommendation():
 def output_with_recommendation(original):
     output = worker_output(original)
     output["draft"]["recommendations"] = [recommendation()]
-    output["review"]["checks"].append({
-        "id": "recommendation:local_processing",
-        "label": "Anbefaling om lokal behandling",
-        "section_ids": ["recommendation:local_processing"],
-        "probability": 0.2,
-        "requires_review": False,
-    })
+    output["review"]["checks"].append(
+        {
+            "id": "recommendation:local_processing",
+            "label": "Anbefaling om lokal behandling",
+            "section_ids": ["recommendation:local_processing"],
+            "probability": 0.2,
+            "requires_review": False,
+        }
+    )
     return output
 
 
@@ -211,9 +213,17 @@ def test_old_drafts_and_reports_have_no_invented_recommendations():
     assert apply(original).recommendations == []
 
 
-@pytest.mark.parametrize("corruption", [
-    "unknown_source", "missing_check", "duplicate", "too_many", "approval", "missing_verification",
-])
+@pytest.mark.parametrize(
+    "corruption",
+    [
+        "unknown_source",
+        "missing_check",
+        "duplicate",
+        "too_many",
+        "approval",
+        "missing_verification",
+    ],
+)
 def test_unreviewed_or_invalid_recommendations_fail_closed(corruption):
     _, original = make_assessment()
     output = output_with_recommendation(original)
@@ -225,7 +235,9 @@ def test_unreviewed_or_invalid_recommendations_fail_closed(corruption):
     elif corruption == "duplicate":
         items.append(deepcopy(items[0]))
     elif corruption == "too_many":
-        items.extend([{**recommendation(), "id": f"proposal_{index}"} for index in range(8)])
+        items.extend(
+            [{**recommendation(), "id": f"proposal_{index}"} for index in range(8)]
+        )
     elif corruption == "approval":
         items[0]["approved"] = True
     elif corruption == "missing_verification":
@@ -453,21 +465,30 @@ def save_human_revision(factory, base_id):
     with factory() as db:
         base = db.get(DPIAAssessmentRecord, base_id)
         section = next(
-            item for item in base.result_payload["sections"]
+            item
+            for item in base.result_payload["sections"]
             if item["review_status"] == "requires_review"
         )
         revision = revise_assessment(
-            db, base_id,
-            RevisionInput.model_validate({
-                "request_id": str(uuid4()),
-                "note": "En medarbejder præciserede afsnittet under gennemgangen.",
-                "changes": [{
-                    "kind": "section", "target_id": section["id"], "field": "text",
-                    "text": "Den nyeste faglige præcisering skal bevares i rapporten.",
-                    "source_ids": [],
-                }],
-            }),
-            actor_id="reviewer", actor_name="Faglig reviewer",
+            db,
+            base_id,
+            RevisionInput.model_validate(
+                {
+                    "request_id": str(uuid4()),
+                    "note": "En medarbejder præciserede afsnittet under gennemgangen.",
+                    "changes": [
+                        {
+                            "kind": "section",
+                            "target_id": section["id"],
+                            "field": "text",
+                            "text": "Den nyeste faglige præcisering skal bevares i rapporten.",
+                            "source_ids": [],
+                        }
+                    ],
+                }
+            ),
+            actor_id="reviewer",
+            actor_name="Faglig reviewer",
         )
         db.commit()
         return revision.id, deepcopy(revision.result_payload)
@@ -514,7 +535,10 @@ def test_slow_ai_cannot_overtake_human_revision_saved_during_model_call(
     assert api.get(f"/api/dpia/assessments/{base_id}").json() == original
     with database() as db:
         assert db.query(DPIAAssessmentRecord).count() == 2
-        assert db.get(DPIAAssessmentRecord, completed["id"]).result_payload == completed["snapshot"]
+        assert (
+            db.get(DPIAAssessmentRecord, completed["id"]).result_payload
+            == completed["snapshot"]
+        )
         assert db.get(Case, case_id).status == "godkendt"
         assert db.query(DPIAAssessmentRecord).count() == 2
 
@@ -707,7 +731,8 @@ def test_public_source_provenance_survives_snapshot_but_case_outputs_are_never_e
 
 
 @pytest.mark.parametrize(
-    "excerpt_count,total_chars,expected_count", [(245, 173_966, 245), (401, 4_010, 400)]
+    "excerpt_count,total_chars,expected_count",
+    [(245, 173_966, 245), (1001, 10_010, 1000)],
 )
 def test_document_excerpt_budget_preserves_large_complete_packs_and_discloses_limit(
     monkeypatch, excerpt_count, total_chars, expected_count
@@ -772,4 +797,4 @@ def test_document_excerpt_budget_preserves_large_complete_packs_and_discloses_li
         assert sum(len(source["text"]) for source in sources) == total_chars
         assert not any("afkortet" in note or "udeladt" in note for note in limitations)
     else:
-        assert any("400 kildeuddrag" in note for note in limitations)
+        assert any("1.000 kildeuddrag" in note for note in limitations)

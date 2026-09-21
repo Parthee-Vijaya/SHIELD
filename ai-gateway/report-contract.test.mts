@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { MAX_REPORT_INPUT_CHARS, MAX_REPORT_RAW_INPUT_CHARS, validateDraftIds, validateReportInput } from './generate-report.mts';
+import { largeEvidenceSources } from './large-evidence.fixture.mts';
 
 const expected = { sections: [{ id: '1.1' }, { id: '2.1' }], risks: [{ id: '3.1' }] };
 const sources = [{ id: 'input:purpose' }];
@@ -64,23 +65,23 @@ test('accepts all five supplier sources with provenance and the full base report
   assert.equal(validated.sources.at(-1)?.id, 'document:dpa:10');
 });
 
-test('validated report input remains bounded at 400000 characters', () => {
+test('validated report input remains bounded at 1600000 characters', () => {
   const input = {
     request: {}, result: { executive_summary: '', scope: '', sections: [], risks: [] },
     sources: [{ id: 'document:1', title: 'Kilde', text: '' }],
   };
   input.sources[0].text = 'x'.repeat(MAX_REPORT_INPUT_CHARS - JSON.stringify(input).length);
-  assert.equal(JSON.stringify(input).length, 400_000);
+  assert.equal(JSON.stringify(input).length, 1_600_000);
   assert.doesNotThrow(() => validateReportInput(input));
   input.sources[0].text += 'x';
   assert.throws(() => validateReportInput(input), /INPUT_TOO_LARGE/);
 });
 
-test('raw worker input is accepted up to 500000 characters and rejected above it without a model call', () => {
+test('raw worker input is accepted up to 2000000 characters and rejected above it without a model call', () => {
   const input = { status_only: true, padding: '' };
   input.padding = 'x'.repeat(MAX_REPORT_RAW_INPUT_CHARS - JSON.stringify(input).length);
   const body = JSON.stringify(input);
-  assert.equal(body.length, 500_000);
+  assert.equal(body.length, 2_000_000);
   const options = { env: {}, encoding: 'utf8' as const, timeout: 10_000 };
   const worker = fileURLToPath(new URL('./generate-report.mts', import.meta.url));
   const accepted = spawnSync(process.execPath, [worker], { ...options, input: body });
@@ -89,6 +90,21 @@ test('raw worker input is accepted up to 500000 characters and rejected above it
   const rejected = spawnSync(process.execPath, [worker], { ...options, input: body + ' ' });
   assert.equal(rejected.status, 1, rejected.stderr);
   assert.equal(JSON.parse(rejected.stdout).error.code, 'ai_generation_failed');
+});
+
+test('1000 excerpts with 500000 source characters fit alongside the full questionnaire and report', () => {
+  const input = {
+    request: { purpose: 'Kommunal dokumentgennemgang. '.repeat(180) },
+    result: {
+      executive_summary: 'Vurderingen skal afklares.', scope: 'Kommunens dokumentbehandling.',
+      sections: Array.from({ length: 39 }, (_, index) => ({ id: String(index), title: 'Afsnit', text: 'Grundlag. '.repeat(90) })),
+      risks: Array.from({ length: 33 }, (_, index) => ({ id: String(index), area: 'Risiko', scenario: 'Scenarie. '.repeat(40), measures: 'Foranstaltning. '.repeat(50), rationale: 'Vurderingsgrundlag. '.repeat(20) })),
+    },
+    sources: largeEvidenceSources(),
+  };
+  assert.equal(input.sources.reduce((sum, source) => sum + source.text.length, 0), 500_000);
+  assert(JSON.stringify(input).length > 400_000);
+  assert.deepEqual(validateReportInput(input).sources, input.sources);
 });
 
 

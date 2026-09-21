@@ -24,10 +24,10 @@ function NavigationProbe() {
 function mount(url='/anskaffelse?case=case-a&step=profile') {
   return render(<ThemeProvider theme={lightTheme}><MemoryRouter initialEntries={[url]}><ProcurementPage/><NavigationProbe/></MemoryRouter></ThemeProvider>);
 }
-function mockCase({currentAnalysis=null,review=null,materials=[]}={}) {
+function mockCase({currentAnalysis=null,review=null,materials=[],analysisLimits=null}={}) {
   authFetch.mockImplementation((path,options)=> {
     if (!options?.method && path.endsWith('/procurement')) return reply({profile,analysis:currentAnalysis,review});
-    if (!options?.method && path.endsWith('/source-material')) return reply({items:materials});
+    if (!options?.method && path.endsWith('/source-material')) return reply({items:materials,analysis_limits:analysisLimits});
     if (!options?.method && path.includes('/clarifications?')) return reply({items:[]});
     throw new Error(`Unexpected request ${path}`);
   });
@@ -58,6 +58,21 @@ test('creates a municipal procurement and loads its empty material state without
   expect(screen.getByTestId('location')).toHaveTextContent('case=case-created&step=materials');
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Analysér leverandørmateriale →'})).toBeDisabled();
+});
+
+test.each(['profile', 'materials', 'facts', 'review'])('shows the case organisation throughout %s without displaying the default municipality while loading', async step=>{
+  mockCase({currentAnalysis:analysis,review:{id:'review-1',analysis_id:analysis.id,accepted_fact_ids:[],note:''}});
+  mount(`/anskaffelse?case=case-a&step=${step}`);
+  expect(screen.queryByText('Sagens organisation:')).not.toBeInTheDocument();
+  const label=await screen.findByText('Sagens organisation:');
+  expect(label.closest('p')).toHaveTextContent('Sagens organisation: Testkommune');
+  expect(label.closest('p')).not.toHaveTextContent('Kalundborg');
+});
+
+test('uses the server analysis capacity and Danish number formatting', async()=>{
+  mockCase({analysisLimits:{max_documents:30,max_total_text_chars:600000,max_document_text_chars:250000}});
+  mount('/anskaffelse?case=case-a&step=materials');
+  expect(await screen.findByText('Analysen kan omfatte op til 30 dokumenter og 600.000 tegn i alt, højst 250.000 tegn pr. dokument.')).toBeInTheDocument();
 });
 
 test('displays field-specific Danish fact labels and requires explicit checkbox choices', async()=>{
@@ -167,6 +182,7 @@ test('failed case load does not expose stale editable data and supports retry', 
   authFetch.mockImplementation(()=>reply({detail:'Sagen kunne ikke hentes.'},false));
   fireEvent.click(screen.getByRole('button',{name:'Skift sag i testen'}));
   expect(await screen.findByRole('alert')).toHaveTextContent('Sagen kunne ikke hentes.');
+  expect(screen.queryByText('Sagens organisation:')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Løsningens navn')).not.toBeInTheDocument();
   expect(screen.queryByRole('heading',{level:1,name:profile.system_name})).not.toBeInTheDocument();
   mockCase();

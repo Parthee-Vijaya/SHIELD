@@ -56,6 +56,17 @@ beforeEach(() => {
   useAuth.mockReturnValue({ authFetch });
 });
 
+test('en gemt rapport viser sin egen dataansvarlige organisation frem for portalens kommune', async () => {
+  const baseFetch = authFetch.getMockImplementation();
+  authFetch.mockImplementation(url => url === '/api/dpia/assessments/assessment-1'
+    ? response({ ...saved, organisation: 'Eksempel Kommune' })
+    : baseFetch(url));
+  mount();
+  const label = await screen.findByText('Dataansvarlig organisation:');
+  expect(label.closest('p')).toHaveTextContent('Dataansvarlig organisation: Eksempel Kommune');
+  expect(label.closest('p')).not.toHaveTextContent('Kalundborg');
+});
+
 test('bruger kun gennemgåede oplysninger fra den valgte sag og lader andre kladder være', async () => {
   const original = JSON.stringify({values:{project_name:'En anden sag',special_categories:false},step:2});
   window.localStorage.setItem(DRAFT_STORAGE_KEY, original);

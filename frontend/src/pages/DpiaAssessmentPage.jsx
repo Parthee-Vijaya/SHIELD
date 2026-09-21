@@ -1268,7 +1268,8 @@ const DpiaAssessmentPage = () => {
         <ResultTop $tone={statusTone}>
           <Eyebrow>Konsekvensanalyse · version {result.version || 1} · {formatCheckTime(result.created_at)}</Eyebrow>
           <Title ref={headingRef} tabIndex="-1">{result.project_name || `Konsekvensanalyse · ${result.id?.slice(0, 8) || 'gemt vurdering'}`}</Title>
-          {(result.organisation || result.department || result.processing_version) && <Lead>{[result.organisation, result.department, result.processing_version && `Behandling: ${result.processing_version}`].filter(Boolean).join(' · ')}</Lead>}
+          {result.organisation && <Lead><strong>Dataansvarlig organisation:</strong> {result.organisation}</Lead>}
+          {(result.department || result.processing_version) && <Lead>{[result.department, result.processing_version && `Behandling: ${result.processing_version}`].filter(Boolean).join(' · ')}</Lead>}
           <p><strong>{result.status_label || 'Kræver faglig gennemgang'}</strong></p>
           <ResultMeta>
             <Pill>Risiko: {riskLabel(result.risk_level)}</Pill>

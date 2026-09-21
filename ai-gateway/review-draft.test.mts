@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { reviewDraft } from './review-draft.mts';
 import { reviewUnits } from './review.mts';
+import { MAX_AI_INPUT_CHARS } from './input-limits.mts';
 
 function input() {
   const ids = ['input:purpose'];
@@ -43,6 +44,25 @@ test('evaluation-only bridge passes every report unit and locked values to evalu
   });
   assert.equal(calls, 1);
   assert.equal(result.model, 'typesafe-ai/jev');
+});
+
+test('the local report bridge shares the 1600000-character parsed input bound and fails before evaluation above it', async () => {
+  const original = input();
+  const candidate = { ...original, draft: { ...original.draft, recommendations: [] } };
+  candidate.sources[0].text = '';
+  candidate.sources[0].text = 'x'.repeat(MAX_AI_INPUT_CHARS - JSON.stringify(candidate).length);
+  assert.equal(JSON.stringify(candidate).length, 1_600_000);
+  let calls = 0;
+  const evaluator = async () => {
+    calls++;
+    return { model: 'typesafe-ai/jev', rubric_version: 'offline-test', checks: [],
+      status: 'requires_human_review', threshold: 0.5, threshold_note: 'Syntetisk test', usage: [] };
+  };
+  await reviewDraft(candidate, evaluator);
+  assert.equal(calls, 1);
+  candidate.sources[0].text += 'x';
+  await assert.rejects(reviewDraft(candidate, evaluator), /INPUT_TOO_LARGE/);
+  assert.equal(calls, 1);
 });
 
 test('risk meaning is checked against the original event rather than the rewritten draft', async () => {

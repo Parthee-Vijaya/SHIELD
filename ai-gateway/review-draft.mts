@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { buildReviewUnits, recommendationSchema, validateDraftIds } from './generate-report.mts';
 import { reviewUnits } from './review.mts';
 import { evaluationFailure } from './errors.mts';
+import { MAX_AI_INPUT_CHARS, MAX_AI_RAW_INPUT_CHARS } from './input-limits.mts';
 
 const sourceIds = z.array(z.string()).min(1).max(100);
 const prose = z.string().min(1).max(20000);
@@ -26,7 +27,7 @@ const schema = z.object({
 
 export async function reviewDraft(raw: unknown, evaluator = reviewUnits) {
   const input = schema.parse(raw);
-  if (JSON.stringify(input).length > 1_500_000) throw new Error('INPUT_TOO_LARGE');
+  if (JSON.stringify(input).length > MAX_AI_INPUT_CHARS) throw new Error('INPUT_TOO_LARGE');
   if (new Set(input.sources.map(source => source.id)).size !== input.sources.length) throw new Error('INVALID_SOURCES');
   validateDraftIds(input.result, input.draft, input.sources);
   const known = new Set(input.sources.map(source => source.id));
@@ -47,7 +48,7 @@ async function main() {
   process.stdin.setEncoding('utf8');
   for await (const chunk of process.stdin) {
     body += chunk;
-    if (body.length > 2_000_000) throw new Error('INPUT_TOO_LARGE');
+    if (body.length > MAX_AI_RAW_INPUT_CHARS) throw new Error('INPUT_TOO_LARGE');
   }
   if (!process.env.AI_GATEWAY_API_KEY) throw new Error('GATEWAY_NOT_CONFIGURED');
   process.stdout.write(JSON.stringify(await reviewDraft(JSON.parse(body))));

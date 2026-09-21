@@ -56,6 +56,7 @@ export default function ProcurementPage() {
   const step = Math.max(0,STEP_KEYS.indexOf(params.get('step') || 'profile'));
   const [profile,setProfile] = useState(EMPTY);
   const [sources,setSources] = useState([]);
+  const [analysisLimits,setAnalysisLimits] = useState(null);
   const [analysis,setAnalysis] = useState(null);
   const [review,setReview] = useState(null);
   const [accepted,setAccepted] = useState([]);
@@ -97,7 +98,7 @@ export default function ProcurementPage() {
     const options = signal ? {signal} : undefined;
     const [data,material] = await Promise.all([request(`${base}/procurement`,options),request(`${base}/source-material`,options)]);
     if (signal?.aborted || activeCase.current !== caseId || sequence !== loadSequence.current) return false;
-    setProfile(data.profile); setSources(material.items); setAnalysis(data.analysis); setReview(data.review);
+    setProfile(data.profile); setSources(material.items); setAnalysisLimits(material.analysis_limits || null); setAnalysis(data.analysis); setReview(data.review);
     if (data.review && data.analysis && data.review.analysis_id === data.analysis.id) { setAccepted(data.review.accepted_fact_ids); setNote(data.review.note); }
     else { setAccepted([]); setNote(''); }
     return true;
@@ -106,7 +107,7 @@ export default function ProcurementPage() {
     let live = true;
     const controller = new AbortController();
     ++operationSequence.current; setBusy('');
-    setProfile(EMPTY); setSources([]); setAnalysis(null); setReview(null);
+    setProfile(EMPTY); setSources([]); setAnalysisLimits(null); setAnalysis(null); setReview(null);
     setAccepted([]); setNote(''); setUrl(''); setMessage(''); setError(''); setLoadError(false);
     if (!caseId) { setLoading(false); return () => { controller.abort(); ++loadSequence.current; ++operationSequence.current; }; }
     setLoading(true);
@@ -140,9 +141,11 @@ export default function ProcurementPage() {
   const flaggedChecks = new Set(checks.filter(check=>check.requires_review).map(check=>check.id));
   const flagged = new Set([...flaggedChecks].filter(id=>id.startsWith('fact:')).map(id=>id.slice(5)));
   const currentReview = review && review.analysis_id===analysis?.id && !analysis?.outdated;
+  const capacityAvailable = analysisLimits && ['max_documents','max_total_text_chars','max_document_text_chars'].every(key=>Number.isFinite(analysisLimits[key])&&analysisLimits[key]>0);
   return <Page>
     <Eyebrow>AI-løsninger · anskaffelse og ændret anvendelse</Eyebrow>
     <h1>{profile.system_name || 'Opret en AI-løsning'}</h1>
+    {!loading && !loadError && profile.organisation && <Lead><strong>Sagens organisation:</strong> {profile.organisation}</Lead>}
     <Lead>Saml kommunens behov og leverandørens dokumentation. Gennemgå kildeunderbyggede oplysninger, og forbered konsekvensanalysen og dialogen med jura.</Lead>
     {caseId && <Link to={`/sager/${caseId}`}>Åbn den samlede sag →</Link>}
     <Steps aria-label="Arbejdsgang for AI-løsninger"><>{STEP_NAMES.map((name,index)=><Step key={name} $active={step===index} aria-current={step===index?'step':undefined} disabled={Boolean(busy)||(!caseId&&index>0)||(!analysis&&index>1)||(!currentReview&&index>2)} onClick={()=>go(index)}>{index+1}. {name}</Step>)}</></Steps>
@@ -165,6 +168,7 @@ export default function ProcurementPage() {
       </form>}
       {step===1 && <>
         <h2>Saml leverandørmaterialet</h2><p>Tilføj præsentationer, databehandleraftale, sikkerhedsdokumentation og links. Materialet gemmes som versionsbestemte kilder på denne sag.</p>
+        {capacityAvailable && <p><small>Analysen kan omfatte op til {analysisLimits.max_documents.toLocaleString('da-DK')} dokumenter og {analysisLimits.max_total_text_chars.toLocaleString('da-DK')} tegn i alt, højst {analysisLimits.max_document_text_chars.toLocaleString('da-DK')} tegn pr. dokument.</small></p>}
         <MaterialCoverage sources={sources} onSelectCategory={value=>{setCategory(value);document.getElementById('material-category')?.focus();}} />
         <Grid>
           <Section><h3>Upload dokumenter</h3><label htmlFor="material-category">Dokumenttype</label><select id="material-category" value={category} onChange={e=>setCategory(e.target.value)}>{CATEGORIES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><label htmlFor="material-files" style={{marginTop:18}}>Vælg filer</label><input id="material-files" type="file" multiple accept=".pptx,.pdf,.docx,.txt" disabled={Boolean(busy)} onChange={upload} /><small>PowerPoint (PPTX), PDF, Word (DOCX) eller tekst. Højst 5 MB pr. fil. Billeder og scannede sider kræver tekstgenkendelse før upload.</small></Section>

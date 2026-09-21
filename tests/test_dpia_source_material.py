@@ -151,7 +151,7 @@ def test_source_material_excerpt_ids_and_locators_survive_new_assessment_snapsho
 def test_document_and_total_text_caps_are_visible_and_never_read_extra_files(
     monkeypatch, intake
 ):
-    content = b"x" * 100_001
+    content = b"x" * 200_001
     metadata = (
         {"source_material": {"extraction_version": "municipal-sources-1"}}
         if intake
@@ -159,20 +159,20 @@ def test_document_and_total_text_caps_are_visible_and_never_read_extra_files(
     )
     links = [
         evidence(f"doc-{number}", "large.txt", content, metadata=metadata)
-        for number in range(3)
+        for number in range(4)
     ]
     sources, warnings, reads = source_data(
         monkeypatch, links, {link.version.id: content for link in links}
     )
-    assert len(sources) == 2
-    assert sum(len(source["text"]) for source in sources) == 175_000
-    assert [len(source["text"]) for source in sources] == [100_000, 75_000]
-    assert reads == ["doc-0", "doc-1"]
+    assert len(sources) == 3
+    assert sum(len(source["text"]) for source in sources) == 500_000
+    assert [len(source["text"]) for source in sources] == [200_000, 200_000, 100_000]
+    assert reads == ["doc-0", "doc-1", "doc-2"]
     assert any(
-        "doc-2" in warning
+        "doc-3" in warning
         and "udeladt" in warning
-        and "175.000 tegn" in warning
-        and "100.000 tegn" in warning
+        and "500.000 tegn" in warning
+        and "200.000 tegn" in warning
         for warning in warnings
     )
     assert any("afkortet" in warning for warning in warnings)
@@ -207,7 +207,9 @@ def test_five_supplier_documents_keep_all_149295_characters_including_last_dpa(
                 identifier,
                 f"{identifier}.txt",
                 content,
-                metadata={"source_material": {"extraction_version": "municipal-sources-1"}},
+                metadata={
+                    "source_material": {"extraction_version": "municipal-sources-1"}
+                },
             )
         )
         expected.extend(
@@ -230,19 +232,55 @@ def test_five_supplier_documents_keep_all_149295_characters_including_last_dpa(
 
 def test_document_count_cap_is_explicit(monkeypatch):
     content = b"Supplier statement"
-    links = [evidence(f"doc-{number}", "purpose.txt", content) for number in range(11)]
+    links = [evidence(f"doc-{number}", "purpose.txt", content) for number in range(26)]
     sources, warnings, reads = source_data(
         monkeypatch, links, {link.version.id: content for link in links}
     )
-    assert len(sources) == len(reads) == 10
+    assert len(sources) == len(reads) == 25
     assert any(
-        "doc-10" in warning and "10 dokumenter" in warning for warning in warnings
+        "doc-25" in warning and "25 dokumenter" in warning for warning in warnings
+    )
+
+
+def test_full_expanded_budget_preserves_every_source_and_locator(monkeypatch):
+    """A complete package at all three limits must reach drafting intact."""
+    content_by_id = {}
+    expected = []
+    links = []
+    for document in range(25):
+        identifier = f"doc-{document}"
+        paragraphs = [f"{identifier}:{part}:".ljust(500, "x") for part in range(40)]
+        content = "\n\n".join(paragraphs).encode()
+        content_by_id[identifier] = content
+        links.append(
+            evidence(
+                identifier,
+                "source.txt",
+                content,
+                metadata={
+                    "source_material": {"extraction_version": "municipal-sources-2"},
+                },
+            )
+        )
+        expected.extend(
+            (f"document:{identifier}:{part}", f"Afsnit {part}", text)
+            for part, text in enumerate(paragraphs, 1)
+        )
+    sources, warnings, reads = source_data(monkeypatch, links, content_by_id)
+    assert len(reads) == 25
+    assert len(sources) == 1_000
+    assert sum(len(source["text"]) for source in sources) == 500_000
+    assert [
+        (source["id"], source["locator"], source["text"]) for source in sources
+    ] == expected
+    assert not any(
+        "afkortet" in warning or "udeladt" in warning for warning in warnings
     )
 
 
 def test_excerpt_count_cap_is_explicit_across_multiple_new_documents(monkeypatch):
     content = "\n\n".join(
-        f"Supplier statement {number}" for number in range(150)
+        f"Supplier statement {number}" for number in range(350)
     ).encode()
     metadata = {"source_material": {"extraction_version": "municipal-sources-1"}}
     links = [
@@ -252,11 +290,12 @@ def test_excerpt_count_cap_is_explicit_across_multiple_new_documents(monkeypatch
     sources, warnings, _ = source_data(
         monkeypatch, links, {link.version.id: content for link in links}
     )
-    assert len(sources) == 400
-    assert sources[-1]["id"] == "document:doc-2:100"
-    assert any("400 kildeuddrag" in warning for warning in warnings)
+    assert len(sources) == 1000
+    assert sources[-1]["id"] == "document:doc-2:300"
+    assert any("1.000 kildeuddrag" in warning for warning in warnings)
 
-    assert not any(source["id"] == "document:doc-2:101" for source in sources)
+    assert not any(source["id"] == "document:doc-2:301" for source in sources)
+
 
 def test_presentation_marked_as_output_is_never_read_even_if_also_linked_as_evidence(
     monkeypatch,

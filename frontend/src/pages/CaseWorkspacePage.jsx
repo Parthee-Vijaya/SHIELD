@@ -366,6 +366,7 @@ export function normalizeWorkspace(payload) {
 
   return {
     caseRecord,
+    organisation: plainText(source.procurement?.organisation) || plainText(caseRecord.organisation),
     assessments: assessments.filter(Boolean),
     documents: toArray(source.documents || source.evidence || source.attachments).filter(isRecord).map((item) => ({
       ...(item.document || {}),
@@ -869,6 +870,7 @@ function CaseWorkspacePage() {
         <div>
           <Eyebrow>S.H.I.E.L.D. · samlet sag · {caseRecord.case_id || caseId}</Eyebrow>
           <Title>{caseRecord.title || caseRecord.name || 'Sag uden titel'}</Title>
+          {workspace.organisation && <Lede><strong>Sagens organisation:</strong> {workspace.organisation}</Lede>}
           <Lede>{caseRecord.description || caseRecord.notes || 'Følg hele beslutningsprocessen fra første vurdering til godkendelse, drift og senere opfølgning.'}</Lede>
         </div>
         <HeaderActions>

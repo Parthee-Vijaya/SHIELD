@@ -36,6 +36,28 @@ og promptversion gemmes fortsat sammen med analysen.
 
 ## Dokumentation og historik
 
+Sagens organisation står eksplicit ved titlen gennem hele anskaffelsesforløbet
+og på den samlede sag. Rapporten viser sin egen gemte dataansvarlige organisation.
+Kalundborg-brandingen i navigationen ændrer ikke sagens organisation.
+
+En analyse kan omfatte op til **25 dokumentversioner, 500.000 tegn og 1.000
+kildeuddrag samlet**. Hvert dokument tekstudtrækkes med højst **200.000 tegn og
+500 afsnit eller PDF-sider**. Filgrænsen er fortsat 5 MB. Materialetrinnet henter
+de gældende analysegrænser fra serveren og viser dem over dokumenterne.
+
+Materialeanalysen stopper før modelkald, hvis den samlede pakke er for stor;
+den udelader ikke valgte dokumenter i stilhed. Konsekvensanalysens kildepakke
+angiver eventuelle afkortninger og udeladelser i den nye versions begrænsninger.
+JEV opdeler større kildegrundlag i afgrænsede delkontroller, hvor alle refererede
+kildetegn bevares. Delkontroller dokumenterer ikke en samlet kontrol af alle
+kilder på én gang. Større pakker kan tage længere tid; arbejdsgangen har en
+tidsgrænse på ti minutter. En fejl bevarer den eksisterende vurdering.
+
+De større tekstgrænser gælder ved næste analyse af de gemte originalfiler.
+Tidligere rapportversioner og deres kildegrundlag omskrives ikke. Hvis en ny
+udtrækning indeholder mere tekst, markeres den tidligere materialeanalyse som
+forældet, og oplysninger skal gennemgås på det nye grundlag.
+
 På materialetrinnet viser dokumentgrundlaget, hvilke typer bilag der er vedlagt,
 og om teksten kunne læses. En vedlagt fil er ikke en godkendelse af indholdet.
 Kildenavigatoren søger på tværs af tekstuddrag og kan afgrænses til et dokument.

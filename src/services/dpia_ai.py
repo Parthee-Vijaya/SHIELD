@@ -16,6 +16,15 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from src.services.analysis_limits import (
+    ANALYSIS_TIMEOUT_SECONDS,
+    MAX_DOCUMENTS,
+    MAX_TOTAL_TEXT_CHARS,
+    MAX_DOCUMENT_TEXT_CHARS,
+    MAX_TOTAL_EXCERPTS,
+    danish_number,
+)
+
 from src.services.dpia_assessment import (
     DPIAAssessmentRequest,
     DPIAAssessmentResponse,
@@ -26,11 +35,11 @@ from src.services.dpia_assessment import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-GENERATION_TIMEOUT_SECONDS = 240
+GENERATION_TIMEOUT_SECONDS = ANALYSIS_TIMEOUT_SECONDS
 MAX_WORKER_OUTPUT_BYTES = 2_000_000
-MAX_DOCUMENT_SOURCE_CHARS = 175_000
-MAX_SINGLE_DOCUMENT_SOURCE_CHARS = 100_000
-MAX_DOCUMENT_SOURCE_EXCERPTS = 400
+MAX_DOCUMENT_SOURCE_CHARS = MAX_TOTAL_TEXT_CHARS
+MAX_SINGLE_DOCUMENT_SOURCE_CHARS = MAX_DOCUMENT_TEXT_CHARS
+MAX_DOCUMENT_SOURCE_EXCERPTS = MAX_TOTAL_EXCERPTS
 
 
 class AIGenerationError(Exception):
@@ -78,7 +87,9 @@ class _Draft(_StrictModel):
     sections: list[_SectionDraft] = Field(min_length=39, max_length=39)
     risks: list[_RiskDraft] = Field(min_length=33, max_length=33)
     additional_risks: list[_AdditionalRisk] = Field(default_factory=list, max_length=30)
-    recommendations: list[DPIARecommendation] = Field(default_factory=list, max_length=8)
+    recommendations: list[DPIARecommendation] = Field(
+        default_factory=list, max_length=8
+    )
     open_questions: list[str] = Field(default_factory=list, max_length=100)
 
 
@@ -314,11 +325,16 @@ def add_case_document_sources(
                 f"Dokumentversion {version.id} er udeladt: filen er større end 5 MB."
             )
             continue
-        if attempted_documents >= 10 or remaining <= 0 or remaining_segments <= 0:
+        if (
+            attempted_documents >= MAX_DOCUMENTS
+            or remaining <= 0
+            or remaining_segments <= 0
+        ):
             limitations.append(
                 f"Dokumentversion {version.id} er udeladt: AI-grundlaget er begrænset "
-                f"til 10 dokumenter, 175.000 tegn og {MAX_DOCUMENT_SOURCE_EXCERPTS} kildeuddrag samlet, "
-                "med højst 100.000 tegn fra hvert dokument."
+                f"til {MAX_DOCUMENTS} dokumenter, {danish_number(MAX_DOCUMENT_SOURCE_CHARS)} tegn "
+                f"og {danish_number(MAX_DOCUMENT_SOURCE_EXCERPTS)} kildeuddrag samlet, "
+                f"med højst {danish_number(MAX_SINGLE_DOCUMENT_SOURCE_CHARS)} tegn fra hvert dokument."
             )
             continue
         attempted_documents += 1
@@ -362,7 +378,7 @@ def add_case_document_sources(
                 if consumed >= limit or remaining_segments <= 0:
                     limitations.append(
                         f"Dokumentversion {version.id} er afkortet til {consumed} tegn "
-                        f"eller grænsen på {MAX_DOCUMENT_SOURCE_EXCERPTS} kildeuddrag; resten indgår ikke i AI-grundlaget."
+                        f"eller grænsen på {danish_number(MAX_DOCUMENT_SOURCE_EXCERPTS)} kildeuddrag; resten indgår ikke i AI-grundlaget."
                     )
                     break
                 text = excerpt["text"][: limit - consumed]
@@ -471,7 +487,9 @@ def apply_ai_draft(
     known_sources = {item["id"] for item in sources}
     if not set(output.draft.summary_source_ids).issubset(known_sources):
         raise InvalidAIDraft("AI-resuméet henviser til en ukendt kilde.")
-    evidence_items: list[_SectionDraft | _RiskDraft | _AdditionalRisk | DPIARecommendation] = [
+    evidence_items: list[
+        _SectionDraft | _RiskDraft | _AdditionalRisk | DPIARecommendation
+    ] = [
         *output.draft.sections,
         *output.draft.risks,
         *output.draft.additional_risks,
@@ -549,7 +567,9 @@ def apply_ai_draft(
     candidate.additional_risks = [
         item.model_dump(mode="json") for item in output.draft.additional_risks
     ]
-    candidate.recommendations = [item.model_copy(deep=True) for item in output.draft.recommendations]
+    candidate.recommendations = [
+        item.model_copy(deep=True) for item in output.draft.recommendations
+    ]
     candidate.open_questions = output.draft.open_questions
     candidate.ai_generation = {
         "model": output.model,
@@ -575,7 +595,9 @@ def generate_dpia_draft(
     limitations: list[str] | None = None,
 ) -> DPIAAssessmentResponse:
     # Past evidence snapshots are for audit, not recursive model context.
-    worker_result = result.model_dump(mode="json", exclude={"ai_generation", "reading_guide"})
+    worker_result = result.model_dump(
+        mode="json", exclude={"ai_generation", "reading_guide"}
+    )
     output = _run_worker(
         {
             "request": request.model_dump(mode="json"),

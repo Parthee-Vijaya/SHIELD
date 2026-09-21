@@ -26,12 +26,18 @@ from src.database.cases import Case
 from src.database.procurement import ProcurementAnalysis, ProcurementProfile
 from src.services.dpia_ai import _Review
 from src.services.dpia_assessment import DPIAAssessmentRequest
+from src.services.analysis_limits import (
+    ANALYSIS_TIMEOUT_SECONDS,
+    MAX_DOCUMENTS,
+    MAX_TOTAL_TEXT_CHARS,
+    MAX_TOTAL_EXCERPTS,
+    MAX_SOURCE_PACK_CHARS,
+    danish_number,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROMPT_VERSION = "municipal-ai-solution-evidence-2026-09-20-v2"
-# Serialized evidence includes excerpt IDs, provenance and profile metadata.
-MAX_SOURCE_PACK_CHARS = 300_000
 ALLOWED_CODEX_MODELS = {"gpt-5.6-sol", "gpt-6-astra"}
 ALLOWED_FIELDS = {
     "purpose",
@@ -164,7 +170,9 @@ def source_fingerprint(sources: list[dict]) -> str:
 def prepare_source_pack(db: Session, case_id: str) -> dict:
     profile = db.get(ProcurementProfile, case_id)
     if not profile or not db.get(Case, case_id):
-        raise MaterialAnalysisError("Sagen har ingen profil for den løsning, der skal vurderes.")
+        raise MaterialAnalysisError(
+            "Sagen har ingen profil for den løsning, der skal vurderes."
+        )
     sources = evidence_for_case(db, case_id)
     if not sources:
         raise MaterialAnalysisError(
@@ -172,6 +180,19 @@ def prepare_source_pack(db: Session, case_id: str) -> dict:
         )
     if len({source["id"] for source in sources}) != len(sources):
         raise MaterialAnalysisError("Kilderne har gentagne identifikatorer.")
+    document_count = len({source["document_version_id"] for source in sources})
+    if (
+        document_count > MAX_DOCUMENTS
+        or len(sources) > MAX_TOTAL_EXCERPTS
+        or sum(len(source["text"]) for source in sources) > MAX_TOTAL_TEXT_CHARS
+    ):
+        # Intake is all-or-nothing: never silently drop selected evidence.
+        raise MaterialAnalysisError(
+            f"Kildematerialet er for omfattende til én analyse. Grænsen er {MAX_DOCUMENTS} "
+            f"dokumenter, {danish_number(MAX_TOTAL_TEXT_CHARS)} tegn og "
+            f"{danish_number(MAX_TOTAL_EXCERPTS)} kildeuddrag samlet. "
+            "Afgræns materialet før analysen startes. Ingen ny analyse er gemt."
+        )
     pack = {
         "case_id": case_id,
         "profile": profile.to_dict(),
@@ -227,6 +248,7 @@ def validate_draft(pack: dict, raw: dict) -> dict:
 
     def normalize(value):
         return " ".join(value.split())
+
     for item in [*draft.facts, *draft.conflicts]:
         refs = [(ref.source_id, normalize(ref.quote)) for ref in item.source_refs]
         if len(refs) != len(set(refs)):
@@ -265,7 +287,7 @@ def run_worker(payload: dict) -> dict:
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=300,
+            timeout=ANALYSIS_TIMEOUT_SECONDS,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:

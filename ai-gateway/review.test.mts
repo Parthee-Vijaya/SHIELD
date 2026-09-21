@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildReviewBatches, MAX_REVIEW_CONTEXT, reviewUnits, type ReviewUnit } from './review.mts';
+import { largeEvidenceSources } from './large-evidence.fixture.mts';
 
 const unit = (id: string, sourceIds: string[]): ReviewUnit => ({ id, label: `Kontrol ${id}`, kind: 'summary', text: 'Et kildebaseret udkast, som kræver faglig gennemgang.', source_ids: sourceIds });
 
@@ -40,8 +41,11 @@ test('oversized evidence retains every UTF-8 byte and exact source mapping acros
   states.forEach((state, index) => {
     assert.equal(state.review_scope.part, index + 1);
     assert.equal(state.review_scope.count, states.length);
+    assert.equal(state.review_scope.total_referenced_sources, draft.source_ids.length);
     assert.match(state.review_scope.note, /No call checks the complete evidence together/);
-    assert.deepEqual(state.draft, [draft]);
+    assert.match(state.review_scope.note, /complete original references are retained outside this call/);
+    assert.deepEqual(state.draft, [{ ...draft, source_ids: [...new Set(state.evidence.map((source: { id: string }) => source.id))] }]);
+    assert.deepEqual(batches[index].units, [draft]);
     assert(batches[index].state.length <= MAX_REVIEW_CONTEXT);
   });
   for (const source of sources) {
@@ -83,6 +87,65 @@ test('partition checks map back once per original unit using the highest observe
   assert.match(result.threshold_note, /højeste problemsignal/);
   assert.match(result.threshold_note, /ikke en samlet eller kalibreret sandsynlighed/);
   assert.equal(result.status, 'findings_require_review');
+});
+
+test('a single 200000-character source is losslessly partitioned with bounded context and exact Unicode offsets', () => {
+  const source = { id: 'large-document', title: 'Syntetisk dokument', text: 'æøå😃"\\\n'.repeat(25_000) };
+  assert.equal(source.text.length, 200_000);
+  const batches = buildReviewBatches([unit('summary', [source.id])], [source]);
+  assert(batches.length > 1 && batches.length <= 100);
+  const pieces = batches.flatMap(batch => {
+    assert(batch.state.length <= MAX_REVIEW_CONTEXT);
+    assert.equal(batch.partCount, batches.length);
+    return JSON.parse(batch.state).evidence;
+  });
+  let offset = 0;
+  for (const piece of pieces) {
+    assert.equal(piece.id, source.id);
+    assert.equal(piece.excerpt.start_char, offset);
+    offset += piece.text.length;
+    assert.equal(piece.excerpt.end_char, offset);
+    assert.equal(piece.excerpt.total_chars, 200_000);
+    assert.equal(Buffer.from(piece.text).toString('utf8'), piece.text);
+  }
+  assert.equal(offset, source.text.length);
+  assert.deepEqual(Buffer.from(pieces.map(piece => piece.text).join('')), Buffer.from(source.text));
+});
+
+test('a full 81-unit review of 1000 excerpts and 500000 characters stays within the unchanged call budget', async () => {
+  const sources = largeEvidenceSources();
+  assert(sources.every(source => /^document:[a-f0-9-]{36}:\d+$/.test(source.id)));
+  const units = [unit('summary', sources.map(source => source.id)), ...Array.from({ length: 80 }, (_, index) =>
+    unit(`section:${index}`, sources.slice(index * 10, index * 10 + 10).map(source => source.id)))];
+  const originalUnits = structuredClone(units);
+  const planned = buildReviewBatches(units, sources);
+  for (const batch of planned.filter(batch => batch.units[0].id === 'summary')) {
+    assert.deepEqual(batch.units, [originalUnits[0]]);
+    const state = JSON.parse(batch.state);
+    assert.equal(state.review_scope.total_referenced_sources, 1_000);
+    assert.deepEqual(state.draft[0].source_ids, state.evidence.map((source: { id: string }) => source.id));
+    assert(state.draft[0].source_ids.length < 1_000);
+  }
+  let calls = 0;
+  const summaryEvidence: any[] = [];
+  const seenUnits = new Set<string>();
+  const result = await reviewUnits(units, sources, {}, async request => {
+    calls++;
+    assert(request.state.length <= MAX_REVIEW_CONTEXT);
+    const state = JSON.parse(request.state);
+    for (const draft of state.draft) seenUnits.add(draft.id);
+    if (state.draft[0].id === 'summary') summaryEvidence.push(...state.evidence);
+    return { answers: Object.fromEntries(Object.keys(request.questions).map(id => [id, { probability: 0.2 }])), usage: {} };
+  });
+  assert(calls > 1 && calls <= 100);
+  assert.equal(result.usage.length, calls);
+  assert.deepEqual(units, originalUnits);
+  assert.equal(seenUnits.size, 81);
+  assert.deepEqual(result.checks.map(check => check.id), units.map(draft => draft.id));
+  assert.deepEqual(summaryEvidence, sources);
+  assert.equal(summaryEvidence.reduce((sum, source) => sum + source.text.length, 0), 500_000);
+  assert.equal(result.status, 'requires_human_review');
+  assert.match(result.threshold_note, /ikke en samlet eller kalibreret sandsynlighed/);
 });
 
 test('unrepresentable drafts, references and excessive request counts fail before any provider call', async () => {

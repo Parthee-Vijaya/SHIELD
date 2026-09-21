@@ -18,6 +18,12 @@ from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
+from src.services.analysis_limits import (
+    MAX_DOCUMENT_TEXT_CHARS,
+    MAX_DOCUMENT_EXCERPTS,
+    danish_number,
+)
+
 from src.database.cases import get_case
 from src.database.document_bank import (
     DOCUMENT_CATEGORIES,
@@ -41,11 +47,11 @@ from src.services.safe_public_fetch import (
 )
 
 
-MAX_TEXT_CHARS = 100_000
-MAX_SEGMENTS = 200
+MAX_TEXT_CHARS = MAX_DOCUMENT_TEXT_CHARS
+MAX_SEGMENTS = MAX_DOCUMENT_EXCERPTS
 HTML_BLOCK_CHARS = 2_000
 SOURCE_EXTENSIONS = {".pptx", ".docx", ".pdf", ".txt"}
-EXTRACTION_VERSION = "municipal-sources-1"
+EXTRACTION_VERSION = "municipal-sources-2"
 SUPPLIER_NOTICE = "Kildematerialet er leverandøroplysninger og er ikke juridisk godkendt. Oplysninger skal efterprøves i den konkrete anvendelse."
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
@@ -81,7 +87,8 @@ def _bounded_segments(segments, warnings: list[str]) -> Extraction:
         remaining -= len(text)
     if truncated:
         warnings.append(
-            "Tekstudtrækket er afkortet til højst 100.000 tegn og 200 tekstafsnit. Gennemgå originalen for det resterende indhold."
+            f"Tekstudtrækket er afkortet til højst {danish_number(MAX_TEXT_CHARS)} tegn "
+            f"og {MAX_SEGMENTS} tekstafsnit. Gennemgå originalen for det resterende indhold."
         )
     if not excerpts:
         warnings.append(
@@ -157,7 +164,7 @@ def _pdf_segments(content: bytes, warnings: list[str]):
         raise ValueError("PDF-filen er krypteret.")
     if len(reader.pages) > MAX_SEGMENTS:
         warnings.append(
-            "PDF-filen har over 200 sider. Kun de første 200 sider er tekstudtrukket."
+            f"PDF-filen har over {MAX_SEGMENTS} sider. Kun de første {MAX_SEGMENTS} sider er tekstudtrukket."
         )
     for number, page in enumerate(reader.pages[:MAX_SEGMENTS], 1):
         yield f"Side {number}", page.extract_text() or ""

@@ -146,6 +146,14 @@ def test_powerpoint_upload_keeps_real_slide_order_tables_original_and_unapproved
     assert client.get(f"/api/v3/cases/{other}/source-material").json() == {
         "items": [],
         "count": 0,
+        "analysis_limits": {
+            "max_documents": 25,
+            "max_total_text_chars": 500_000,
+            "max_document_text_chars": 200_000,
+            "max_total_excerpts": 1_000,
+            "max_document_excerpts": 500,
+            "max_file_bytes": 5_000_000,
+        },
     }
     with factory() as db:
         version = db.get(MunicipalDocumentVersion, item["version_id"])
@@ -215,13 +223,13 @@ def test_pdf_page_text_keeps_page_locator():
 
 
 def test_text_and_segment_limits_are_disclosed():
-    result = material.extract_source(("x" * 100_002).encode(), "lang.txt")
-    assert sum(len(item["text"]) for item in result.excerpts) == 100_000
+    result = material.extract_source(("x" * 200_002).encode(), "lang.txt")
+    assert sum(len(item["text"]) for item in result.excerpts) == 200_000
     assert any("afkortet" in warning for warning in result.warnings)
     result = material.extract_source(
-        "\n\n".join(str(index) for index in range(205)).encode(), "lang.txt"
+        "\n\n".join(str(index) for index in range(505)).encode(), "lang.txt"
     )
-    assert len(result.excerpts) == 200
+    assert len(result.excerpts) == 500
     assert any("afkortet" in warning for warning in result.warnings)
 
 
@@ -506,7 +514,7 @@ def test_html_microparagraphs_keep_all_text_and_order_within_excerpt_budget():
 
 def test_html_long_paragraphs_keep_words_urls_and_existing_character_limit():
     long_url = "https://supplier.example/" + "x" * 2_000
-    paragraph = " ".join(f"Betingelse-{number}" for number in range(10_000))
+    paragraph = " ".join(f"Betingelse-{number}" for number in range(20_000))
     raw = f"<p>{long_url}</p><p>{paragraph}</p><p>Sidste vilkår</p>".encode()
     source = public.PublicSource(
         "https://supplier.example/privacy",
@@ -521,7 +529,7 @@ def test_html_long_paragraphs_keep_words_urls_and_existing_character_limit():
     )
     assert long_url in content.decode().split("\n\n")
     extracted = material.extract_source(content, filename)
-    assert sum(len(item["text"]) for item in extracted.excerpts) == 100_000
+    assert sum(len(item["text"]) for item in extracted.excerpts) == 200_000
     assert len(extracted.excerpts) < 200
     assert any("afkortet" in warning for warning in extracted.warnings)
 

@@ -13,6 +13,7 @@ from src.auth import UserPrincipal
 from src.database.cases import get_case
 from src.database.connection import get_db
 from src.services.safe_public_fetch import MAX_SOURCE_BYTES
+from src.services.analysis_limits import public_analysis_limits
 from src.services.source_material import (
     list_case_source_material,
     save_case_source,
@@ -43,7 +44,11 @@ def get_source_material(
 ):
     _check_case(db, case_id)
     items = list_case_source_material(db, case_id)
-    return {"items": items, "count": len(items)}
+    return {
+        "items": items,
+        "count": len(items),
+        "analysis_limits": public_analysis_limits(),
+    }
 
 
 @router.post("/api/v3/cases/{case_id}/source-material", status_code=201)

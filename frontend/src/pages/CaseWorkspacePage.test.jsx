@@ -130,12 +130,12 @@ function NavigationState() {
   return <><output data-testid="workspace-location">{location.pathname}{location.search}</output><button onClick={() => navigate(-1)}>Browser tilbage</button></>;
 }
 
-function mountWorkspace(url, { client, measures = [] } = {}) {
+function mountWorkspace(url, { client, measures = [], procurement = null } = {}) {
   useAuth.mockReturnValue({ user: { id: 'test-user' }, hasRole: () => false });
   axios.get.mockImplementation(path => {
     if (path === '/api/v3/cases/case-example/technical-runs') return Promise.resolve({ data: { runs: [] } });
     if (path !== '/api/v3/cases/case-example/workspace') return Promise.reject(new Error(`Unexpected GET ${path}`));
-    return Promise.resolve({ data: { case: { id: 'case-example', case_id: 'EKSEMPEL-001', title: 'Eksempel til navigation', status: 'kladde' }, measures } });
+    return Promise.resolve({ data: { case: { id: 'case-example', case_id: 'EKSEMPEL-001', title: 'Eksempel til navigation', status: 'kladde' }, measures, procurement } });
   });
   const queryClient = client || new QueryClient({ defaultOptions: { queries: { retry: false, cacheTime: 0, refetchOnWindowFocus: false } } });
   return render(<QueryClientProvider client={queryClient}><ThemeProvider theme={lightTheme}><MemoryRouter initialEntries={[url]}>
@@ -143,6 +143,14 @@ function mountWorkspace(url, { client, measures = [] } = {}) {
     <NavigationState />
   </MemoryRouter></ThemeProvider></QueryClientProvider>);
 }
+
+test('sagens organisation vises eksplicit og bevares på tværs af faner', async () => {
+  mountWorkspace('/sager/case-example', { procurement: { organisation: 'Eksempel Kommune' } });
+  const label = await screen.findByText('Sagens organisation:');
+  expect(label.closest('p')).toHaveTextContent('Sagens organisation: Eksempel Kommune');
+  fireEvent.click(screen.getByRole('tab', { name: 'Dokumentation' }));
+  expect(screen.getByText('Sagens organisation:').closest('p')).toHaveTextContent('Eksempel Kommune');
+});
 
 test('eksempelfilter og guideparametre bevares gennem faneskift, browser tilbage og tilbage til sager', async () => {
   mountWorkspace('/sager/case-example?from=examples&tab=documents&guide_case=case-example');

@@ -2,12 +2,12 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { reviewUnits, type ReviewUnit } from './review.mts';
 import { gatewayFailure } from './errors.mts';
+import { MAX_AI_INPUT_CHARS, MAX_AI_RAW_INPUT_CHARS } from './input-limits.mts';
 
 export const MATERIAL_MODEL = 'openai/gpt-5.5';
 export const MATERIAL_PROMPT_VERSION = 'municipal-ai-solution-evidence-2026-09-20-v2';
-// Reserve room beyond the 300k Python source pack for an evaluated draft.
-export const MAX_MATERIAL_INPUT_CHARS = 400_000;
-export const MAX_MATERIAL_RAW_INPUT_CHARS = 400_000;
+export const MAX_MATERIAL_INPUT_CHARS = MAX_AI_INPUT_CHARS;
+export const MAX_MATERIAL_RAW_INPUT_CHARS = MAX_AI_RAW_INPUT_CHARS;
 const uniqueArray = (values: readonly [string, ...string[]]) => z.array(z.enum(values)).min(1).refine(items => new Set(items).size === items.length);
 const fieldSchemas: Record<string, z.ZodType> = {
   purpose: z.string().min(20).max(10000), processing_description: z.string().min(40).max(20000),

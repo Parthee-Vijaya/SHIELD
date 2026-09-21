@@ -2,12 +2,12 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { EVALUATOR_MODEL, reviewUnits, type ReviewUnit } from './review.mts';
 import { gatewayFailure } from './errors.mts';
+import { MAX_AI_INPUT_CHARS, MAX_AI_RAW_INPUT_CHARS } from './input-limits.mts';
 
 export const REPORT_MODEL = 'openai/gpt-5.5';
 export const PROMPT_VERSION = 'datatilsynet-dpia-draft-2026-09-21-v3';
-// Includes bounded source text plus its provenance, the form and base report.
-export const MAX_REPORT_INPUT_CHARS = 400_000;
-export const MAX_REPORT_RAW_INPUT_CHARS = 500_000;
+export const MAX_REPORT_INPUT_CHARS = MAX_AI_INPUT_CHARS;
+export const MAX_REPORT_RAW_INPUT_CHARS = MAX_AI_RAW_INPUT_CHARS;
 
 const sourceSchema = z.object({ id: z.string(), title: z.string(), text: z.string() }).passthrough();
 const inputSchema = z.object({
