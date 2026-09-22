@@ -1,11 +1,13 @@
 {
   "name": "shield",
-  "version": "0.7.9",
+  "version": "0.8.1",
   "private": true,
   "workspaces": [
     "frontend"
   ],
   "scripts": {
+    "version:check": "node scripts/product-version.cjs check",
+    "version:bump": "node scripts/product-version.cjs bump",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "python3 main.py",
     "dev:frontend": "cd frontend && PORT=8090 BROWSER=none npm start",

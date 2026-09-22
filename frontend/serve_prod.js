@@ -60,21 +60,27 @@ const apiProxy = createProxyMiddleware({
   app.use(mount, apiProxy);
 });
 
-// Static assets — long-cache hashed assets, no-cache index.html
+const REVALIDATE_CACHE = 'no-cache';
+const NO_STORE_CACHE = 'no-cache, no-store, must-revalidate';
+
+// Only CRA's content-hashed files are safe to keep across releases.
 app.use(express.static(BUILD_DIR, {
   index: false,
   setHeaders(res, filePath) {
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    } else if (/\.(js|css|woff2?|svg|png|jpg|jpeg|gif|ico)$/.test(filePath)) {
-      // CRA hashes asset filenames so they're safe to cache for a long time
+    const relativePath = path.relative(BUILD_DIR, filePath).split(path.sep).join('/');
+    if (relativePath === 'sw.js' || filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', NO_STORE_CACHE);
+    } else if (/^static\/(?:js|css|media)\/.+\.[a-f0-9]{8,}(?:\.chunk)?\.[a-z0-9]+$/i.test(relativePath)) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', REVALIDATE_CACHE);
     }
   },
 }));
 
 // SPA fallback — anything not handled above renders the React app
 app.get('*', (_req, res) => {
+  res.setHeader('Cache-Control', NO_STORE_CACHE);
   res.sendFile(path.join(BUILD_DIR, 'index.html'));
 });
 

@@ -1,8 +1,21 @@
-# Changelog — Tyr (tidligere "Project Judge Dredd")
+# Changelog — SHIELD
 
 Alle bemærkelsesværdige ændringer til dette projekt dokumenteres her.
 
 Formatet er baseret på [Keep a Changelog](https://keepachangelog.com/da/1.0.0/), og projektet følger [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.8.1] - 2026-09-22 — Samlet produktversion
+
+- Versionsnummeret i brugerfladen, README og npm-pakkerne er samlet på v0.8.1. Det synlige nummer stod tidligere fast på v0.7.3.
+- Fælles kommando til versionsløft og kontrol før frontendstart og build forhindrer, at numrene bliver forskellige igen.
+- HTML og serviceworker får cacheindstillinger, som sikrer genvalidering ved opdateringer; lang cache er begrænset til statiske filer med indholdshash.
+- Projektets arbejdsregler kræver versionsløft, ændringsnotat, build og browserkontrol ved hver afsluttet samling af ændringer i løsningen.
+
+Denne udgave omfatter også de tidligere leverede forbedringer siden det synlige v0.7.3: læsevenlige vurderinger, tydeligere rapportversioner og ejere, JEV-opfølgning, samlede værktøjer og dokumenteret lokal drift via Tailscale. Der er ikke efterfølgende opfundet individuelle udgivelsesnumre til disse ændringer.
+
+## Historisk Tyr-versionshistorik
+
+Nedenstående versionsnumre tilhører det tidligere Tyr-projekt og er bevaret som historik. SHIELDs aktuelle produktversion står ovenfor.
 
 ## [3.0.0-alpha.18] - 2026-05-08 — Tyr-rebrand + Northern Modern design system
 

@@ -1,6 +1,6 @@
 {
   "name": "shield-frontend",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "dependencies": {
     "@azure/msal-browser": "5.20.0",
@@ -31,6 +31,8 @@
   "author": "Project Judge Dredd Team",
   "description": "AI Compliance Control Platform - Professional Legal Compliance Assessment",
   "scripts": {
+    "prestart": "node ../scripts/product-version.cjs check",
+    "prebuild": "node ../scripts/product-version.cjs check",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "postbuild": "node scripts/stamp-service-worker.js",

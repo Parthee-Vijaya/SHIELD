@@ -27,6 +27,12 @@
 - PRs must summarise intent, link the relevant issue or ticket, note any schema or config updates, and list the commands you ran (`pytest`, `npm test`, migrations).
 - Include before/after screenshots for UI work and call out follow-up tasks if scope was trimmed.
 
+## Product Versioning
+- Bump the visible product version for every completed batch of user-facing changes, including fixes, before building and presenting the result. Do not leave the previous version visible after shipping changes.
+- `frontend/src/config/brand.js` (`BRAND.version`) is the source of truth. Use `npm run version:bump -- patch` for fixes and small improvements, `minor` for new functionality, or `major` for breaking changes. The command synchronizes both package manifests, their lockfile entries, and the current version in README.
+- Add a dated entry to `CHANGELOG.md`. Run `npm run version:check`, rebuild the frontend, and verify the visible version through the actual local/Tailscale URL. Frontend start/build rejects inconsistent version metadata.
+- Bump once per delivered batch, not on every save or repeat build. Documentation-only edits and generated news/cache updates do not need a product-version bump. Historical report versions and historical verification notes must retain their original numbers.
+
 ## Security & Configuration Tips
 - Initialise secrets by copying `.env.example`; never commit live API keys or SMTP credentials.
 - Track changes to `config/agents/*.yml` in the PR body so reviewers understand new research scopes or scoring weights.

@@ -8,7 +8,9 @@ Målet er et dokumenteret grundlag for dialog mellem sagsbehandler, systemejer, 
 
 En konsekvensanalyse vedrørende databeskyttelse kaldes også en **DPIA**. I SHIELD forbindes beskrivelsen af behandlingen med de risici, den kan medføre for de registrerede, og de foranstaltninger, kommunen skal tage stilling til.
 
-**Aktuel produktversion: v0.7.3.** Versionsnummeret vises i løsningen og vedligeholdes i [`frontend/src/config/brand.js`](frontend/src/config/brand.js). Ældre pakkenavne og versionsnumre findes fortsat i projektets tekniske historik.
+**Aktuel produktversion: v0.8.1.** Versionsnummeret vises i løsningen og vedligeholdes i [`frontend/src/config/brand.js`](frontend/src/config/brand.js). Ældre pakkenavne og versionsnumre findes fortsat i projektets tekniske historik.
+
+Versionsnummeret hæves ved hver afsluttet samling af ændringer i løsningen. Brug `npm run version:bump -- patch` til rettelser og mindre forbedringer eller `-- minor` til nye funktioner. Kommandoen opdaterer det synlige nummer, pakkefilerne, lockfilen og denne README samlet. Tilføj ændringerne i [CHANGELOG.md](CHANGELOG.md), og byg brugerfladen igen. `npm run version:check` kontrollerer sammenhængen og køres også før frontendstart og build. Genbygning af samme kode hæver ikke i sig selv nummeret.
 
 > SHIELD er beslutningsstøtte. En genereret tekst, en lav risikoscore eller en JEV-kontrol udgør ikke en juridisk godkendelse. Skærmbillederne nedenfor viser en faglig arbejdsversion med en påtænkt kommunal anvendelse. De dokumenterer ikke et faktisk kommunalt indkøb, implementerede foranstaltninger eller en godkendelse fra Kalundborg Kommune.
 
