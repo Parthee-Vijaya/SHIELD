@@ -16,14 +16,14 @@ import DriftPage from './DriftPage';
 import { lawSourceText } from '../utils/lawSourcePresentation';
 
 jest.mock('axios');
+const mockAuthFetch = jest.fn((...args) => global.fetch(...args));
+jest.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ authFetch: mockAuthFetch }) }));
 jest.mock('react-hot-toast', () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 const mount = (Page, url = '/') => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, cacheTime: 0 } }, logger: { log: () => {}, warn: () => {}, error: () => {} } })}><ThemeProvider theme={lightTheme}><MemoryRouter initialEntries={[url]}><Page /></MemoryRouter></ThemeProvider></QueryClientProvider>);
 const stream = events => ({ ok: true, body: { getReader: () => ({ read: jest.fn().mockResolvedValueOnce({ value: new TextEncoder().encode(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join('')), done: false }).mockResolvedValue({ done: true }) }) } });
-let eventSource;
 beforeEach(() => {
-  localStorage.clear(); jest.clearAllMocks(); global.TextDecoder = TextDecoder; global.fetch = jest.fn();
+  localStorage.clear(); jest.clearAllMocks(); global.TextDecoder = TextDecoder; global.fetch = jest.fn(); mockAuthFetch.mockImplementation((...args) => global.fetch(...args));
   axios.get.mockResolvedValue({ data: { success: true, categories: [] } });
-  global.EventSource = jest.fn(() => { eventSource = { close: jest.fn() }; return eventSource; });
 });
 afterEach(() => { jest.restoreAllMocks(); });
 async function askLaw(events) {
@@ -53,20 +53,19 @@ test('modeltekst vises som tekst og kan ikke injicere HTML i lovassistenten', as
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
-test('kildesøgning sender valgte fokusområder og viser faktiske kilder med forbehold', async () => {
-  const view = mount(ResearchPage);
+test('kildesøgning sender valgte fokusområder gennem authFetch og viser faktiske kilder med forbehold', async () => {
+  fetch.mockResolvedValue(stream([{ status: 'complete', result: { query: 'Konsekvensanalyse', summary: '**EU:** Kontroller originalen.', sources: [{ title: 'Officiel vejledning', url: 'https://www.datatilsynet.dk/vejledning', domain: 'datatilsynet.dk' }], warnings: ['Kildeindholdet kræver faglig kontrol.'] } }]));
+  mount(ResearchPage);
   fireEvent.change(screen.getByLabelText('Emne for kildesøgning'), { target: { value: 'Konsekvensanalyse' } });
   fireEvent.click(screen.getByRole('button', { name: 'EU AI Act' }));
   fireEvent.click(screen.getByRole('button', { name: 'Datatilsynets vejledninger' }));
   fireEvent.click(screen.getByRole('button', { name: 'Søg efter kilder' }));
-  await waitFor(() => expect(EventSource).toHaveBeenCalled());
-  const requested = new URL(EventSource.mock.calls[0][0], 'http://localhost');
+  await waitFor(() => expect(mockAuthFetch).toHaveBeenCalled());
+  const requested = new URL(mockAuthFetch.mock.calls[0][0], 'http://localhost');
   expect(requested.searchParams.getAll('focus_areas')).toEqual(['GDPR', 'Datatilsynets vejledninger']);
-  act(() => eventSource.onmessage({ data: JSON.stringify({ status: 'complete', result: { query: 'Konsekvensanalyse', summary: '**EU:** Kontroller originalen.', sources: [{ title: 'Officiel vejledning', url: 'https://www.datatilsynet.dk/vejledning', domain: 'datatilsynet.dk' }], warnings: ['Kildeindholdet kræver faglig kontrol.'] } }) }));
-  expect(screen.getByRole('link', { name: 'Officiel vejledning' })).toHaveAttribute('href', 'https://www.datatilsynet.dk/vejledning');
+  expect(await screen.findByRole('link', { name: 'Officiel vejledning' })).toHaveAttribute('href', 'https://www.datatilsynet.dk/vejledning');
   expect(screen.getByLabelText('Forbehold for kildesøgningen')).toHaveTextContent('Kildeindholdet kræver faglig kontrol.');
   expect(screen.getByText('EU:').tagName).toBe('STRONG');
-  view.unmount(); expect(eventSource.close).toHaveBeenCalled();
 });
 test('EU-vejviser stopper indlæsning når serveren mangler spørgsmål', async () => {
   axios.get.mockResolvedValue({ data: { ready: false, logic: null, content: null } }); mount(EuAiActCheckerPage);
@@ -159,15 +158,45 @@ test('kendt billedplaceholder skjules kun i kildevisning mens lovtekst og rådat
 });
 
 test('research viser faktisk model og adskiller AI-henvisninger fra tekstuddrag uden sikkerhedsprocenter', async () => {
+  const source = { title: 'Officiel kilde', url: 'https://www.datatilsynet.dk/', domain: 'datatilsynet.dk' };
+  fetch.mockResolvedValue(stream([{ status: 'complete', result: { query: 'Konsekvensanalyse', model: 'gpt-5.6-sol', llm_answer: 'Et AI-udkast til kontrol.', llm_answer_confidence: 0.88, sources: [source], llm_answer_citations: [1, 2, 3].map(id => ({ title: `Henvisning ${id}`, url: source.url, relevance: 'Emnet behandles i kilden.', confidence: 0.7 })), citations: [1, 2].map(id => ({ text: `Tekstuddrag ${id}`, source, confidence: 0.9 })) } }]));
   mount(ResearchPage);
   fireEvent.change(screen.getByLabelText('Emne for kildesøgning'), { target: { value: 'Konsekvensanalyse' } });
   fireEvent.click(screen.getByRole('button', { name: 'Søg efter kilder' }));
-  await waitFor(() => expect(EventSource).toHaveBeenCalled());
-  const source = { title: 'Officiel kilde', url: 'https://www.datatilsynet.dk/', domain: 'datatilsynet.dk' };
-  act(() => eventSource.onmessage({ data: JSON.stringify({ status: 'complete', result: { query: 'Konsekvensanalyse', model: 'gpt-5.6-sol', llm_answer: 'Et AI-udkast til kontrol.', llm_answer_confidence: 0.88, sources: [source], llm_answer_citations: [1, 2, 3].map(id => ({ title: `Henvisning ${id}`, url: source.url, relevance: 'Emnet behandles i kilden.', confidence: 0.7 })), citations: [1, 2].map(id => ({ text: `Tekstuddrag ${id}`, source, confidence: 0.9 })) } }) }));
-  expect(screen.getByText(/Udarbejdet med GPT-5.6 Sol/)).toBeInTheDocument();
+  expect(await screen.findByText(/Udarbejdet med GPT-5.6 Sol/)).toBeInTheDocument();
   expect(screen.queryByText(/88%|70%|90%|sikkerhedsindikator|% sikkerhed/i)).not.toBeInTheDocument();
   const stats = screen.getByText('Henvisninger i AI-svaret').parentElement;
   expect(within(stats).getByText('3')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Tekstuddrag fra kilder (2)' })).toBeInTheDocument();
+});
+
+ test('kildesøgning må ikke præsentere en afbrudt strøm som et resultat', async () => {
+  fetch.mockResolvedValue(stream([{ status: 'searching', message: 'Kontrollerer kilder', progress: 25 }]));
+  mount(ResearchPage);
+  fireEvent.change(screen.getByLabelText('Emne for kildesøgning'), { target: { value: 'GDPR søgning' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Søg efter kilder' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('før resultatet var færdigt');
+  expect(screen.getByRole('button', { name: 'Søg efter kilder' })).toBeEnabled();
+});
+
+test.each([[ResearchPage, 'Emne for kildesøgning', 'Søg efter kilder', 'Stop søgning'], [LawAssistantPage, 'Juridisk spørgsmål', 'Søg svar', 'Stop svar']])('aktive forespørgsler kan stoppes og afbrydes ved sideskift', async (Page, field, submit, stop) => {
+  fetch.mockImplementation((_url, options) => new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Stopped', 'AbortError')))));
+  const view = mount(Page);
+  fireEvent.change(screen.getByLabelText(field), { target: { value: 'GDPR søgning' } });
+  fireEvent.click(screen.getByRole('button', { name: submit }));
+  await waitFor(() => expect(mockAuthFetch).toHaveBeenCalledTimes(1));
+  const signal = mockAuthFetch.mock.calls[0][1].signal;
+  fireEvent.click(screen.getByRole('button', { name: stop }));
+  expect(signal.aborted).toBe(true);
+  expect(await screen.findByRole('alert')).toHaveTextContent(/stoppede|stoppet/);
+  fireEvent.click(screen.getByRole('button', { name: submit }));
+  await waitFor(() => expect(mockAuthFetch).toHaveBeenCalledTimes(2));
+  const nextSignal = mockAuthFetch.mock.calls[1][1].signal;
+  view.unmount();
+  expect(nextSignal.aborted).toBe(true);
+});
+
+test('lovassistent sender sin JSON-forespørgsel gennem den autoriserede fetch', async () => {
+  await askLaw([{ event: 'final', answer: 'Syntetisk svar' }]);
+  expect(mockAuthFetch).toHaveBeenCalledWith('/api/law/ask/stream', expect.objectContaining({ method: 'POST', body: JSON.stringify({ query: 'Hvad siger loven?', category: null, mode: 'auto' }), headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' } }));
 });

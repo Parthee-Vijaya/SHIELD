@@ -6,7 +6,6 @@ import BRAND from '../config/brand';
 import { Page, PageHeader, Eyebrow, Title, Lede, Section, SectionHeader, Button, SecondaryButton } from '../components/workflow/WorkflowUi';
 
 const Content = styled(Page)`
-  max-width: 1160px;
   overflow-wrap: anywhere;
 `;
 

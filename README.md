@@ -8,7 +8,7 @@ Målet er et dokumenteret grundlag for dialog mellem sagsbehandler, systemejer, 
 
 En konsekvensanalyse vedrørende databeskyttelse kaldes også en **DPIA**. I SHIELD forbindes beskrivelsen af behandlingen med de risici, den kan medføre for de registrerede, og de foranstaltninger, kommunen skal tage stilling til.
 
-**Aktuel produktversion: v0.8.1.** Versionsnummeret vises i løsningen og vedligeholdes i [`frontend/src/config/brand.js`](frontend/src/config/brand.js). Ældre pakkenavne og versionsnumre findes fortsat i projektets tekniske historik.
+**Aktuel produktversion: v0.9.0.** Versionsnummeret vises i løsningen og vedligeholdes i [`frontend/src/config/brand.js`](frontend/src/config/brand.js). Ældre pakkenavne og versionsnumre findes fortsat i projektets tekniske historik.
 
 Versionsnummeret hæves ved hver afsluttet samling af ændringer i løsningen. Brug `npm run version:bump -- patch` til rettelser og mindre forbedringer eller `-- minor` til nye funktioner. Kommandoen opdaterer det synlige nummer, pakkefilerne, lockfilen og denne README samlet. Tilføj ændringerne i [CHANGELOG.md](CHANGELOG.md), og byg brugerfladen igen. `npm run version:check` kontrollerer sammenhængen og køres også før frontendstart og build. Genbygning af samme kode hæver ikke i sig selv nummeret.
 
@@ -43,10 +43,24 @@ Versionsnummeret hæves ved hver afsluttet samling af ændringer i løsningen. B
 | Se hvad AI og JEV gjorde | Fanen Teknisk kørsel forbinder gemte versioner, modeller, input, output, kildeuddrag og JEV-kontrolpunkter. |
 | Bevare beslutningsgrundlaget | Gemte analyser og rapportrevisioner bevares. Kilder, modeloplysninger og relevante kontrolresultater følger versionen. |
 | Hjælpe nye brugere i gang | En interaktiv introduktion tilbydes ved første login og kan startes igen fra menuen eller indstillinger. |
+| Finde arbejdet igen | Kategoriseret livesøgning finder sager, vurderinger, dokumenttitler, begreber og vejledninger – også ved mindre stavefejl. Samme søgning åbnes med ⌘K / Ctrl+K. |
+| Genbruge systemnavne | Søg efter løsning og leverandør fra et lokalt importeret systemkatalog, eller skriv et navn manuelt. Relationernes dokumenterede roller vises særskilt. |
 
 Løsningen vurderer den **konkrete anvendelse**. En AI-assistent til interne projektmøder har ikke nødvendigvis samme behandlingsgrundlag, risici eller krav som samme produkt brugt i borgersamtaler. Et produktnavn eller en generel SaaS-beskrivelse dokumenterer heller ikke i sig selv en AI-funktion.
 
 ## Arbejdsgangen i billeder
+
+### Login og det fælles arbejdsrum
+
+Login viser den identitet, backend faktisk har bekræftet. På den lokale installation fortsætter man som **Parthee** i en tydeligt markeret fælles lokal session. Ved Entra-opsætning bruges Microsoft-login og servervaliderede roller. Den lokale fortsætknap er ikke et personligt kommunalt login.
+
+![SHIELD v0.9.0: login med en kort forklaring af arbejdsgangen og fortsætknap for den lokale bruger Parthee](docs/screenshots/11-login-v090.png)
+
+Forsiden prioriterer søgning, næste handling og aktuelle sager. Søgning og hurtig navigation bruger samme resultater; der vedligeholdes ikke to forskellige søgekataloger. Kilderesultater åbner det relevante dokument eller den præcise vejledning. Sagsindhold kræver en sagsrolle, og private søgeresultater ryddes ved afslutning af sessionen.
+
+![Startsiden i v0.9.0 med Parthees navn, én primær oprettelsesknap og fælles søgning på tværs af arbejdsrummet](docs/screenshots/12-startsoegning-v090.png)
+
+**Viden og vejledning** samler begreber og rapporter i to faner. **Juridisk arbejdsrum** skelner mellem at finde kilder og spørge til lovgivning. AI Act-arbejdsrummet skelner mellem en gemt vurdering på en sag og den supplerende EU-vejviser. Den særskilte manuelle sagsoprettelse ligger under **Andre muligheder**, med forklaring af hvornår den er relevant.
 
 ### 1. Start med den løsning, kommunen vil bruge
 
@@ -241,7 +255,7 @@ Redigér `.env` lokalt. Disse værdier giver en lokal SQLite-installation med ud
 DATABASE_URL=sqlite:///./data/virkning.db
 APP_ENV=development
 AUTH_MODE=development
-DEV_AUTH_USER=Lokal bruger
+DEV_AUTH_USER=Parthee
 DEV_AUTH_ROLES=Hammeren.Sagsbehandler,Hammeren.Godkender,Hammeren.DPO,Hammeren.Admin
 API_HOST=127.0.0.1
 API_PORT=8001
@@ -296,6 +310,21 @@ Projektet indeholder [`docker-compose.yml`](docker-compose.yml), backend-image o
 
 Docker-konfigurationen er **ikke en komplet pakning af den aktuelle AI Gateway-arbejdsgang**: backend-imaget inkluderer endnu ikke Node-runtime og AI-scripts, og frontend-imaget bruger en ældre Node-base. Brug den direkte lokale opsætning ovenfor til den samlede arbejdsgang. Dockerfilerne skal opdateres og verificeres, før de anvendes til samme formål.
 
+## System- og leverandørkatalog
+
+System- og leverandørfelterne søger i et lokalt importeret katalog fra Excel. Importen gemmer systemnavn, UUID, tilgængelighed og organisationernes dokumenterede roller samt filhash og importtidspunkt. Rettighedshaver og databehandler er forslag; de er ikke automatisk kommunens aftalepart. Kontaktpersoner og øvrig fritekst importeres ikke. Valg fra kataloget dokumenterer heller ikke, at løsningen indeholder AI.
+
+Tag backup af databasen, aktivér backendens Python-miljø, og kontrollér importen:
+
+```bash
+DATABASE_URL=sqlite:///./data/shield-review.db \
+  python scripts/import_system_catalog.py "/sti/IT Systemkatalog Overblik.xlsx" --dry-run
+```
+
+Fjern `--dry-run` for at importere. Gentagen import af samme fil ændrer intet. Eksisterende sager og tidligere katalogudgaver bevares; søgningen bruger seneste import. Ingen forbindelse til KITOS er nødvendig. Det er et lokalt øjebliksbillede, som opdateres ved en ny import.
+
+Katalogsøgning kræver en sagsrolle. Kilderegnearket og den lokale database skal holdes uden for Git. Uden katalog eller ved forbindelsesfejl kan brugeren stadig indtaste navnene manuelt.
+
 ## Opsætning af AI
 
 ### Nøglen forbliver på serveren
@@ -324,6 +353,8 @@ Ved lokal afprøvning kan `SHIELD_ENABLE_CODEX_LOCAL=true` gives til backendproc
 Denne tekstforbindelse erstatter ikke JEV eller AI Gateway-forløbet for materialeanalyse og rapportgenerering. Modelnavnet følger svarene; manglende kildebelæg og mislykkede kald vises som sådanne. Konfigurationen følger [OpenAI's officielle indstillingsreference](https://learn.chatgpt.com/docs/config-file/config-reference).
 
 ## Kontrol og test
+
+Se [gennemgangen af v0.9.0](docs/QA_V090.md) for fund, rettelser, browserkontrol, testresultater og de kontroller, der stadig kræver en rigtig driftsopsætning.
 
 Ved klargøringen til dette repository den **21. september 2026** bestod **584 backendtests, 201 frontendtests og 27 Gateway-tests** samt AI-typekontrollen. Det er en kontrol af den aktuelle kode og dens testscenarier, ikke en attestering af juridisk korrekthed eller produktionsdrift.
 

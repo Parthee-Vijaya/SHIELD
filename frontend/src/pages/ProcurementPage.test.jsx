@@ -85,13 +85,45 @@ test('prevents upload, website fetch and analysis until materials can be attache
 
 test('explains a field on hover without changing its accessible label or submitting the form', ()=>{
   mount('/anskaffelse');
-  const input=screen.getByRole('textbox',{name:'Løsningens navn'});
+  const input=screen.getByRole('combobox',{name:'Løsningens navn'});
   fireEvent.mouseEnter(screen.getByRole('button',{name:'Hjælp til Løsningens navn'}));
   const help=screen.getByRole('tooltip');
   expect(help).toHaveTextContent('Angiv produktets navn og gerne den konkrete AI-funktion.');
   expect(input).toHaveAttribute('aria-describedby',help.id);
   expect(authFetch).not.toHaveBeenCalled();
   expect(input).toHaveValue('');
+});
+
+test('catalog choice preserves existing supplier until explicitly applied, and the saved profile survives reload', async()=>{
+  const party={id:'supplier-catalog',name:'Katalogets rettighedshaver',role:'rights_holder',role_label:'Rettighedshaver'};
+  const item={id:'system-catalog',name:'Katalogløsning',available:true,parties:[party]};
+  let persisted={...profile};
+  authFetch.mockImplementation((path,options)=>{
+    if(path.startsWith('/api/system-catalog?')) return reply({items:[item],total:1,source:{name:'Katalog.xlsx',imported_at:'2026-09-22T10:00:00Z'}});
+    if(path.endsWith('/procurement') && options?.method==='PATCH') {
+      persisted={...JSON.parse(options.body),revision:2};
+      return reply({profile:persisted});
+    }
+    if(path.endsWith('/procurement')) return reply({profile:persisted,analysis:null,review:null});
+    if(path.endsWith('/source-material')) return reply({items:[]});
+    throw new Error(`Unexpected request ${path}`);
+  });
+  const view=mount();
+  const system=await screen.findByDisplayValue(profile.system_name);
+  fireEvent.change(system,{target:{value:'Katalog'}});
+  fireEvent.click(await screen.findByRole('option',{name:/Katalogløsning/}));
+  expect(screen.getByLabelText('Løsningens navn')).toHaveValue('Katalogløsning');
+  expect(screen.getByLabelText('Leverandør')).toHaveValue(profile.supplier_name);
+  expect(screen.getByLabelText('Kommunens påtænkte anvendelse')).toHaveValue(profile.intended_use);
+  fireEvent.click(screen.getByRole('button',{name:/Katalogets rettighedshaver · Brug som leverandør/}));
+  expect(screen.getByLabelText('Leverandør')).toHaveValue(party.name);
+  fireEvent.click(screen.getByRole('button',{name:'Gem og tilføj materiale →'}));
+  await screen.findByRole('heading',{name:'Saml leverandørmaterialet'});
+  expect(persisted).toMatchObject({system_name:item.name,supplier_name:party.name,intended_use:profile.intended_use});
+  view.unmount();
+  mount();
+  expect(await screen.findByDisplayValue(item.name)).toBeInTheDocument();
+  expect(screen.getByLabelText('Leverandør')).toHaveValue(party.name);
 });
 
 test('allows viewing later steps of a saved case before analysis while keeping dependent actions unavailable', async()=>{

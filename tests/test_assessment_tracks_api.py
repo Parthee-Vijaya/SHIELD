@@ -253,7 +253,11 @@ def test_fria_endpoint_accepts_internal_case_id_and_completes_verified_measure(a
     assert payload["decision_readiness"] == "ready_for_human_decision"
 
     with session_factory() as session:
-        reference = session.query(CaseWorkspaceReference).one()
+        reference = (
+            session.query(CaseWorkspaceReference)
+            .filter_by(case_db_id=internal_id, reference_type="fria_assessment")
+            .one()
+        )
         measure = (
             session.query(CaseAction).filter(CaseAction.category == "measure").one()
         )
@@ -262,6 +266,17 @@ def test_fria_endpoint_accepts_internal_case_id_and_completes_verified_measure(a
         assert measure.status == "completed"
         assert measure.owner == "Systemejer"
         assert "AC-02" in measure.evidence_note
+        event = (
+            session.query(CaseWorkspaceReference)
+            .filter_by(case_db_id=internal_id, reference_type="external_record")
+            .one()
+        )
+        assert event.created_by == "Test Sagsbehandler"
+        assert event.details["workspace_event"]["actor_id"] == "test-worker-oid"
+        assert event.details["workspace_event"]["actor_kind"] == "human"
+        assert event.details["workspace_event"]["target_id"] == measure.id
+        assert event.details["workspace_event"]["after"]["status"] == "completed"
+        assert event.created_at is not None
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,5 @@
 import React, { useState, Suspense, useMemo, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
@@ -19,7 +19,7 @@ import { SectionLoader } from './components/LoadingSpinner';
 // Contexts
 import { UserPreferencesProvider, useUserPreferences } from './contexts/UserPreferencesContext';
 import { LoadingProvider } from './contexts/LoadingContext';
-import { AuthProvider, RequireRole } from './contexts/AuthContext';
+import { AuthProvider, RequireRole, useAuth } from './contexts/AuthContext';
 import { TutorialProvider, useTutorial } from './contexts/TutorialContext';
 
 // Command palette
@@ -27,6 +27,8 @@ import CommandPalette, { useCommandPaletteShortcut, useGotoShortcuts } from './c
 import { useNavigate } from 'react-router-dom';
 
 // Lazy loaded pages - Optimized code splitting
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 const HomePage = React.lazy(() => import('./pages/HomePage'));
 const ProcurementPage = React.lazy(() => import('./pages/ProcurementPage'));
 const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage'));
@@ -264,7 +266,22 @@ const RouterShortcuts = ({ paletteOpen, setPaletteOpen }) => {
   return null;
 };
 
+// Session choice controls the UI only. API identity and permissions remain server-enforced.
+const SessionBoundary = ({ children }) => {
+  const { ready, isAuthenticated } = useAuth();
+  const location = useLocation();
+  useEffect(() => { if (ready && !isAuthenticated) queryClient.clear(); }, [ready, isAuthenticated]);
+  if (location.pathname === '/login') return <Suspense fallback={<SectionLoader text="Indlæser login…" />}><LoginPage /></Suspense>;
+  if (!ready) return <SectionLoader text="Forbinder til dit arbejdsrum…" />;
+  if (!isAuthenticated) {
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />;
+  }
+  return children;
+};
+
 const AppInner = () => {
+  const { isAuthenticated } = useAuth();
   const { preferences } = useUserPreferences();
   const themeMode = useMemo(() => (preferences?.theme === 'dark' ? darkTheme : lightTheme), [preferences?.theme]);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -273,12 +290,13 @@ const AppInner = () => {
     document.documentElement.setAttribute('data-theme', themeMode.mode);
   }, [themeMode.mode]);
 
-  useCommandPaletteShortcut(() => { if (!document.querySelector('[data-tutorial-dialog]')) setPaletteOpen(true); });
+  useCommandPaletteShortcut(() => { if (isAuthenticated && !document.querySelector('[data-tutorial-dialog]')) setPaletteOpen(true); });
 
   return (
     <ThemeProvider theme={themeMode}>
       <GlobalStyle />
       <Router>
+        <SessionBoundary>
         <TutorialProvider>
         <RouterShortcuts paletteOpen={paletteOpen} setPaletteOpen={setPaletteOpen} />
         <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
@@ -365,6 +383,7 @@ const AppInner = () => {
                     <Route path="/lov-assistent" element={<></>} />
                   </Route>
                   <Route path="/indstillinger" element={<SettingsPage />} />
+                  <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Suspense>
             </PageErrorBoundary>
@@ -373,6 +392,7 @@ const AppInner = () => {
           <PrivacyNotice />
         </AppContainer>
         </TutorialProvider>
+        </SessionBoundary>
       </Router>
     </ThemeProvider>
   );

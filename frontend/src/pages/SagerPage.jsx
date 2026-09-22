@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../theme/layout';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -37,13 +38,7 @@ async function transitionCase({ id, new_status, note, confirmed = false }) {
 // ---- Layout shell -------------------------------------------------------
 
 const Page = styled.div`
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 34px 24px 90px;
-  min-width: 0;
-  box-sizing: border-box;
-
-  @media (max-width: 600px) { padding: 34px 14px 76px; }
+  ${pageLayout}
 `;
 
 const Header = styled.header`
@@ -69,14 +64,7 @@ const Eyebrow = styled.div`
 `;
 
 const Title = styled.h1`
-  overflow-wrap: anywhere;
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: clamp(2.3rem, 4.5vw, 3.4rem);
-  font-weight: 580;
-  letter-spacing: -0.055em;
-  line-height: 1.1;
-  margin: 0 0 14px;
-  color: ${(p) => p.theme.colors.ink};
+  ${pageTitleStyle}
 `;
 
 const Lede = styled.p`
@@ -94,9 +82,7 @@ const PrimaryButton = styled.button`
   border: none;
   padding: 0.7rem 1.4rem;
   border-radius: 0;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-weight: 600;
-  font-size: 0.92rem;
+  ${controlStyle}
   cursor: pointer;
   align-self: flex-end;
 
@@ -137,7 +123,7 @@ const BoardHeader = styled.div`
   margin-bottom: 22px;
 
   > div { flex: 1; min-width: 0; }
-  h2 { margin: 8px 0 0; font-size: 1.6rem; font-weight: 590; letter-spacing: -0.035em; }
+  h2 { ${sectionTitleStyle} margin: 8px 0 0; }
   p { flex: 1; max-width: 440px; margin: 0; color: ${(p) => p.theme.colors.inkSoft}; font-size: 0.82rem; line-height: 1.55; }
 
   @media (max-width: 680px) { align-items: start; flex-direction: column; }
@@ -164,6 +150,15 @@ const ViewFilters = styled.div`
     color: ${(p) => p.theme.colors.primary};
     font-weight: 600;
   }
+`;
+
+const OtherOptions = styled.details`
+  margin: 18px 0 24px;
+  color: ${(p) => p.theme.colors.inkSoft};
+  font-size: .875rem;
+  summary { cursor: pointer; width: fit-content; padding: 8px 0; }
+  p { max-width: 720px; margin: 10px 0 14px; line-height: 1.6; }
+  summary:focus-visible { outline: 2px solid ${(p) => p.theme.colors.primary}; outline-offset: 3px; }
 `;
 
 // ---- Modal --------------------------------------------------------------
@@ -250,14 +245,12 @@ const ModalActions = styled.div`
 `;
 
 const SecondaryButton = styled.button`
+  ${controlStyle}
   background: transparent;
   color: ${(p) => p.theme.colors.ink};
   border: 1px solid ${(p) => p.theme.colors.line};
   padding: 0.55rem 1rem;
   border-radius: 0;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-weight: 500;
-  font-size: 0.88rem;
   cursor: pointer;
 `;
 
@@ -479,7 +472,6 @@ const SagerPage = () => {
           </Lede>
         </div>
         <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
-          <SecondaryButton ref={createButtonRef} type="button" onClick={() => setShowCreate(true)}>Opret sag manuelt</SecondaryButton>
           <PrimaryButton as={Link} data-tour="new-case" to="/anskaffelse">Ny AI-løsning →</PrimaryButton>
         </div>
       </Header>
@@ -493,6 +485,12 @@ const SagerPage = () => {
           </SummaryItem>
         ))}
       </SummaryGrid>
+
+      <OtherOptions>
+        <summary>Andre muligheder</summary>
+        <p>Opret en sag manuelt, hvis du allerede har en vurdering og vil samle dokumentation, ansvar og opfølgning. Brug ‘Ny AI-løsning’ til den guidede arbejdsgang med leverandørmateriale og analyse.</p>
+        <SecondaryButton ref={createButtonRef} type="button" onClick={() => setShowCreate(true)}>Opret sag manuelt</SecondaryButton>
+      </OtherOptions>
 
       {overview.isError && <ErrorBox role="alert">Sagsstatus kunne ikke hentes. Oversigten viser derfor ingen optælling.</ErrorBox>}
 

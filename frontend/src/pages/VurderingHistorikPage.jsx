@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../theme/layout';
 import { useQuery } from 'react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -115,14 +116,7 @@ const ruleHumanTitle = (decision) => {
 // ---- Layout shell -------------------------------------------------------
 
 const Page = styled.div`
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: clamp(2.75rem, 6vw, 4.75rem) 20px 6rem;
-
-  @media (max-width: 520px) {
-    padding-right: 14px;
-    padding-left: 14px;
-  }
+  ${pageLayout}
 `;
 
 const Eyebrow = styled.div`
@@ -136,14 +130,7 @@ const Eyebrow = styled.div`
 `;
 
 const Title = styled.h1`
-  overflow-wrap: anywhere;
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: clamp(2.5rem, 5vw, 4.25rem);
-  font-weight: 700;
-  letter-spacing: -0.045em;
-  line-height: 0.98;
-  margin: 0 0 0.85rem;
-  color: ${(p) => p.theme.colors.ink};
+  ${pageTitleStyle}
 `;
 
 const Lede = styled.p`
@@ -188,10 +175,7 @@ const FilterChip = styled.button`
     p.$active ? p.theme.colors.primary : p.theme.colors.line};
   padding: 0.5rem 0.8rem;
   border-radius: 0;
-  font-family: ${(p) => p.theme.fonts.mono};
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  ${controlStyle}
   cursor: pointer;
   transition: border-color ${(p) => p.theme.animations.transitionFast};
 
@@ -384,13 +368,7 @@ const CaseId = styled.div`
 `;
 
 const CaseTitle = styled.h1`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin: 0 0 0.65rem;
-  color: ${(p) => p.theme.colors.ink};
+  ${pageTitleStyle}
 `;
 
 const CaseMeta = styled.p`
@@ -424,12 +402,8 @@ const VerdictText = styled.div`
 `;
 
 const SectionH = styled.h2`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 1.7rem;
-  font-weight: 600;
-  letter-spacing: -0.012em;
+  ${sectionTitleStyle}
   margin: 3rem 0 0.4rem;
-  color: ${(p) => p.theme.colors.ink};
 `;
 
 const SectionLede = styled.p`

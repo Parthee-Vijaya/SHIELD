@@ -28,7 +28,7 @@ function mount(url = '/') {
 beforeEach(() => {
   authFetch = jest.fn().mockResolvedValue({ ok: true, json: async () => payload });
   restart = jest.fn();
-  useAuth.mockReturnValue({ user: { oid: 'synthetic-user' }, ready: true, isAuthenticated: true, authFetch });
+  useAuth.mockReturnValue({ user: { oid: 'synthetic-user', name: 'Parthee Vijaya' }, ready: true, isAuthenticated: true, authFetch });
   useTutorial.mockReturnValue({ canStart: true, restart });
 });
 
@@ -42,20 +42,17 @@ test('shows server-derived action counts and opens the exact saved version', asy
   expect(authFetch).toHaveBeenCalledWith('/api/v3/cases/overview?scope=work&limit=500', expect.objectContaining({ signal: expect.anything() }));
 });
 
-test('pagination, search and clear preserve addressable case actions', async () => {
+test('pagination preserves addressable case actions and the home page has one shared search', async () => {
   mount();
   const list = await screen.findByRole('list', { name: 'Sager med næste handling' });
   expect(within(list).getAllByRole('listitem')).toHaveLength(5);
   fireEvent.click(screen.getByRole('button', { name: 'Næste' }));
   expect(within(list).getAllByRole('listitem')).toHaveLength(2);
   expect(screen.getByRole('heading', { name: 'Næste handlinger' })).toHaveFocus();
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Søg i arbejdslisten' }), { target: { value: 'System 2' } });
-  expect(within(list).getAllByRole('listitem')).toHaveLength(1);
-  expect(within(list).getByRole('link')).toHaveAttribute('href', '/sager/case-2?tab=assessments');
-  fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'findes ikke' } });
-  expect(screen.getByText('Ingen sager matcher søgningen')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Ryd søgning' }));
-  expect(screen.getByText('Viser 1–5 af 7 sager')).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Søg på tværs af SHIELD' })).toBeInTheDocument();
+  expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Forrige' }));
+  expect(within(list).getAllByRole('link')[2]).toHaveAttribute('href', '/sager/case-2?tab=assessments');
 });
 
 test('changing scope requests new data and updates URL without mutating cases', async () => {
@@ -103,9 +100,9 @@ test('empty scope shows a useful next step instead of invented cases', async () 
 
 test('onboards a municipal procurement with a material-first path and explicit human review', async () => {
   mount();
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Et samlet grundlag for jeres AI-løsninger.');
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Goddag, Parthee');
   expect(screen.getByRole('link', { name: 'Opret AI-løsning' })).toHaveAttribute('href', '/anskaffelse');
-  expect(screen.getByRole('link', { name: 'Se, hvordan det fungerer' })).toHaveAttribute('href', '#saadan-arbejder-i');
+  fireEvent.click(screen.getByText('Sådan arbejder I med en AI-løsning'));
   const workflow = screen.getByRole('region', { name: 'Sådan vurderer I en AI-løsning' });
   expect(within(workflow).getAllByRole('listitem')).toHaveLength(4);
   expect(workflow).toHaveTextContent('Den faglige og juridiske vurdering skal gennemgås af kommunen.');
@@ -136,5 +133,5 @@ test('new procurement and workflow explanation remain available if the case over
   await screen.findByRole('alert');
   fireEvent.click(screen.getByRole('link', { name: 'Opret AI-løsning' }));
   expect(screen.getByTestId('location')).toHaveTextContent('/anskaffelse');
-  expect(screen.getByRole('region', { name: 'Sådan vurderer I en AI-løsning' })).toBeInTheDocument();
+  expect(screen.getByText('Sådan arbejder I med en AI-løsning')).toBeInTheDocument();
 });

@@ -1,25 +1,11 @@
 import React from 'react';
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../../theme/layout';
 
-/**
- * S.H.I.E.L.D. — shared page chrome (Northern Modern, Design system v2)
- *
- * Stil-anker for alle interne sider: off-white max-width container,
- * IBM Plex Sans display-titler + eyebrow, Plex Sans body lede.
- * Bruges til at give Videnbase / AI Løsninger / Research / Lov-assistent /
- * Ressourcer samme visuelle signatur som Vurdering / Sager / Historik.
- *
- * Reference: DESIGN.md (canonical source).
- */
+/** Shared SHIELD page layout and typography. See theme/layout.js and DESIGN.md. */
 
 export const PageShell = styled.div`
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 2.25rem 1.75rem 4rem;
-
-  @media (max-width: 720px) {
-    padding: 1.5rem 1rem 3rem;
-  }
+  ${pageLayout}
 `;
 
 export const PageHeaderWrap = styled.header`
@@ -41,23 +27,17 @@ export const Eyebrow = styled.span`
 `;
 
 export const PageTitle = styled.h1`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: clamp(2rem, 4vw, 2.75rem);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.1;
-  margin: 0;
-  color: ${(p) => p.theme.colors.text};
+  ${pageTitleStyle}
 `;
 
 export const Lede = styled.p`
   font-family: ${(p) => p.theme.fonts.body};
-  font-size: 1.08rem;
+  font-size: 1rem;
   line-height: 1.55;
   margin: 0;
   max-width: 720px;
   color: ${(p) => p.theme.colors.textMuted};
-  font-style: italic;
+  font-style: normal;
 `;
 
 const HeaderActionsBar = styled.div`
@@ -85,6 +65,7 @@ export const PageHeader = ({ eyebrow, title, lede, actions, children }) => (
 // ---- Reusable atoms for consistent chrome ------------------------------
 
 export const SectionTitle = styled.h2`
+  ${sectionTitleStyle}
   font-family: ${(p) => p.theme.fonts.display};
   font-size: 1.5rem;
   font-weight: 600;
@@ -108,7 +89,7 @@ export const OutlinePill = styled.button`
   font-weight: 500;
   letter-spacing: 0.02em;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid
     ${(p) => (p.$active ? p.theme.colors.primary : p.theme.colors.border)};
   background: ${(p) =>
@@ -147,12 +128,13 @@ export const EditorialCard = styled.div`
 
 /** Primary action — S.H.I.E.L.D. rød fyldt */
 export const PrimaryButton = styled.button`
+  ${controlStyle}
   font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.92rem;
+  font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.01em;
   padding: 10px 20px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid ${(p) => p.theme.colors.primary};
   background: ${(p) => p.theme.colors.primary};
   color: ${(p) => p.theme.colors.white};
@@ -188,7 +170,7 @@ export const GhostButton = styled(PrimaryButton)`
 export const SearchField = styled.div`
   position: relative;
   flex: 1;
-  min-width: 280px;
+  min-width: min(280px, 100%);
 
   svg {
     position: absolute;
@@ -218,7 +200,7 @@ export const SearchField = styled.div`
 
     &::placeholder {
       color: ${(p) => p.theme.colors.textFaded};
-      font-style: italic;
+      font-style: normal;
     }
   }
 `;

@@ -12,10 +12,10 @@ import DocumentBankPage from './DocumentBankPage';
 jest.mock('axios');
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 
-function mount(documents = []) {
+function mount(documents = [], route = '/dokumentbank') {
   axios.get.mockResolvedValue({ data: { documents } });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, cacheTime: 0 }, mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}><ThemeProvider theme={lightTheme}><MemoryRouter><DocumentBankPage /></MemoryRouter></ThemeProvider></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><ThemeProvider theme={lightTheme}><MemoryRouter initialEntries={[route]}><DocumentBankPage /></MemoryRouter></ThemeProvider></QueryClientProvider>);
 }
 
 beforeEach(() => {
@@ -56,4 +56,16 @@ test('nye dokumentdatoer gemmes med eksplicit UTC og inklusive slutdato', async 
     valid_to: '2026-09-20T23:59:59Z',
     review_at: '2026-12-31T00:00:00Z',
   });
+});
+
+test('et søgeresultat viser det valgte dokument og kan vende tilbage til hele dokumentbanken', async () => {
+  mount([
+    { id: 'wanted', title: 'Valgt aftale', category: 'data_processing_agreement', versions: [] },
+    { id: 'other', title: 'En anden kilde', category: 'security_documentation', versions: [] },
+  ], '/dokumentbank?document_id=wanted');
+  expect(await screen.findByRole('heading', { name: 'Valgt aftale' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'En anden kilde' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Vis alle dokumenter' }));
+  expect(await screen.findByRole('heading', { name: 'En anden kilde' })).toBeInTheDocument();
+  expect(axios.post).not.toHaveBeenCalled();
 });

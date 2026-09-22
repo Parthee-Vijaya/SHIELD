@@ -116,6 +116,45 @@ def _explicitly_names_law(query: str, law: Dict[str, Any]) -> bool:
     return False
 
 
+# Question framing and answer instructions are not legal evidence. Keeping
+# these out of retrieval prevents e.g. "giv et kort overblik med kilder" from
+# retrieving a statute merely because it contains "give" or "forkortelse".
+_QUERY_STOPWORDS = frozenset({
+    "hvad", "hvordan", "hvilke", "hvilken", "hvilket", "hvorfor", "hvornår", "hvor", "hvori", "hvem", "siger",
+    "det", "den", "der", "som", "for", "med", "til", "fra", "ved", "om", "og", "eller", "hvis", "før", "efter",
+    "skal", "kan", "må", "har", "have", "være", "ikke", "jeg", "mig", "min", "vores", "jeres", "deres",
+    "når", "man", "bliver", "blev", "giver", "krav", "stiller", "gælder", "brug", "bruge",
+    "løsning", "løsningen", "system", "systemet", "kommune", "kommunes", "kommunal",
+    "formål", "formålet", "giv", "give", "kort", "korte", "kortfattet", "overblik", "oversigt",
+    "kilde", "kilder", "kilderne", "angiv", "fagperson", "fagpersonen", "kontrollere", "kontroller", "kontrolleres",
+    "svar", "svaret", "beskriv", "beskrivelse", "forklar", "forklaring", "uddyb", "uddybende",
+    "henvis", "henvisning", "henvisninger", "venligst", "tak", "vis", "viser", "oplys", "undersøg",
+    "find", "finde", "gerne", "samt", "bør", "kunne", "ville", "vil", "derudover",
+    "lav", "lave", "udform", "udarbejd", "betyder", "betydning", "definer", "opsummer", "opsummér",
+    "opsummering", "resumé", "gennemgå", "gennemgang", "beskrive", "forklare", "nævn", "nævne", "medtag", "fortæl", "fortælle",
+    "præcis", "præcist", "detaljeret", "grundig", "vigtigste", "vigtig", "vigtigt", "vigtige",
+    "relevant", "relevante", "forhold", "punkter", "punktform", "sammenlign", "eksempel", "eksempler",
+    "lov", "love", "loven", "lovens", "lovene", "lovgivning", "regel", "regler", "reglen", "reglerne",
+    "artikel", "artiklen", "artikler", "paragraf", "paragraffen", "paragraffer",
+})
+
+
+def _keyword_pattern(term: str) -> re.Pattern[str]:
+    """Use whole short words; allow Danish inflections/compounds of longer terms.
+
+    "dom" must not match "ejendom". A longer domain term such as "tilsyn"
+    may match "tilsynspligt", and "personoplysningernes" may match the
+    "personoplysninger" form in a source. Matching still starts at a word edge.
+    """
+    if len(term) <= 4:
+        return re.compile(rf"(?<!\w){re.escape(term)}(?!\w)")
+    variants = {term}
+    for suffix in ("ernes", "erne", "enes", "ene", "ens", "ets", "ers", "en", "et", "er", "ne", "s"):
+        if term.endswith(suffix) and len(term) - len(suffix) >= 5:
+            variants.add(term[:-len(suffix)])
+    return re.compile(r"(?<!\w)(?:" + "|".join(re.escape(value) for value in sorted(variants)) + r")\w*")
+
+
 def search_laws(query: str, category: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Search laws by text query with relevance scoring
@@ -128,19 +167,15 @@ def search_laws(query: str, category: Optional[str] = None, limit: int = 10) -> 
     Returns:
         List of dicts with keys: law, relevance, matches
     """
-    # Normalize query
-    stopwords = {
-        "hvad", "hvordan", "hvilke", "hvilken", "hvorfor", "hvornår", "hvor", "siger",
-        "det", "den", "der", "som", "for", "med", "til", "fra", "ved", "om", "og", "eller",
-        "skal", "kan", "må", "har", "have", "være", "ikke", "jeg", "mig", "min", "vores",
-        "når", "man", "bliver", "blev", "giver", "krav", "stiller", "gælder", "brug", "bruge",
-        "løsning", "løsningen", "system", "systemet", "kommune", "kommunes", "kommunal",
-    }
-    search_terms = [term for term in re.findall(r"[\wæøåÆØÅ]+", query.lower())
-                    if len(term) > 2 and term not in stopwords]
-
+    # At least one substantive search term must match source text. No fuzzy
+    # model inference or generic question wording can add a law to the result.
+    search_terms = list(dict.fromkeys(
+        term for term in re.findall(r"[\wæøåÆØÅ]+", query.casefold())
+        if len(term) > 2 and not term.isdigit() and term not in _QUERY_STOPWORDS
+    ))
     if not search_terms:
         return []
+    patterns = [_keyword_pattern(term) for term in search_terms]
 
     all_laws = get_all_laws()
     explicitly_named = [law for law in all_laws if _explicitly_names_law(query, law)]
@@ -163,21 +198,21 @@ def search_laws(query: str, category: Optional[str] = None, limit: int = 10) -> 
         score = 100 if explicitly_named else 0
         matches = ['explicit_title'] if explicitly_named else []
 
-        for term in search_terms:
+        for pattern in patterns:
             # Title matches (highest weight)
-            if term in title_lower:
+            if pattern.search(title_lower):
                 score += 10
                 if 'title' not in matches:
                     matches.append('title')
 
             # Summary matches
-            if term in summary_lower:
+            if pattern.search(summary_lower):
                 score += 5
                 if 'summary' not in matches:
                     matches.append('summary')
 
             # Content matches
-            if term in content_lower:
+            if pattern.search(content_lower):
                 score += 2
                 if 'content' not in matches:
                     matches.append('content')

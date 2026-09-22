@@ -3,9 +3,9 @@ import { NavLink, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 
 const Navigation = styled.nav`
-  width: min(100% - 40px, 1240px);
+  width: min(100%, 1320px);
   margin: 24px auto 0;
-  padding: 14px 0;
+  padding: 14px 32px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -28,6 +28,8 @@ const Navigation = styled.nav`
     font-weight: 650;
   }
   a:focus-visible { outline: 2px solid ${p => p.theme.colors.primary}; outline-offset: 2px; }
+  @media(max-width:640px) { padding-inline:20px; }
+  @media(max-width:400px) { padding-inline:14px; }
 `;
 
 /** One workspace, several views. Keep visited views mounted so a tab change

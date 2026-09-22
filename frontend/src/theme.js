@@ -1,6 +1,9 @@
 /** S.H.I.E.L.D. — Kalundborg editorial civic design system. */
+import { layoutTokens, typographyTokens } from './theme/layout';
 
 const commonThemeTokens = {
+  layout: layoutTokens,
+  typography: typographyTokens,
   fonts: {
     main: '"Geist Variable", Arial, sans-serif',
     body: '"Geist Variable", Arial, sans-serif',

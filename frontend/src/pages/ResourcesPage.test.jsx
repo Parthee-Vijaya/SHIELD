@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { lightTheme } from '../theme';
 import ResourcesPage from './ResourcesPage';
@@ -10,7 +10,7 @@ import reports from '../data/rapporterFallback.json';
 import resourceLibrary from '../data/resourceLibrary';
 import ToolWorkspace from '../components/ToolWorkspace';
 
-const mount = Page => render(<ThemeProvider theme={lightTheme}><MemoryRouter><Page /></MemoryRouter></ThemeProvider>);
+const mount = (Page, path = '/') => render(<ThemeProvider theme={lightTheme}><MemoryRouter initialEntries={[path]}><Page /></MemoryRouter></ThemeProvider>);
 beforeEach(() => { localStorage.clear(); global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] }); });
 
 test('rapportfilter viser flyttede rapporter med udgiver, årstal og originale links', () => {
@@ -67,4 +67,40 @@ test('faneskift bevarer brugerens redigerede søgning og kategori selv om previe
   expect(screen.getByRole('button', { name: 'Juridiske Termer', exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByRole('heading', { name: 'GDPR og sletning' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Logning og sletning' })).not.toBeInTheDocument();
+});
+
+
+test('et søgeresultat åbner kun den valgte kilde og kan vise hele kataloget igen', () => {
+  const report = resourceLibrary.find(item => item.id === 'report-1');
+  mount(ResourcesPage, '/ressourcer?resource_id=report-1');
+  expect(screen.getByRole('status')).toHaveTextContent('Kilde fra søgeresultatet');
+  expect(screen.getAllByRole('link')).toHaveLength(1);
+  expect(screen.getByRole('link', { name: new RegExp(report.title) })).toHaveAttribute('href', report.url);
+  fireEvent.click(screen.getByRole('button', { name: 'Vis alle vejledninger og rapporter' }));
+  expect(screen.getAllByRole('link')).toHaveLength(resourceLibrary.length);
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+});
+
+test('et nyt resource_id rydder gamle filtre, mens øvrig sagskontekst bevares', () => {
+  function View() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    return <><ResourcesPage /><button onClick={() => navigate('/ressourcer?resource_id=ai-act&case=municipal-case')}>Åbn næste kilde</button><span data-testid="resource-location">{location.search}</span></>;
+  }
+  mount(View, '/ressourcer?resource_id=report-1&case=municipal-case');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Søg i vejledninger og publikationer' }), { target: { value: 'ingen match' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Åbn næste kilde' }));
+  expect(screen.getByRole('textbox', { name: 'Søg i vejledninger og publikationer' })).toHaveValue('');
+  expect(screen.getAllByRole('link')).toHaveLength(1);
+  expect(screen.getByRole('link')).toHaveAttribute('href', 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj');
+  fireEvent.click(screen.getByRole('button', { name: 'Vis alle vejledninger og rapporter' }));
+  expect(screen.getByTestId('resource-location')).toHaveTextContent('?case=municipal-case');
+});
+
+test('ukendt resource_id forklares uden at vælge en forkert kilde', () => {
+  mount(ResourcesPage, '/ressourcer?resource_id=ukendt-kilde');
+  expect(screen.getByRole('status')).toHaveTextContent('Kilden findes ikke i kataloget');
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Vis alle vejledninger og rapporter' }));
+  expect(screen.getAllByRole('link')).toHaveLength(resourceLibrary.length);
 });

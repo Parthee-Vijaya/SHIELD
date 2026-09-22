@@ -156,14 +156,22 @@ test('tilbagevenden til sagslisten genhenter tællinger trods appens cachetid p�
 });
 
 
-test('new fagsystem is primary and the manual dialog remains available', async () => {
+test('guided AI intake is primary and manual creation is explained under other options with focus restoration', async () => {
   mount();
   await screen.findByRole('link', { name: /Kommunal behandling/ });
   const primary = screen.getByRole('link', { name: 'Ny AI-løsning →' });
   expect(primary).toHaveAttribute('href', '/anskaffelse');
   expect(primary).toHaveAttribute('data-tour', 'new-case');
-  fireEvent.click(screen.getByRole('button', { name: 'Opret sag manuelt' }));
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Opret sag manuelt' })).not.toBeVisible();
+  fireEvent.click(screen.getByText('Andre muligheder'));
+  expect(screen.getByText(/Opret en sag manuelt, hvis du allerede har en vurdering/)).toBeVisible();
+  const manual = screen.getByRole('button', { name: 'Opret sag manuelt' });
+  fireEvent.click(manual);
+  const dialog = screen.getByRole('dialog');
+  expect(dialog).toBeInTheDocument();
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  await waitFor(() => expect(manual).toHaveFocus());
 });
 
 const reviewedCase = {

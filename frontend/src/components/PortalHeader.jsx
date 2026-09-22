@@ -31,7 +31,8 @@ const SkipLink = styled.a`
 `;
 
 const HeaderInner = styled.div`
-  width: min(100% - 40px, 1360px);
+  width: min(100%, 1320px);
+  padding-inline: 32px;
   min-height: 78px;
   margin: 0 auto;
   display: grid;
@@ -40,9 +41,11 @@ const HeaderInner = styled.div`
   gap: clamp(20px, 3vw, 52px);
 
   @media (max-width: 1100px) {
-    width: min(100% - 28px, 1360px);
+    width: 100%;
+    padding-inline: 20px;
     grid-template-columns: minmax(0, 1fr) auto;
   }
+  @media (max-width: 400px) { padding-inline: 14px; }
 `;
 
 const BrandCluster = styled(Link)`
@@ -128,7 +131,7 @@ const UtilityButton = styled.button`
   &:hover { background: ${p => p.theme.colors.surfaceAlt}; }
 
   @media (max-width: 620px) {
-    &.command { display: none; }
+    &.command, &.session { display: none; }
   }
 `;
 
@@ -137,6 +140,7 @@ const Profile = styled.div`
   align-items: center;
   gap: 9px;
   margin-left: 4px;
+  @media (max-width: 620px) { display: none; }
 `;
 
 const Avatar = styled.span`
@@ -323,18 +327,16 @@ const PortalHeader = ({ onOpenCommandPalette }) => {
               {canStart && <GuideButton style={{gridColumn:"1 / -1"}} type="button" disabled={saving} onClick={event => { const menu = event.currentTarget.closest('details'); menu?.removeAttribute('open'); menu?.querySelector('summary')?.focus(); restart(); }}>Start introduktionsguide</GuideButton>}
             </MorePanel>
           </More>
-          <Profile aria-label={`Logget ind som ${user?.name || 'ingen bruger'}`}>
+          <Profile aria-label={`${isDevelopmentIdentity ? 'Lokal session' : 'Logget ind'} som ${user?.name || 'ingen bruger'}`}>
             <Avatar>{user?.name ? user.name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() : 'KB'}</Avatar>
             <ProfileText>
               <strong>{user?.name || 'Kommunal portal'}</strong>
-              <small>{isDevelopmentIdentity ? 'Digitalisering & IT' : 'Kalundborg Kommune'}</small>
+              <small>{isDevelopmentIdentity ? 'Lokal session' : 'Kalundborg Kommune'}</small>
             </ProfileText>
           </Profile>
-          {!isDevelopmentIdentity && (
-            <UtilityButton type="button" onClick={isAuthenticated ? logout : login}>
-              {isAuthenticated ? 'Log ud' : 'Log ind'}
-            </UtilityButton>
-          )}
+          <UtilityButton className="session" type="button" onClick={isAuthenticated ? logout : login}>
+            {isAuthenticated ? (isDevelopmentIdentity ? 'Afslut session' : 'Log ud') : 'Log ind'}
+          </UtilityButton>
           <MenuButton ref={mobileButtonRef} type="button" onClick={() => setMobileOpen(open => !open)} aria-expanded={mobileOpen} aria-controls="portal-mobile-navigation" aria-label={mobileOpen ? 'Luk navigation' : 'Åbn navigation'}>
             {mobileOpen ? '×' : '☰'}
           </MenuButton>
@@ -343,6 +345,12 @@ const PortalHeader = ({ onOpenCommandPalette }) => {
 
       {mobileOpen ? (
         <MobilePanel id="portal-mobile-navigation" aria-label="Mobilnavigation">
+          <MobileGroup style={{ gridColumn: '1 / -1' }}>
+            <h2>{user?.name || 'Din session'} · {isDevelopmentIdentity ? 'Lokal session' : 'Logget ind'}</h2>
+            <GuideButton type="button" onClick={isAuthenticated ? logout : login}>
+              {isAuthenticated ? (isDevelopmentIdentity ? 'Afslut session' : 'Log ud') : 'Log ind'}
+            </GuideButton>
+          </MobileGroup>
           <MobileGroup>
             <h2>Arbejdsgang</h2>
             {PRIMARY_NAVIGATION.map(item => <ToolLink key={item.id} to={item.path} end={item.path === '/'}>{item.label}</ToolLink>)}

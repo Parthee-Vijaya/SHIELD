@@ -1,19 +1,22 @@
+import { pageLayout, pageTitleStyle, sectionTitleStyle } from '../theme/layout';
 import { modelLabel } from '../utils/modelPresentation';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import DepartmentField from '../components/DepartmentField';
+import CatalogAutocomplete from '../components/CatalogAutocomplete';
 import FieldHelp from '../components/FieldHelp';
 import MaterialCoverage from '../components/assessment/MaterialCoverage';
 import EvidenceNavigator from '../components/assessment/EvidenceNavigator';
 import ClarificationList from '../components/assessment/ClarificationList';
 import { CONTROL_OPTIONS, DATA_CATEGORY_OPTIONS, DATA_SUBJECT_OPTIONS, OPTION_LABELS } from '../features/dpia/assessmentModel';
 
-const Page = styled.main`
-  max-width: 1240px; margin: auto; padding: 54px 24px 100px; overflow-wrap: anywhere;
-  h1 { font-size: clamp(2.3rem,5vw,4rem); line-height: 1.12; hyphens: auto; letter-spacing: -.045em; margin: 10px 0 18px; }
-  h2 { font-size: 1.7rem; margin-bottom: 14px; } h3 { margin-bottom: 10px; }
+const Page = styled.div`
+  ${pageLayout}
+  overflow-wrap: anywhere;
+  h1 { ${pageTitleStyle} }
+  h2 { ${sectionTitleStyle} margin-bottom: 14px; } h3 { margin-bottom: 10px; }
   a:not([class]) { color: ${p => p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark}; }
   p { margin-bottom: 14px; } small { color: ${p => p.theme.colors.textMuted}; }
   input:not([type=checkbox]), textarea, select { width: 100%; min-width: 0; padding: 12px; font: inherit; }
@@ -24,7 +27,7 @@ const Page = styled.main`
   details { margin: 12px 0; } summary { cursor: pointer; font-weight: 600; }
   blockquote { padding: 12px 16px; border-left: 3px solid ${p => p.theme.colors.border}; margin: 12px 0; white-space: pre-wrap; }
   ul { padding-left: 22px; } li { margin-bottom: 10px; }
-  @media(max-width:600px) { padding: 28px 16px 80px; h1 { font-size: clamp(1.9rem,8vw,2.3rem); } }
+
 `;
 const Eyebrow = styled.p`color: ${p => p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark}; font-size: .75rem; font-weight: 650; letter-spacing: .12em; text-transform: uppercase;`;
 const Lead = styled.p`max-width: 760px; font-size: 1.05rem; color: ${p => p.theme.colors.textMuted};`;
@@ -33,7 +36,7 @@ const Step = styled.button`text-align: left; padding: 18px 12px; color: ${p => p
 const Grid = styled.div`display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; margin: 24px 0; > * { min-width: 0; } @media(max-width:700px) { grid-template-columns: 1fr; }`;
 const Section = styled.section`padding: 26px 0; border-bottom: 1px solid ${p => p.theme.colors.border};`;
 const Actions = styled.div`display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px;`;
-const Button = styled.button`display: inline-flex; align-items: center; justify-content: center; padding: 12px 18px; min-height: 46px; max-width: 100%; white-space: normal; font: inherit; font-size: .88rem; border: 1px solid ${p => p.theme.colors.primary}; background: ${p => p.$secondary ? 'transparent' : p.theme.colors.primary}; color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; &:hover { color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; opacity:.9; } &:disabled { opacity:.5; cursor:wait; }`;
+const Button = styled.button`display: inline-flex; align-items: center; justify-content: center; padding: 12px 18px; min-height: 44px; max-width: 100%; white-space: normal; font: inherit; font-size: .875rem; border: 1px solid ${p => p.theme.colors.primary}; background: ${p => p.$secondary ? 'transparent' : p.theme.colors.primary}; color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; &:hover { color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; opacity:.9; } &:disabled { opacity:.5; cursor:wait; }`;
 const Notice = styled.div`margin: 18px 0; padding: 16px 20px; background: ${p => p.theme.colors.surfaceAlt}; border-left: 3px solid ${p => p.$error ? p.theme.colors.danger : p.theme.colors.primary};`;
 const Fact = styled.article`padding: 22px 0; border-bottom: 1px solid ${p => p.theme.colors.border}; > label { display:flex; align-items:flex-start; gap:12px; }`;
 const EMPTY = { system_name:'', supplier_name:'', organisation:'Kalundborg Kommune', department:'', owner:'', intended_use:'', procurement_stage:'new_purchase', journal_reference:'' };
@@ -69,6 +72,7 @@ export default function ProcurementPage() {
   const caseId = params.get('case') || '';
   const step = Math.max(0,STEP_KEYS.indexOf(params.get('step') || 'profile'));
   const [profile,setProfile] = useState(EMPTY);
+  const [catalogSystem,setCatalogSystem] = useState(null);
   const [sources,setSources] = useState([]);
   const [analysisLimits,setAnalysisLimits] = useState(null);
   const [analysis,setAnalysis] = useState(null);
@@ -121,7 +125,7 @@ export default function ProcurementPage() {
     let live = true;
     const controller = new AbortController();
     ++operationSequence.current; setBusy('');
-    setProfile(EMPTY); setSources([]); setAnalysisLimits(null); setAnalysis(null); setReview(null);
+    setProfile(EMPTY); setCatalogSystem(null); setSources([]); setAnalysisLimits(null); setAnalysis(null); setReview(null);
     setAccepted([]); setNote(''); setUrl(''); setMessage(''); setError(''); setLoadError(false);
     if (!caseId) { setLoading(false); return () => { controller.abort(); ++loadSequence.current; ++operationSequence.current; }; }
     setLoading(true);
@@ -172,13 +176,18 @@ export default function ProcurementPage() {
       {step===0 && <form onSubmit={saveProfile}>
         <h2>Hvilken AI-løsning skal vurderes?</h2><p>Det kan være en selvstændig AI-løsning eller en IT-løsning med AI. Beskriv den konkrete AI-funktion og dens anvendelse i kommunen. Leverandørmaterialet tilføjes i næste trin.</p>
         <Grid>
-          <div><FieldLabel htmlFor="system-name" label="Løsningens navn" help="Angiv produktets navn og gerne den konkrete AI-funktion. Fx en referatassistent eller AI til anonymisering af dokumenter." /><input id="system-name" aria-describedby="system-name-help" required minLength={2} maxLength={255} value={profile.system_name} onChange={e=>update('system_name',e.target.value)} placeholder="Fx en referatassistent eller AI i et journalsystem" /></div>
-          <div><FieldLabel htmlFor="supplier-name" label="Leverandør" help="Virksomheden, der leverer løsningen. Brug navnet fra tilbuddet eller aftalen, hvis du har det." /><input id="supplier-name" aria-describedby="supplier-name-help" maxLength={500} value={profile.supplier_name} onChange={e=>update('supplier_name',e.target.value)} /></div>
+          <div><FieldLabel htmlFor="system-name" label="Løsningens navn" help="Angiv produktets navn og gerne den konkrete AI-funktion. Søg i det importerede systemkatalog, eller skriv et nyt navn. Et katalogopslag dokumenterer ikke, at løsningen indeholder AI." /><CatalogAutocomplete id="system-name" kind="systems" aria-describedby="system-name-help" required minLength={2} maxLength={255} value={profile.system_name} onChange={value=>{update('system_name',value);setCatalogSystem(null);}} onSelect={item=>{update('system_name',item.name);setCatalogSystem(item);}} placeholder="Søg efter løsning, eller skriv et nyt navn" /></div>
+          <div><FieldLabel htmlFor="supplier-name" label="Leverandør" help="Virksomheden, der leverer løsningen. Søg i kataloget, eller skriv navnet fra tilbuddet eller aftalen. En rettighedshaver eller databehandler i kataloget er ikke nødvendigvis jeres aftalepart." /><CatalogAutocomplete id="supplier-name" kind="suppliers" systemId={catalogSystem?.id} aria-describedby="supplier-name-help" maxLength={500} value={profile.supplier_name} onChange={value=>update('supplier_name',value)} onSelect={item=>update('supplier_name',item.name)} placeholder="Søg efter leverandør, eller skriv et nyt navn" /></div>
           <div><FieldLabel htmlFor="organisation" label="Kommune eller organisation" help="Den organisation, vurderingen vedrører. Det kan være en anden kommune end den, der vises i løsningens logo." /><input id="organisation" aria-describedby="organisation-help" required minLength={2} value={profile.organisation} onChange={e=>update('organisation',e.target.value)} /></div>
           <DepartmentField value={profile.department} onChange={update} />
           <div><FieldLabel htmlFor="system-owner" label="Ansvarlig for sagen" help="Den person eller funktion, der samler oplysninger og følger op på sagen. Det er ikke i sig selv en udpegning som juridisk godkender." /><input id="system-owner" aria-describedby="system-owner-help" required minLength={2} value={profile.owner} onChange={e=>update('owner',e.target.value)} /></div>
           <div><FieldLabel htmlFor="procurement-stage" label="Anledning" help="Vælg, om der er tale om et nyt køb, en fornyelse eller en ændring i, hvordan løsningen bruges. Ændret anvendelse kan fx være nye datatyper eller en ny AI-funktion." /><select id="procurement-stage" aria-describedby="procurement-stage-help" value={profile.procurement_stage} onChange={e=>update('procurement_stage',e.target.value)}><option value="new_purchase">Ny anskaffelse</option><option value="renewal">Kontraktfornyelse</option><option value="change">Ændret anvendelse</option></select></div>
         </Grid>
+        {catalogSystem && <Notice>
+          <strong>Valgt fra systemkataloget: {catalogSystem.name}</strong>
+          {catalogSystem.available === false && <p>Kataloget markerer løsningen som ikke tilgængelig. Afklar den aktuelle status med leverandøren.</p>}
+          {catalogSystem.parties?.length > 0 ? <><p>Katalogets relationer fremgår nedenfor. Kontrollér, hvem der er jeres aftalepart, før du bruger navnet som leverandør. Dit nuværende leverandørnavn ændres kun, når du vælger det.</p><Actions>{catalogSystem.parties.map(party=><Button key={`${party.id}-${party.role}`} type="button" $secondary onClick={()=>update('supplier_name',party.name)}>{party.role_label}: {party.name} · Brug som leverandør</Button>)}</Actions></> : <p>Der er ingen leverandørrelation i kataloget. Søg efter leverandøren eller skriv navnet manuelt.</p>}
+        </Notice>}
         <FieldLabel htmlFor="intended-use" label="Kommunens påtænkte anvendelse" help="Beskriv den konkrete opgave, hvem der bruger AI, hvilke oplysninger der indgår, og hvordan medarbejderne kontrollerer resultatet. Beskriv kommunens behov frem for kun at kopiere leverandørens produkttekst." /><textarea id="intended-use" aria-describedby="intended-use-help" required minLength={20} maxLength={10000} value={profile.intended_use} onChange={e=>update('intended_use',e.target.value)} placeholder="Hvad skal AI-funktionen gøre, hvem skal bruge den, hvilke oplysninger behandler den, og hvordan gennemgår medarbejdere dens output?" />
         <Grid><div><FieldLabel htmlFor="journal-reference" label="Journalreference (valgfri)" help="Sagsnummeret fra kommunens journalsystem, hvis sagen allerede er oprettet der. Feltet kan stå tomt." /><input id="journal-reference" aria-describedby="journal-reference-help" maxLength={100} value={profile.journal_reference} onChange={e=>update('journal_reference',e.target.value)} /></div></Grid>
         <Actions><Button disabled={Boolean(busy)}>Gem og tilføj materiale →</Button></Actions>

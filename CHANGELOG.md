@@ -4,6 +4,16 @@ Alle bemærkelsesværdige ændringer til dette projekt dokumenteres her.
 
 Formatet er baseret på [Keep a Changelog](https://keepachangelog.com/da/1.0.0/), og projektet følger [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-09-22 — Fælles søgning, systemkatalog og tydelig brugeridentitet
+
+- Kategoriseret livesøgning med stavefejlstolerance på startsiden og i tastaturgenvejen. Sager, seneste vurderinger, dokumenter og vejledning bruger samme søgefunktion og adgangskontrol.
+- Søgbart system- og leverandørkatalog i blanketten. Excel-importen bevarer kilde og relationsrolle; manuel indtastning er stadig mulig. Katalogdata opbevares lokalt i databasen og følger ikke med Git.
+- DGITA-inspireret loginvisning med serverens navn og roller. Den lokale fremvisning kan åbnes som Parthee og afsluttes igen; Microsoft Entra ID bevares som organisationslogin.
+- Ens sidemargener, typografi, overskriftsstørrelser og primære knapper på tværs af arbejdsgange. Hjælpetekster og supplerende handlinger foldes ud efter behov.
+- Dokumenter fra søgeresultater åbner direkte i dokumentbanken. Teknisk audit bruger serververificeret identitet og accepterer ikke et klientvalgt aktørnavn.
+- Juridiske værktøjer streamer med autentificerede forespørgsler og kan afbrydes. Ældre model-, sags- og vedligeholdelsesruter har fået rollekontrol; en ubrugt, usikker uploadrute er lukket.
+- Rettet fokusretur fra søgedialogen, forklaring ved ukendte adresser, overlap i mobilheaderen og manglende aktør i FRIA-foranstaltningers historik.
+
 ## [0.8.1] - 2026-09-22 — Samlet produktversion
 
 - Versionsnummeret i brugerfladen, README og npm-pakkerne er samlet på v0.8.1. Det synlige nummer stod tidligere fast på v0.7.3.

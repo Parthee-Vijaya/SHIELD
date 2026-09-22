@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { readJsonEventStream } from '../utils/readJsonEventStream';
 import { modelLabel } from '../utils/modelPresentation';
 import {
   FaSearch,
@@ -873,6 +875,7 @@ const sourceUrl = value => {
 };
 
 const ResearchPage = () => {
+  const { authFetch } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [selectedFocusAreas, setSelectedFocusAreas] = useState(['EU AI Act', 'GDPR']);
@@ -881,7 +884,7 @@ const ResearchPage = () => {
   const [expandedEngines, setExpandedEngines] = useState({});
   const streamRef = useRef(null);
   const [researchError, setResearchError] = useState('');
-  useEffect(() => () => streamRef.current?.close(), []);
+  useEffect(() => () => { const current = streamRef.current; streamRef.current = null; current?.abort(); }, []);
 
   const { register, handleSubmit } = useForm();
 
@@ -914,7 +917,9 @@ const ResearchPage = () => {
       return;
     }
 
-    streamRef.current?.close();
+    streamRef.current?.abort();
+    const controller = new AbortController();
+    streamRef.current = controller;
     setResearchError('');
     setIsLoading(true);
     setResults(null);
@@ -922,52 +927,40 @@ const ResearchPage = () => {
     setProgressPercent(0);
 
     try {
-      // Use EventSource for Server-Sent Events
       const params = new URLSearchParams({ emne: data.emne.trim() });
       selectedFocusAreas.forEach(area => params.append('focus_areas', area));
-      const eventSource = new EventSource(`/api/research/juridisk/stream?${params}`);
-      streamRef.current = eventSource;
-
-      eventSource.onmessage = (event) => {
-        try {
-          const progressData = JSON.parse(event.data);
-
-          setProgressMessage(progressData.message);
-          setProgressPercent(progressData.progress);
-
-          // Check if research is complete
+      const response = await authFetch(`/api/research/juridisk/stream?${params}`, { headers: { Accept: 'text/event-stream' }, signal: controller.signal });
+      let completed = false;
+      await readJsonEventStream(response, {
+        signal: controller.signal,
+        invalidMessage: 'Kildesøgningen returnerede et ugyldigt svar. Prøv igen.',
+        onEvent: progressData => {
+          if (streamRef.current !== controller || controller.signal.aborted) return false;
+          if (progressData.status === 'error') throw new Error(progressData.message || 'Kildesøgningen kunne ikke fuldføres.');
+          setProgressMessage(progressData.message || 'Søger efter kilder…');
+          setProgressPercent(progressData.progress || 0);
           if (progressData.status === 'complete' && progressData.result) {
+            completed = true;
             setResults(progressData.result);
             toast.success(`Kildesøgning afsluttet – ${progressData.result.sources?.length || 0} kilder fundet`);
-            eventSource.close();
-            setIsLoading(false);
+            return false;
           }
-
-          // Handle error
-          if (progressData.status === 'error') {
-            setResearchError(progressData.message || 'Kildesøgningen kunne ikke fuldføres.');
-            eventSource.close();
-            setIsLoading(false);
-          }
-        } catch (err) {
-          setResearchError('Kildesøgningen returnerede et ugyldigt svar. Prøv igen.');
-          eventSource.close();
-          setIsLoading(false);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
-        setResearchError('Forbindelsen til kildesøgningen blev afbrudt. Prøv igen.');
-        eventSource.close();
-        setIsLoading(false);
-      };
-
+        },
+      });
+      if (!completed && !controller.signal.aborted) throw new Error('Forbindelsen til kildesøgningen blev afbrudt, før resultatet var færdigt. Prøv igen.');
     } catch (error) {
-      console.error('Research fejl:', error);
-      setResearchError('Kildesøgningen kunne ikke startes. Prøv igen.');
-      setIsLoading(false);
+      if (error.name !== 'AbortError' && streamRef.current === controller) setResearchError(error.message || 'Kildesøgningen kunne ikke startes. Prøv igen.');
+    } finally {
+      controller.abort();
+      if (streamRef.current === controller) { streamRef.current = null; setIsLoading(false); }
     }
+  };
+
+  const stopResearch = () => {
+    streamRef.current?.abort();
+    streamRef.current = null;
+    setIsLoading(false);
+    setResearchError('Kildesøgningen blev stoppet. Du kan starte en ny søgning.');
   };
 
   const getAuthorityIcon = (authority) => {
@@ -1042,6 +1035,7 @@ const ResearchPage = () => {
               </>
             )}
           </SearchButton>
+          {isLoading && <PrimaryButton $secondary type="button" onClick={stopResearch}>Stop søgning</PrimaryButton>}
         </SearchForm>
       </SearchSection>
 

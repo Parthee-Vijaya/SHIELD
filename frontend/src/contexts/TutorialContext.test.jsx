@@ -167,7 +167,7 @@ test('dialogen fanger fokus, Escape gemmer fravalg og returnerer fokus', async (
   opener.focus();
   await click('Genstart guide');
   const heading = await screen.findByRole('heading', { name: 'Fra sag til dokumenteret vurdering' });
-  expect(heading).toHaveFocus();
+  await waitFor(() => expect(heading).toHaveFocus());
   expect(document.querySelector('[data-tutorial-background]')).toHaveAttribute('inert');
   fireEvent.keyDown(heading, { key: 'Tab', shiftKey: true });
   expect(screen.getByRole('button', { name: 'Se et eksempel' })).toHaveFocus();
@@ -184,7 +184,7 @@ test('guiden venter på et forsinket routeanker før næste trin', async () => {
   records.alpha = { ...fresh, status: 'in_progress', step_id: 'cases' };
   const view = render(<App targets={false} />);
   await screen.findByRole('dialog');
-  expect(screen.getByRole('button', { name: 'Næste' })).toBeDisabled();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Næste' })).toBeDisabled());
   expect(screen.getByRole('status')).toHaveTextContent('Åbner det relevante område');
   view.rerender(<App targets />);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Næste' })).toBeEnabled());

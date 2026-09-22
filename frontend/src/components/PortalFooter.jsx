@@ -11,7 +11,8 @@ const Footer = styled.footer`
 `;
 
 const FooterInner = styled.div`
-  width: min(100% - 40px, 1360px);
+  width: min(100%, 1320px);
+  padding-inline: 32px;
   min-height: 112px;
   margin: 0 auto;
   display: grid;
@@ -29,10 +30,10 @@ const FooterInner = styled.div`
   > span:last-child { text-align: right; }
 
   @media (max-width: 760px) {
-    width: min(100% - 28px, 1360px);
+    width: 100%;
     grid-template-columns: 1fr;
     gap: 14px;
-    padding: 24px 0;
+    padding: 24px 20px;
     nav { justify-content: flex-start; flex-wrap: wrap; }
     > span:last-child { text-align: left; }
   }

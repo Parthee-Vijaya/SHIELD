@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -341,12 +341,17 @@ function LinkEditor({ document, initialCaseId, mutation, onClose }) {
 }
 
 function DocumentBankPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedDocumentId = searchParams.get('document_id') || '';
+  const requestedQuery = searchParams.get('query') || '';
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
   const canApprove = hasRole('Hammeren.Godkender', 'Hammeren.DPO', 'Hammeren.Admin');
   const query = useQuery('document-bank', fetchDocuments);
   const [filters, setFilters] = useState({ search: '', category: 'all', validity: 'all' });
+  useEffect(() => {
+    setFilters({ search: requestedQuery, category: 'all', validity: 'all' });
+  }, [requestedQuery, requestedDocumentId]);
   const [showCreate, setShowCreate] = useState(false);
   const [draft, setDraft] = useState(initialDocument);
   const [linkTarget, setLinkTarget] = useState(null);
@@ -372,9 +377,9 @@ function DocumentBankPage() {
     return documents.filter((document) => {
       const state = documentState(document);
       const haystack = [documentTitle(document), document.description, document.owner, document.category, ...toArray(document.tags)].join(' ').toLowerCase();
-      return (!needle || haystack.includes(needle)) && (filters.category === 'all' || document.category === filters.category) && (filters.validity === 'all' || state.key === filters.validity);
+      return (!requestedDocumentId || String(document.id) === requestedDocumentId) && (!needle || haystack.includes(needle)) && (filters.category === 'all' || document.category === filters.category) && (filters.validity === 'all' || state.key === filters.validity);
     });
-  }, [documents, filters]);
+  }, [documents, filters, requestedDocumentId]);
   const summary = useMemo(() => documents.reduce((totals, document) => {
     const state = documentState(document).key;
     return { ...totals, [state]: (totals[state] || 0) + 1 };
@@ -405,6 +410,7 @@ function DocumentBankPage() {
         <label><VisuallyHidden>Kategori</VisuallyHidden><select value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}><option value="all">Alle kategorier</option>{CATEGORIES.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}</select></label>
         <label><VisuallyHidden>Gyldighed</VisuallyHidden><select value={filters.validity} onChange={(event) => setFilters((current) => ({ ...current, validity: event.target.value }))}><option value="all">Alle statusser</option><option value="valid">Gyldig</option><option value="review">Review forfalden</option><option value="expired">Udløbet</option><option value="draft">Kladde</option><option value="superseded">Erstattet</option></select></label>
       </FilterBar>
+      {requestedDocumentId && <StatePanel role="status"><strong>Dokument fra søgeresultatet</strong><p>Listen viser det valgte dokument. Åbn hele dokumentbanken for at se de øvrige kilder og skabeloner.</p><SecondaryButton type="button" onClick={() => { const next = new URLSearchParams(searchParams); next.delete('document_id'); next.delete('query'); setSearchParams(next); }}>Vis alle dokumenter</SecondaryButton></StatePanel>}
 
       <Section>
         <SectionHeader><div><h2>{filtered.length} dokument{filtered.length === 1 ? '' : 'er'}</h2><p>Den konkrete version låses, når dokumentet tilknyttes en sag.</p></div></SectionHeader>

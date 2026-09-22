@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../theme/layout';
 import { useMutation, useQuery } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -221,9 +222,7 @@ const EXAMPLES = [EXAMPLE_GO, EXAMPLE_BETINGET_GO, EXAMPLE_NO_GO];
 // ---- Layout shell --------------------------------------------------------
 
 const Page = styled.div`
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 3rem 2.5rem 5rem;
+  ${pageLayout}
 `;
 
 const Eyebrow = styled.div`
@@ -237,13 +236,7 @@ const Eyebrow = styled.div`
 `;
 
 const Title = styled.h1`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 2.4rem;
-  font-weight: 700;
-  letter-spacing: -0.022em;
-  line-height: 1.12;
-  margin: 0 0 0.6rem;
-  color: ${(p) => p.theme.colors.ink};
+  ${pageTitleStyle}
 `;
 
 const Lede = styled.p`
@@ -295,13 +288,7 @@ const CaseId = styled.div`
 `;
 
 const CaseTitle = styled.h1`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin: 0 0 0.65rem;
-  color: ${(p) => p.theme.colors.ink};
+  ${pageTitleStyle}
 `;
 
 const CaseMeta = styled.p`
@@ -434,10 +421,7 @@ const PrimaryButton = styled.button`
   color: white;
   border: none;
   padding: 0.7rem 1.4rem;
-  border-radius: 6px;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-weight: 600;
-  font-size: 0.92rem;
+  ${controlStyle}
   cursor: pointer;
   transition: background ${(p) => p.theme.animations.transitionFast};
 
@@ -450,10 +434,7 @@ const SecondaryButton = styled.button`
   color: ${(p) => p.theme.colors.ink};
   border: 1px solid ${(p) => p.theme.colors.line};
   padding: 0.65rem 1.1rem;
-  border-radius: 6px;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-weight: 500;
-  font-size: 0.9rem;
+  ${controlStyle}
   cursor: pointer;
   transition: border-color ${(p) => p.theme.animations.transitionFast},
               color ${(p) => p.theme.animations.transitionFast};
@@ -712,10 +693,7 @@ const ExamplesHeader = styled.div`
 `;
 
 const ExamplesTitle = styled.h2`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  ${sectionTitleStyle}
   margin: 0 0 0.4rem;
   color: ${(p) => p.theme.colors.ink};
 `;
@@ -970,11 +948,8 @@ const VerdictMetric = styled.div`
 // ---- Section ------------------------------------------------------------
 
 const SectionH = styled.h2`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 1.7rem;
-  font-weight: 600;
-  letter-spacing: -0.012em;
-  margin: 3.5rem 0 0.4rem;
+  ${sectionTitleStyle}
+  margin: 2.5rem 0 0.4rem;
   color: ${(p) => p.theme.colors.ink};
 `;
 

@@ -116,7 +116,7 @@ def _ensure_action(
     description: str | None,
     category: str,
     priority: str,
-    created_by: str,
+    actor: UserPrincipal,
     owner: str | None = None,
     due_at: datetime | None = None,
     target_status: str | None = None,
@@ -150,7 +150,7 @@ def _ensure_action(
         due_at=due_at,
         source_reference_type=source_reference_type,
         source_reference_id=source_reference_id,
-        created_by=created_by,
+        created_by=_actor_name(actor),
     )
     if target_status is not None or evidence_note:
         action = update_case_action(
@@ -158,6 +158,9 @@ def _ensure_action(
             action.id,
             status=target_status,
             evidence_note=evidence_note,
+            updated_by=_actor_name(actor),
+            actor_id=actor.oid,
+            actor_kind="human",
         )
     return action
 
@@ -207,7 +210,7 @@ def _persist_ai_act_assessment(
             description=blocker,
             category="condition",
             priority="critical",
-            created_by=actor_name,
+            actor=user,
         )
 
     obligation_priority = {
@@ -232,7 +235,7 @@ def _persist_ai_act_assessment(
                 else "follow_up"
             ),
             priority=obligation_priority[obligation.priority],
-            created_by=actor_name,
+            actor=user,
         )
 
     for follow_up in result.follow_up_actions:
@@ -245,7 +248,7 @@ def _persist_ai_act_assessment(
             description=follow_up,
             category="follow_up",
             priority="medium",
-            created_by=actor_name,
+            actor=user,
         )
 
 
@@ -294,7 +297,7 @@ def _persist_fria_assessment(
             description=blocker,
             category="condition",
             priority="critical",
-            created_by=actor_name,
+            actor=user,
         )
 
     for item in result.action_items:
@@ -307,7 +310,7 @@ def _persist_fria_assessment(
             description=item,
             category="follow_up",
             priority="high",
-            created_by=actor_name,
+            actor=user,
         )
 
     status_map = {
@@ -336,7 +339,7 @@ def _persist_fria_assessment(
             due_at=due_at,
             target_status=target_status,
             evidence_note=measure.evidence or None,
-            created_by=actor_name,
+            actor=user,
         )
 
 

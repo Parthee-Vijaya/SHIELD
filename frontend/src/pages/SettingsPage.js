@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../theme/layout';
 import { motion } from 'framer-motion';
 import {
   FaCog,
@@ -17,25 +18,24 @@ import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { useTutorial } from '../contexts/TutorialContext';
 
 const SettingsContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
+  ${pageLayout}
 `;
 
 const PageHeader = styled.div`
   margin-bottom: 2rem;
 
   h1 {
-    color: ${props => props.theme.colors.gray[800]};
-    margin-bottom: 0.5rem;
+    ${pageTitleStyle}
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    svg { flex-shrink: 0; width: 1em; height: 1em; }
   }
 
   p {
     color: ${props => props.theme.colors.gray[600]};
-    font-size: 1.1rem;
+    font-size: 1rem;
+    line-height: 1.6;
   }
 `;
 
@@ -61,6 +61,7 @@ const SettingsNav = styled.nav`
 `;
 
 const NavItem = styled.button`
+  ${controlStyle}
   width: 100%;
   display: flex;
   align-items: center;
@@ -71,8 +72,6 @@ const NavItem = styled.button`
   color: ${props => props.active ? 'white' : props.theme.colors.gray[700]};
   border-radius: ${props => props.theme.borderRadius};
   cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
   transition: ${props => props.theme.animations.transition};
   margin-bottom: 0.5rem;
 
@@ -98,6 +97,7 @@ const SettingsContent = styled.div`
 `;
 
 const SectionTitle = styled.h2`
+  ${sectionTitleStyle}
   color: ${props => props.theme.colors.gray[800]};
   margin-bottom: 1.5rem;
   display: flex;
@@ -165,12 +165,12 @@ const Toggle = styled.button`
 `;
 
 const Select = styled.select`
+  ${controlStyle}
   padding: 0.5rem;
   border: 1px solid ${props => props.theme.colors.gray[300]};
   border-radius: ${props => props.theme.borderRadius};
   background: ${props => props.theme.colors.inputBackground};
   color: ${props => props.theme.colors.ink};
-  font-size: 0.875rem;
   min-width: 120px;
 
   &:focus {
@@ -189,6 +189,7 @@ const ButtonGroup = styled.div`
 `;
 
 const Button = styled.button`
+  ${controlStyle}
   display: flex;
   align-items: center;
   gap: 0.5rem;

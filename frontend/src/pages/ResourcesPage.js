@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   FaExternalLinkAlt,
@@ -14,6 +15,8 @@ import {
 } from '../components/page-chrome/PageChrome';
 
 import resourcesCatalog from '../data/resourceLibrary';
+import { safeResourceUrl } from '../components/workspace-search/searchUtils';
+import { StatePanel, SecondaryButton } from '../components/workflow/WorkflowUi';
 
 // ---- Stat-bar -------------------------------------------------------------
 
@@ -336,10 +339,20 @@ const formatDanishDate = (iso) => {
 // ---- Main page -----------------------------------------------------------
 
 const ResourcesPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedResourceId = searchParams.get('resource_id') || '';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedLang, setSelectedLang] = useState('all');
+
+  useEffect(() => {
+    if (!requestedResourceId) return;
+    setSearchTerm('');
+    setSelectedCategory('all');
+    setSelectedType('all');
+    setSelectedLang('all');
+  }, [requestedResourceId]);
 
   const categories = useMemo(() => {
     const c = new Set(resourcesCatalog.flatMap((r) => r.categories));
@@ -365,18 +378,23 @@ const ResourcesPage = () => {
       const matchesCategory = selectedCategory === 'all' || r.categories.includes(selectedCategory);
       const matchesType = selectedType === 'all' || r.types.includes(selectedType);
       const matchesLang = selectedLang === 'all' || r.languages.includes(selectedLang);
-      return matchesSearch && matchesCategory && matchesType && matchesLang;
+      return (!requestedResourceId || String(r.id) === requestedResourceId) && matchesSearch && matchesCategory && matchesType && matchesLang;
     });
-  }, [searchTerm, selectedCategory, selectedType, selectedLang]);
+  }, [searchTerm, selectedCategory, selectedType, selectedLang, requestedResourceId]);
 
   const hasActiveFilters =
-    selectedCategory !== 'all' || selectedType !== 'all' || selectedLang !== 'all' || searchTerm;
+    selectedCategory !== 'all' || selectedType !== 'all' || selectedLang !== 'all' || searchTerm || requestedResourceId;
 
   const clearAll = () => {
     setSearchTerm('');
     setSelectedCategory('all');
     setSelectedType('all');
     setSelectedLang('all');
+    if (requestedResourceId) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('resource_id');
+      setSearchParams(next);
+    }
   };
 
   // Stats
@@ -409,6 +427,12 @@ const ResourcesPage = () => {
           <div className="label">Vist</div>
         </StatCell>
       </StatsBar>
+
+      {requestedResourceId && <StatePanel role="status">
+        <strong>{resourcesCatalog.some(item => String(item.id) === requestedResourceId) ? 'Kilde fra søgeresultatet' : 'Kilden findes ikke i kataloget'}</strong>
+        <p>{resourcesCatalog.some(item => String(item.id) === requestedResourceId) ? 'Listen viser den valgte vejledning eller rapport. Åbn kildens originale link for at læse indholdet.' : 'Linket peger på en kilde, som ikke længere findes her. Åbn hele kataloget for at finde en anden kilde.'}</p>
+        <SecondaryButton type="button" onClick={clearAll}>Vis alle vejledninger og rapporter</SecondaryButton>
+      </StatePanel>}
 
       <Toolbar>
         <SearchField>
@@ -496,7 +520,7 @@ const ResourcesPage = () => {
 
       <ResultsCount>
         <span>Viser {filtered.length} af {resourcesCatalog.length}</span>
-        <span style={{ fontFamily: 'monospace', fontSize: '0.72rem' }}>
+        <span style={{ fontSize: '0.75rem' }}>
           klik kort for at åbne link i ny fane
         </span>
       </ResultsCount>
@@ -505,12 +529,13 @@ const ResourcesPage = () => {
         <Empty>Ingen ressourcer matcher dine filtre. Prøv at rydde dem.</Empty>
       ) : (
         <Grid>
-          {filtered.map((r) => (
+          {filtered.map((r) => { const href = safeResourceUrl(r.url); return (
             <Card
               key={r.id}
-              href={r.url}
-              target={r.url.startsWith('/') ? undefined : '_blank'}
-              rel={r.url.startsWith('/') ? undefined : 'noopener noreferrer'}
+              as={href ? 'a' : 'article'}
+              href={href || undefined}
+              target={href && !href.startsWith('/') ? '_blank' : undefined}
+              rel={href && !href.startsWith('/') ? 'noopener noreferrer' : undefined}
               $category={r.category}
             >
               <CardTopRow>
@@ -518,10 +543,10 @@ const ResourcesPage = () => {
                   {r.types.join(' · ')}
                   {r.language && <LangChip>{r.language}</LangChip>}
                 </span>
-                <FaExternalLinkAlt className="external-icon" aria-hidden="true" />
+                {href && <FaExternalLinkAlt className="external-icon" aria-hidden="true" />}
               </CardTopRow>
               <CardTitle>{r.titles.join(' / ')}</CardTitle>
-              <CardHost>{hostFromUrl(r.url)}</CardHost>
+              <CardHost>{href ? hostFromUrl(href) : 'Link ikke tilgængeligt'}</CardHost>
               {(r.publishers.length > 0 || r.years.length > 0) && <PublicationMeta>{[r.publishers.join(', '), r.years.join(', '), r.areas.join(', ')].filter(Boolean).join(' · ')}</PublicationMeta>}
               {r.descriptions.length > 0 && <CardDescription>{r.descriptions.join(' ')}</CardDescription>}
               <CardFooter>
@@ -535,7 +560,7 @@ const ResourcesPage = () => {
                 ))}
               </CardFooter>
             </Card>
-          ))}
+          ); })}
         </Grid>
       )}
     </PageShell>

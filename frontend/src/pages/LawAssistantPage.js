@@ -13,6 +13,8 @@ import {
   FaBook
 } from 'react-icons/fa';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
+import { readJsonEventStream } from '../utils/readJsonEventStream';
 import { modelLabel } from '../utils/modelPresentation';
 import { lawSourceText } from '../utils/lawSourcePresentation';
 import {
@@ -294,6 +296,7 @@ const LoadingSpinner = styled(FaSpinner)`
 // ============ MAIN COMPONENT ============
 
 const LawAssistantPage = () => {
+  const { authFetch } = useAuth();
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [phase, setPhase] = useState('idle'); // idle | retrieving | streaming | done | error
@@ -306,7 +309,7 @@ const LawAssistantPage = () => {
   // Load categories on mount
   useEffect(() => {
     loadCategories();
-    return () => abortRef.current?.abort();
+    return () => { const current = abortRef.current; abortRef.current = null; current?.abort(); };
   }, []);
 
   const loadCategories = async () => {
@@ -348,7 +351,7 @@ const LawAssistantPage = () => {
     });
 
     try {
-      const response = await fetch('/api/law/ask/stream', {
+      const response = await authFetch('/api/law/ask/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify({
@@ -359,53 +362,34 @@ const LawAssistantPage = () => {
         signal: controller.signal,
       });
 
-      if (!response.ok || !response.body) {
-        const detail = await response.json().catch(() => null);
-        throw new Error(typeof detail?.detail === 'string' ? detail.detail : `Svartjenesten kunne ikke fuldføre forespørgslen (HTTP ${response.status}).`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
       let completed = false;
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // SSE messages are separated by \n\n
-        let sepIdx;
-        while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
-          const message = buffer.slice(0, sepIdx);
-          buffer = buffer.slice(sepIdx + 2);
-          // Each line in a message starts with "data: "
-          const dataLines = message
-            .split('\n')
-            .filter((l) => l.startsWith('data: '))
-            .map((l) => l.slice(6));
-          if (!dataLines.length) continue;
-          const payload = dataLines.join('\n');
-          let event;
-          try { event = JSON.parse(payload); }
-          catch { throw new Error('Svartjenesten returnerede et ugyldigt svar. Prøv igen.'); }
+      await readJsonEventStream(response, {
+        signal: controller.signal,
+        invalidMessage: 'Svartjenesten returnerede et ugyldigt svar. Prøv igen.',
+        onEvent: event => {
+          if (abortRef.current !== controller || controller.signal.aborted) return false;
           if (event.event === 'error') throw new Error(event.message || 'Svartjenesten kunne ikke fuldføre svaret.');
-          if (event.event === 'final') completed = true;
           handleStreamEvent(event);
-        }
-      }
-
-      if (!completed) throw new Error('Forbindelsen blev afbrudt, før svaret var færdigt. Prøv igen.');
-      setPhase('done');
+          if (event.event === 'final') { completed = true; return false; }
+        },
+      });
+      if (!completed && !controller.signal.aborted) throw new Error('Forbindelsen blev afbrudt, før svaret var færdigt. Prøv igen.');
+      if (abortRef.current === controller && !controller.signal.aborted) setPhase('done');
     } catch (error) {
-      if (error.name === 'AbortError') {
-        // Aborted by a new query — silently end
-        return;
-      }
-      controller.abort();
+      if (error.name === 'AbortError' || abortRef.current !== controller) return;
       setPhase('error');
       setStreamError(error.message || 'Svaret kunne ikke færdiggøres. Prøv igen.');
+    } finally {
+      controller.abort();
+      if (abortRef.current === controller) abortRef.current = null;
     }
+  };
+
+  const stopAnswer = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setPhase('error');
+    setStreamError('Du stoppede svaret. Start en ny forespørgsel for at få et færdigt svar.');
   };
 
   const handleStreamEvent = (event) => {
@@ -512,6 +496,7 @@ const LawAssistantPage = () => {
               </>
             )}
           </SearchButton>
+          {isLoading && <PrimaryButton $secondary type="button" onClick={stopAnswer}>Stop svar</PrimaryButton>}
         </form>
 
         {!result && (

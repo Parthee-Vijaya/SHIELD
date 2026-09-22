@@ -1,23 +1,18 @@
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../../theme/layout';
 
 // App.js already owns the single <main> landmark. Workflow pages are content
 // containers so routes never render nested main landmarks.
 export const Page = styled.div`
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: clamp(38px, 5vw, 72px) 20px 104px;
-
-  @media (max-width: 640px) {
-    padding: 30px 14px 72px;
-  }
+  ${pageLayout}
 `;
 
 export const PageHeader = styled.header`
   display: grid;
   grid-template-columns: ${(p) => p.$stacked ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) auto'};
   align-items: end;
-  gap: 32px;
-  padding-bottom: clamp(30px, 4vw, 48px);
+  gap: 24px;
+  padding-bottom: 24px;
   border-bottom: 1px solid ${(p) => p.theme.colors.line};
 
   @media (max-width: 1080px) {
@@ -46,12 +41,7 @@ export const Eyebrow = styled.div`
 `;
 
 export const Title = styled.h1`
-  min-width: 0;
-  overflow-wrap: anywhere;
-  margin: 0;
-  color: ${(p) => p.theme.colors.ink};
-  font: 580 clamp(2.45rem, 5vw, 4.25rem)/1.02 ${(p) => p.theme.fonts.display};
-  letter-spacing: -0.052em;
+  ${pageTitleStyle}
 `;
 
 export const Lede = styled.p`
@@ -63,13 +53,13 @@ export const Lede = styled.p`
 `;
 
 export const Button = styled.button`
-  min-height: 44px;
+  ${controlStyle}
   padding: 11px 18px;
   border: 1px solid ${(p) => p.theme.colors.primary};
   border-radius: 0;
   background: ${(p) => p.theme.colors.primary};
   color: #fff;
-  font: 620 0.86rem/1.2 ${(p) => p.theme.fonts.sans};
+  font: 600 0.875rem/1.3 ${(p) => p.theme.fonts.sans};
   cursor: pointer;
   transition: background ${(p) => p.theme.animations.transitionFast},
     border-color ${(p) => p.theme.animations.transitionFast};
@@ -128,7 +118,7 @@ export const SectionHeader = styled.div`
   h2 {
     margin: 0;
     color: ${(p) => p.theme.colors.ink};
-    font: 590 clamp(1.45rem, 2.5vw, 2rem)/1.1 ${(p) => p.theme.fonts.display};
+    ${sectionTitleStyle}
     letter-spacing: -0.035em;
   }
 

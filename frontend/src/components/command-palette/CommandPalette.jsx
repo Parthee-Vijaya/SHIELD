@@ -1,174 +1,21 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { ALL_NAVIGATION } from '../../config/navigation';
+import WorkspaceSearch from '../workspace-search/WorkspaceSearch';
 
-/**
- * CommandPalette — keyboard-first launcher (⌘K / Ctrl+K).
- *
- * Lightweight, no external deps beyond framer-motion (already in deps).
- * The list of commands is centralized here so any page can navigate to
- * it via the same keyboard idiom.
- *
- * Open: ⌘K (mac) / Ctrl+K (other). Esc to close. Up/Down to navigate.
- * Enter to run.
- */
-
-const COMMANDS = [
-  ...ALL_NAVIGATION.map((item) => ({ ...item, kind: 'nav' })),
-  {
-    id: 'compare',
-    label: 'Sammenlign vurderingsmotorer',
-    hint: 'g c',
-    path: '/sammenlign',
-    kind: 'nav',
-  },
-];
-
-const KIND_LABEL = {
-  nav: 'Naviger',
-  action: 'Handling',
-};
-
-// ---- Styled ---------------------------------------------------------------
-
-const Backdrop = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 14vh;
+const COMMANDS = ALL_NAVIGATION;
+const Backdrop = styled.div`
+  position: fixed; inset: 0; z-index: 1000; background: rgba(22,26,30,.45);
+  display: flex; align-items: flex-start; justify-content: center; padding: min(12vh,100px) 16px 24px;
 `;
-
-const Panel = styled(motion.div)`
-  width: min(640px, 92vw);
-  background: ${(p) => p.theme.colors.surface};
-  border: 1px solid ${(p) => p.theme.colors.border};
-  border-radius: ${(p) => p.theme.borderRadiusLarge};
-  box-shadow: ${(p) => p.theme.shadows.xl};
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-`;
-
-const InputRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.85rem 1.1rem;
-  border-bottom: 1px solid ${(p) => p.theme.colors.border};
-`;
-
-const Prompt = styled.span`
-  color: ${(p) => p.theme.colors.primary};
-  font-weight: 600;
-  font-family: ${(p) => p.theme.fonts.mono};
-  font-size: 0.9rem;
-`;
-
-const Input = styled.input`
-  flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 1.05rem;
-  color: ${(p) => p.theme.colors.text};
-  font-family: ${(p) => p.theme.fonts.main};
-  &::placeholder {
-    color: ${(p) => p.theme.colors.textMuted};
-  }
-`;
-
-const Esc = styled.kbd`
-  font-family: ${(p) => p.theme.fonts.mono};
-  font-size: 0.7rem;
-  background: ${(p) => p.theme.colors.surfaceAlt};
-  border: 1px solid ${(p) => p.theme.colors.border};
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: ${(p) => p.theme.colors.textMuted};
-`;
-
-const List = styled.ul`
-  max-height: 50vh;
-  overflow-y: auto;
-  list-style: none;
-  margin: 0;
-  padding: 0.4rem 0;
-`;
-
-const Item = styled.li`
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.55rem 1.1rem;
-  cursor: pointer;
-  font-size: 0.95rem;
-  color: ${(p) => p.theme.colors.text};
-  background: ${(p) => (p.$active ? p.theme.colors.surfaceAlt : 'transparent')};
-
-  &:hover {
-    background: ${(p) => p.theme.colors.surfaceAlt};
-  }
-`;
-
-const ItemLabel = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-`;
-
-const ItemKind = styled.span`
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: ${(p) => p.theme.colors.textMuted};
-  background: ${(p) => p.theme.colors.surfaceAlt};
-  padding: 2px 6px;
-  border-radius: 3px;
-`;
-
-const Hint = styled.span`
-  font-family: ${(p) => p.theme.fonts.mono};
-  font-size: 0.7rem;
-  color: ${(p) => p.theme.colors.textMuted};
-`;
-
-const Empty = styled.div`
-  padding: 2rem 1rem;
-  text-align: center;
-  color: ${(p) => p.theme.colors.textMuted};
-  font-size: 0.92rem;
-`;
-
-const Footer = styled.div`
-  display: flex;
-  gap: 1.25rem;
-  padding: 0.55rem 1.1rem;
-  border-top: 1px solid ${(p) => p.theme.colors.border};
-  font-size: 0.72rem;
-  color: ${(p) => p.theme.colors.textMuted};
-`;
-
-const FooterKey = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-
-  kbd {
-    font-family: ${(p) => p.theme.fonts.mono};
-    background: ${(p) => p.theme.colors.surfaceAlt};
-    border: 1px solid ${(p) => p.theme.colors.border};
-    border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 0.7rem;
-  }
+const Panel = styled.div`
+  width: min(760px,100%); max-height: 82vh; overflow-y: auto; padding: 24px;
+  border: 1px solid ${p => p.theme.colors.border}; background: ${p => p.theme.colors.surface}; box-shadow: ${p => p.theme.shadows.xl};
+  .palette-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 20px; }
+  .palette-header h2 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -.025em; }
+  .palette-header button { padding: 7px 11px; color: ${p => p.theme.colors.textMuted}; background: transparent; border: 1px solid ${p => p.theme.colors.border}; font: inherit; font-size: .78rem; cursor: pointer; }
+  .palette-footer { padding-top: 16px; color: ${p => p.theme.colors.textMuted}; font-size: .76rem; }
+  @media(max-width: 600px) { padding: 18px; }
 `;
 
 // ---- Hook for global ⌘K binding ------------------------------------------
@@ -259,133 +106,36 @@ export const useGotoShortcuts = (navigate, isPaletteOpen = false) => {
   }, [navigate, isPaletteOpen]);
 };
 
-// ---- Component -----------------------------------------------------------
-
+// Home and keyboard search share the same results, access checks and interactions.
 const CommandPalette = ({ isOpen, onClose }) => {
-  const [query, setQuery] = useState('');
-  const [activeIdx, setActiveIdx] = useState(0);
-  const inputRef = useRef(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isOpen) {
-      setQuery('');
-      setActiveIdx(0);
-      // autofocus after the modal mounts
-      setTimeout(() => inputRef.current?.focus(), 30);
-    }
+  const panel = useRef(null);
+  const trigger = useRef(null);
+  // Capture the launcher before the child's passive autofocus runs.
+  useLayoutEffect(() => {
+    if (!isOpen) return undefined;
+    trigger.current = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = overflow; trigger.current?.focus?.(); };
   }, [isOpen]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return COMMANDS;
-    return COMMANDS.filter((c) =>
-      c.label.toLowerCase().includes(q) || (c.hint || '').includes(q),
-    );
-  }, [query]);
-
-  useEffect(() => {
-    if (activeIdx >= filtered.length) setActiveIdx(0);
-  }, [filtered.length, activeIdx]);
-
-  const runCommand = (cmd) => {
-    if (!cmd) return;
-    if (cmd.kind === 'nav' && cmd.path) {
-      navigate(cmd.path);
-    }
-    onClose();
+  const handleKey = event => {
+    if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+    if (event.key !== 'Tab') return;
+    const controls = [...panel.current.querySelectorAll('input, button, a[href], [tabindex="0"]')].filter(node => node.tabIndex >= 0 && !node.disabled);
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   };
-
-  const handleKey = (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIdx((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      runCommand(filtered[activeIdx]);
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <Backdrop
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.12 }}
-          onClick={onClose}
-        >
-          <Panel
-            role="dialog"
-            aria-modal="true"
-            aria-label="Hurtig navigation"
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -10, opacity: 0 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <InputRow>
-              <Prompt>›</Prompt>
-              <Input
-                ref={inputRef}
-                aria-label="Søg i navigationen"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKey}
-                placeholder="Søg eller naviger…"
-              />
-              <Esc>Esc</Esc>
-            </InputRow>
-
-            {filtered.length === 0 ? (
-              <Empty>Ingen kommandoer matcher "{query}"</Empty>
-            ) : (
-              <List>
-                {filtered.map((cmd, idx) => (
-                  <Item
-                    key={cmd.id}
-                    $active={idx === activeIdx}
-                    onMouseEnter={() => setActiveIdx(idx)}
-                    onClick={() => runCommand(cmd)}
-                  >
-                    <ItemLabel>
-                      <ItemKind>{KIND_LABEL[cmd.kind] || cmd.kind}</ItemKind>
-                      {cmd.label}
-                    </ItemLabel>
-                    {cmd.hint && <Hint>{cmd.hint}</Hint>}
-                  </Item>
-                ))}
-              </List>
-            )}
-
-            <Footer>
-              <FooterKey>
-                <kbd>↑</kbd>
-                <kbd>↓</kbd>
-                naviger
-              </FooterKey>
-              <FooterKey>
-                <kbd>↵</kbd>
-                vælg
-              </FooterKey>
-              <FooterKey>
-                <kbd>Esc</kbd>
-                luk
-              </FooterKey>
-            </Footer>
-          </Panel>
-        </Backdrop>
-      )}
-    </AnimatePresence>
-  );
+  if (!isOpen) return null;
+  return <Backdrop onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <Panel ref={panel} role="dialog" aria-modal="true" aria-labelledby="workspace-palette-title" onKeyDown={handleKey}>
+      <div className="palette-header"><h2 id="workspace-palette-title">Søg i arbejdsrummet</h2><button type="button" onClick={onClose} aria-label="Luk søgning">Luk · Esc</button></div>
+      <WorkspaceSearch inline autoFocus onNavigate={onClose} />
+      <div className="palette-footer">↑ ↓ Vælg resultat · Enter Åbn · Esc Luk</div>
+    </Panel>
+  </Backdrop>;
 };
 
 export default CommandPalette;

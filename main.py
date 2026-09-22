@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks, Request, Query, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse, Response
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Literal
@@ -300,6 +301,7 @@ from src.api.procurement_exports import router as procurement_exports_router
 from src.api.case_clarifications import router as case_clarifications_router
 from src.api.dpia_revisions import router as dpia_revisions_router
 from src.api.technical_runs import router as technical_runs_router
+from src.api.system_catalog import router as system_catalog_router
 
 app.include_router(assessment_tracks_router)
 app.include_router(workspace_router)
@@ -310,6 +312,7 @@ app.include_router(procurement_exports_router)
 app.include_router(case_clarifications_router)
 app.include_router(dpia_revisions_router)
 app.include_router(technical_runs_router)
+app.include_router(system_catalog_router)
 
 
 # Add CORS middleware
@@ -347,6 +350,16 @@ load_errors_from_disk()
 app.add_middleware(RequestIDMiddleware)
 
 
+def _verified_request_actor(request: Request) -> str:
+    """Use only the principal established by server-side authentication.
+
+    Requests that fail before authentication, or use an unauthenticated route,
+    have an unknown actor. Client-supplied identity headers are never evidence.
+    """
+    principal = getattr(request.state, "user", None)
+    return principal.name if isinstance(principal, UserPrincipal) else "Ukendt aktør"
+
+
 @app.middleware("http")
 async def _track_http_metrics(request: Request, call_next):
     """Record per-request count + latency. Endpoint label uses the route
@@ -366,7 +379,7 @@ async def _track_http_metrics(request: Request, call_next):
             endpoint=endpoint,
             request_id=request.headers.get("X-Request-ID")
             or (request.scope.get("state") or {}).get("request_id"),
-            actor=request.headers.get("X-User"),
+            actor=_verified_request_actor(request),
         )
         status = "500"
         raise
@@ -394,7 +407,7 @@ async def _capture_unhandled_exception(request: Request, exc: Exception):
         error=exc,
         endpoint=str(request.url.path),
         request_id=(request.scope.get("state") or {}).get("request_id"),
-        actor=request.headers.get("X-User"),
+        actor=_verified_request_actor(request),
     )
     return JSONResponse(
         status_code=500,
@@ -1314,7 +1327,7 @@ async def metrics():
 
 
 @app.get("/api/v3/admin/config")
-async def v3_admin_config():
+async def v3_admin_config(_user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """ConfigReport — bruges af build-time diagnostic-modal i frontend
     + /drift's konfigurations-sektion.
 
@@ -1330,7 +1343,7 @@ async def v3_admin_config():
 
 
 @app.get("/api/v3/admin/backups")
-async def v3_admin_backups():
+async def v3_admin_backups(_user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """List eksisterende database-backups + retention-policy + rsync-mål."""
     from src.services.backup_service import list_backups
     return await asyncio.to_thread(list_backups)
@@ -1338,7 +1351,7 @@ async def v3_admin_backups():
 
 @app.post("/api/v3/admin/backups/run")
 @limiter.limit(ADMIN_WRITE)
-async def v3_admin_backups_run(request: Request, response: Response):
+async def v3_admin_backups_run(request: Request, response: Response, _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Manuel trigger af pg_dump-backup. Returnerer summary med path,
     størrelse og varighed. Tager 0.5-3s for typiske dataset-størrelser."""
     from src.services.backup_service import run_backup
@@ -1346,7 +1359,7 @@ async def v3_admin_backups_run(request: Request, response: Response):
 
 
 @app.get("/api/v3/admin/errors")
-async def v3_admin_errors(limit: int = 50):
+async def v3_admin_errors(limit: int = 50, _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Return the most recent errors captured by the local error-buffer.
 
     Used by the /drift page to give an at-a-glance view of recent failures
@@ -1361,7 +1374,7 @@ async def v3_admin_errors(limit: int = 50):
 
 
 @app.get("/api/v3/admin/ops-summary")
-async def v3_ops_summary():
+async def v3_ops_summary(_user: UserPrincipal = Depends(CASE_ACCESS)):
     """Aggregated 24h operational overview — backs the /drift page.
 
     Combines: scheduler-job last-run timestamps, citation freshness counts,
@@ -1553,7 +1566,7 @@ async def check_database_health():
 
 
 @app.post("/api/compliance/test-search")
-async def test_web_search(request: Dict[str, Any]):
+async def test_web_search(request: Dict[str, Any], _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Test web search functionality."""
     try:
         from duckduckgo_search import DDGS
@@ -1576,7 +1589,7 @@ async def test_web_search(request: Dict[str, Any]):
 
 
 @app.post("/api/compliance/test-llm")
-async def test_llm(request: Dict[str, Any]):
+async def test_llm(request: Dict[str, Any], _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Test LLM connectivity with timeout.
 
     Explicit opt-in local GPT-5.6 Sol takes priority; otherwise probe
@@ -1718,7 +1731,7 @@ async def test_llm(request: Dict[str, Any]):
 
 
 @app.post("/api/ai/diagnose-issue")
-async def diagnose_system_issue(request: Dict[str, Any]):
+async def diagnose_system_issue(request: Dict[str, Any], _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Use AI with web search to diagnose system issues and provide solutions."""
     try:
         from langchain_openai import ChatOpenAI
@@ -1799,7 +1812,7 @@ async def diagnose_system_issue(request: Dict[str, Any]):
 
 
 @app.get("/api/ai-cases", response_model=List[AICase])
-async def list_ai_cases() -> List[AICase]:
+async def list_ai_cases(_user: UserPrincipal = Depends(CASE_ACCESS)) -> List[AICase]:
     """Returnér alle indsendte AI sager."""
     raw_cases = await _load_ai_cases()
     normalized: List[AICase] = []
@@ -1814,7 +1827,7 @@ async def list_ai_cases() -> List[AICase]:
 
 
 @app.post("/api/ai-cases", response_model=AICase, status_code=201)
-async def create_ai_case(case_input: AICaseCreate) -> AICase:
+async def create_ai_case(case_input: AICaseCreate, _user: UserPrincipal = Depends(CASE_ACCESS)) -> AICase:
     """Opret en ny AI sag og send email-notifikation."""
     trimmed_title = case_input.title.strip()
     trimmed_description = case_input.description.strip()
@@ -1841,12 +1854,24 @@ async def create_ai_case(case_input: AICaseCreate) -> AICase:
     return new_case
 
 
+def _require_admin_for_forced_refresh(
+    request: Request,
+    force_refresh: bool = False,
+    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
+) -> UserPrincipal | None:
+    """Normal cached news are public; explicit refresh uses the admin boundary."""
+    if not force_refresh:
+        return None
+    return ADMIN_ACCESS(user=get_current_user(request, credentials))
+
+
 @app.get("/api/news/latest", response_model=NewsFeedPayload)
 async def get_latest_news(
     force_refresh: bool = False,
     category: Optional[str] = None,
     source: Optional[str] = None,
     limit: int = 20,
+    _refresh_user: UserPrincipal | None = Depends(_require_admin_for_forced_refresh),
 ):
     """Returnér seneste nyheder om AI og jura"""
     limit = max(1, min(limit, news_service.max_items))
@@ -1860,14 +1885,14 @@ async def get_latest_news(
 
 
 @app.post("/api/news/refresh", response_model=NewsFeedPayload)
-async def refresh_news():
+async def refresh_news(_user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Tving opdatering af nyhedsfeed"""
     payload = await news_service.get_latest_news(force_refresh=True)
     return payload
 
 
 @app.post("/api/news/llm-search")
-async def llm_search_news():
+async def llm_search_news(_user: UserPrincipal = Depends(CASE_ACCESS)):
     """Brug LLM og web search til at finde aktuelle nyheder"""
     try:
         from src.news.llm_news_search import fetch_llm_news
@@ -1903,7 +1928,10 @@ async def llm_search_news():
 
 
 @app.get("/api/news/ticker", response_model=TickerPayload)
-async def get_ticker_news(force_refresh: bool = False):
+async def get_ticker_news(
+    force_refresh: bool = False,
+    _refresh_user: UserPrincipal | None = Depends(_require_admin_for_forced_refresh),
+):
     """Returnér AI-ticker fra internationale medier"""
     return await _build_ticker_payload(force_refresh=force_refresh)
 
@@ -1975,7 +2003,7 @@ async def get_agent_config(agent_id: str):
 
 @app.post("/api/research/juridisk", response_model=Dict[str, Any])
 @limiter.limit(LLM_LIGHT)
-async def juridisk_research(request: Request, body: ResearchRequest, response: Response):
+async def juridisk_research(request: Request, body: ResearchRequest, response: Response, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Udfører juridisk research med kildecitation med OpenAI + Web Search
     """
@@ -2011,9 +2039,12 @@ async def juridisk_research(request: Request, body: ResearchRequest, response: R
 
 
 @app.get("/api/research/juridisk/stream")
+@limiter.limit(LLM_LIGHT)
 async def juridisk_research_stream(
+    request: Request,
     emne: str = Query(..., min_length=3, max_length=2000, description="Research emne"),
     focus_areas: List[str] | None = Query(default=None, max_length=8),
+    _user: UserPrincipal = Depends(CASE_ACCESS),
 ):
     """
     Server-Sent Events endpoint for real-time research progress
@@ -2125,6 +2156,13 @@ async def juridisk_research_stream(
                 "timestamp": datetime.now(UTC).isoformat()
             }
             yield f"data: {json.dumps(error_data)}\n\n"
+        finally:
+            # A disconnected browser must not leave its model/search task running.
+            from contextlib import suppress
+            if not research_task.done():
+                research_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await research_task
 
     return StreamingResponse(
         event_generator(),
@@ -2327,7 +2365,7 @@ async def get_knowledge_base():
 
 @app.post("/api/knowledge-base/update", response_model=Dict[str, Any])
 @limiter.limit(ADMIN_WRITE)
-async def trigger_kb_update(request: Request, background_tasks: BackgroundTasks, response: Response):
+async def trigger_kb_update(request: Request, background_tasks: BackgroundTasks, response: Response, _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Trigger manuel opdatering af vidensbasen."""
     try:
         # Import update_knowledge_base direkte (async version)
@@ -2389,7 +2427,7 @@ async def get_eu_ai_act_checker(lang: str = "en"):
 
 @app.post("/api/eu-ai-act-checker/refresh", response_model=Dict[str, Any])
 @limiter.limit(ADMIN_WRITE)
-async def refresh_eu_ai_act_checker(request: Request, response: Response):
+async def refresh_eu_ai_act_checker(request: Request, response: Response, _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Manuel trigger — henter fresh logic.json + content_*.json fra EC.
 
     Tager 1-3s. Returnerer summary med før/efter version-stempler så
@@ -2421,7 +2459,7 @@ async def get_ai_projects():
 
 @app.post("/api/ai-projects/refresh", response_model=Dict[str, Any])
 @limiter.limit(ADMIN_WRITE)
-async def refresh_ai_projects_endpoint(request: Request, response: Response):
+async def refresh_ai_projects_endpoint(request: Request, response: Response, _user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Manuel trigger af AI-projekt-katalog-syncen. Returnerer summary
     af kørslen — tager 10-20s for ~143 projekter."""
     from src.services.ai_projects_updater import refresh_ai_projects
@@ -2431,30 +2469,16 @@ async def refresh_ai_projects_endpoint(request: Request, response: Response):
 
 
 @app.get("/api/search/global", response_model=Dict[str, Any])
-async def global_search(
+def global_search(
     q: str = Query(..., min_length=2, max_length=120, description="Søgestreng"),
     limit: int = Query(5, ge=1, le=15, description="Maksimum resultater per sektion"),
+    db: Session = Depends(get_db),
+    _user: UserPrincipal = Depends(CASE_ACCESS),
 ):
-    """Søg på tværs af vidensbase, AI-sager og dokumentation."""
-    query = q.strip()
-    if not query:
-        return {"query": q, "results": [], "sections": {}}
+    """Find kommunale sager, vurderinger og dokumenter med samme adgangskrav som sagsoversigten."""
+    from src.services.workspace_search import build_workspace_search
 
-    kb_results, kb_total = _build_knowledge_base_results(query, limit)
-    case_results, case_total = await _build_ai_case_results(query, limit)
-    doc_results, doc_total = _build_documentation_results(query, limit)
-
-    combined = kb_results + case_results + doc_results
-
-    return {
-        "query": query,
-        "results": combined,
-        "sections": {
-            "knowledge_base": {"count": len(kb_results), "total": kb_total},
-            "ai_cases": {"count": len(case_results), "total": case_total},
-            "documentation": {"count": len(doc_results), "total": doc_total},
-        },
-    }
+    return build_workspace_search(db, q.strip(), limit=limit, knowledge=load_knowledge_base())
 
 
 # ==================== Law Assistant API ====================
@@ -2485,7 +2509,7 @@ class LawAskRequest(BaseModel):
 
 
 @app.post("/api/law/search", response_model=Dict[str, Any])
-async def search_laws_api(request: LawSearchRequest):
+async def search_laws_api(request: LawSearchRequest, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Search Danish laws by text query.
 
@@ -2559,7 +2583,7 @@ async def search_laws_api(request: LawSearchRequest):
 
 @app.post("/api/law/ask", response_model=Dict[str, Any])
 @limiter.limit(LLM_HEAVY)
-async def ask_law_assistant(request: Request, body: LawAskRequest, response: Response):
+async def ask_law_assistant(request: Request, body: LawAskRequest, response: Response, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Ask legal question and get AI-generated answer with citations.
 
@@ -2606,7 +2630,7 @@ async def ask_law_assistant(request: Request, body: LawAskRequest, response: Res
 # ---- Law RAG admin endpoints ------------------------------------------------
 
 @app.post("/api/law/rag/build")
-async def law_rag_build():
+async def law_rag_build(_user: UserPrincipal = Depends(ADMIN_ACCESS)):
     """Embed every law section and persist a local cosine-search index.
 
     Idempotent — running twice rebuilds the index. ~$0.0001 / 5s per build.
@@ -2633,7 +2657,7 @@ async def law_rag_stats():
 
 @app.post("/api/law/ask/stream")
 @limiter.limit(LLM_HEAVY)
-async def ask_law_assistant_stream(request: Request, body: LawAskRequest):
+async def ask_law_assistant_stream(request: Request, body: LawAskRequest, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """Streaming variant of /api/law/ask using Server-Sent Events.
 
     Event sequence:
@@ -2641,8 +2665,7 @@ async def ask_law_assistant_stream(request: Request, body: LawAskRequest):
       2. delta(s) — prose tokens as they arrive
       3. final — full answer + key_points + citations + follow-up suggestions
 
-    Frontend uses EventSource (or fetch + ReadableStream) to render
-    incrementally.
+    Frontend uses authenticated fetch + ReadableStream to render incrementally.
     """
     from src.law import LawAssistant
 
@@ -2694,7 +2717,7 @@ async def get_law_categories():
 # ==================== Compliance API ====================
 
 @app.post("/api/compliance/analyser", response_model=Dict[str, Any])
-async def analyser_compliance(project: ProjectInput, background_tasks: BackgroundTasks):
+async def analyser_compliance(project: ProjectInput, background_tasks: BackgroundTasks, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Analyze a project for AI compliance
     """
@@ -2730,13 +2753,13 @@ async def analyser_compliance(project: ProjectInput, background_tasks: Backgroun
 
 
 @app.get("/api/compliance/progress/{session_id}")
-async def get_progress_updates(session_id: str):
+async def get_progress_updates(session_id: str, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """Get progress updates for a quick check session."""
     return {"progress": get_progress(session_id)}
 
 
 @app.get("/api/compliance/intermediate/{session_id}")
-async def get_intermediate_results(session_id: str):
+async def get_intermediate_results(session_id: str, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """Get intermediate results for a quick check session."""
     results = intermediate_results_storage.get(session_id, {})
     return {
@@ -2748,7 +2771,7 @@ async def get_intermediate_results(session_id: str):
 
 
 @app.post("/api/compliance/hurtig-tjek", response_model=Dict[str, Any])
-async def hurtig_compliance_tjek(request: QuickCheckRequest):
+async def hurtig_compliance_tjek(request: QuickCheckRequest, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Quick compliance check with web research and LLM summary
     """
@@ -2810,7 +2833,7 @@ async def hurtig_compliance_tjek(request: QuickCheckRequest):
 
 
 @app.post("/api/compliance/7-punkts-vurdering", response_model=Dict[str, Any])
-async def syv_punkts_compliance_vurdering(request: SevenPointAssessmentRequest):
+async def syv_punkts_compliance_vurdering(request: SevenPointAssessmentRequest, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Comprehensive 7-point compliance control assessment.
 
@@ -2873,7 +2896,7 @@ async def syv_punkts_compliance_vurdering(request: SevenPointAssessmentRequest):
 
 
 @app.get("/api/compliance/assessment/{assessment_id}", response_model=Dict[str, Any])
-async def get_assessment(assessment_id: str):
+async def get_assessment(assessment_id: str, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Retrieve a specific compliance assessment
     """
@@ -2910,7 +2933,7 @@ async def get_assessment(assessment_id: str):
 
 
 @app.get("/api/compliance/assessments", response_model=List[Dict[str, Any]])
-async def list_assessments():
+async def list_assessments(_user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     List all compliance assessments
     """
@@ -2928,7 +2951,7 @@ async def list_assessments():
 
 
 @app.post("/api/compliance/report/{assessment_id}/generate")
-async def generate_report(assessment_id: str, format: str = "json"):
+async def generate_report(assessment_id: str, format: str = "json", _user: UserPrincipal = Depends(CASE_ACCESS)):
     """
     Generate compliance report in specified format
     """
@@ -2945,26 +2968,12 @@ async def generate_report(assessment_id: str, format: str = "json"):
 
 
 @app.post("/api/documents/upload")
-async def upload_document(file: UploadFile = File(...)):
-    """
-    Upload project documentation for analysis
-    """
-    try:
-        # Save file temporarily
-        file_location = f"/tmp/{file.filename}"
-        with open(file_location, "wb") as f:
-            f.write(await file.read())
-
-        # In production, process the document and extract project information
-        return {
-            "filename": file.filename,
-            "status": "uploaded",
-            "message": "Document uploaded successfully. Processing will begin shortly."
-        }
-
-    except Exception as e:
-        logger.error(f"Document upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+async def upload_document(_user: UserPrincipal = Depends(CASE_WRITE)):
+    """Retired unaudited upload path; use the case-bound document workflow."""
+    raise HTTPException(
+        status_code=410,
+        detail="Denne uploadfunktion er udgået. Tilføj dokumenter på sagen eller i dokumentbanken.",
+    )
 
 
 @app.get("/api/frameworks", response_model=Dict[str, Any])
@@ -3567,7 +3576,7 @@ def _summarise_v3_decisions(rules, decisions_raw, signals: Dict[str, bool]) -> D
 
 
 @app.post("/api/v3/compare")
-async def v3_compare(request: V3CompareRequest):
+async def v3_compare(request: V3CompareRequest, _user: UserPrincipal = Depends(CASE_ACCESS)):
     """Run both legacy and v3 engines on the same input and report a diff."""
 
     # ---- Run v3 (same logic as /api/v3/assess but don't persist) ----

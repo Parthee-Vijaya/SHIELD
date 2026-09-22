@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import styled from 'styled-components';
+import { pageTitleStyle, sectionTitleStyle } from '../theme/layout';
 import ReactMarkdown from 'react-markdown';
 
 const Page = styled.article`
@@ -9,19 +10,12 @@ const Page = styled.article`
   color: ${(p) => p.theme.colors.ink};
 
   h1 {
-    font-family: ${(p) => p.theme.fonts.display};
-    font-size: 2.4rem;
-    font-weight: 700;
-    letter-spacing: -0.022em;
-    margin: 0 0 1rem;
+    ${pageTitleStyle}
   }
 
   h2 {
-    font-family: ${(p) => p.theme.fonts.display};
-    font-size: 1.55rem;
-    font-weight: 600;
+    ${sectionTitleStyle}
     margin: 2.5rem 0 0.6rem;
-    letter-spacing: -0.01em;
   }
 
   h3 {

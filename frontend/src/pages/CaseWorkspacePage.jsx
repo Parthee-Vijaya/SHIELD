@@ -157,9 +157,7 @@ const Panel = styled.div`
 `;
 
 const CaseTitle = styled(Title)`
-  max-width: 28ch;
-  font-size: clamp(1.8rem, 3.8vw, 3rem);
-  line-height: 1.12;
+  max-width: 44ch;
 `;
 const CaseContext = styled.div`
   display: flex; flex-wrap: wrap; gap: 12px 30px; margin-top: 20px;

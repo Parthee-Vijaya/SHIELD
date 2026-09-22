@@ -1,3 +1,4 @@
+import { pageLayout, pageTitleStyle, sectionTitleStyle } from '../theme/layout';
 import { sourceLabel } from '../components/assessment/EvidenceNavigator';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
@@ -39,12 +40,7 @@ const STEPS = [
 const AI_GENERATION_TIMEOUT_MS = 61 * 60 * 1000;
 
 const Page = styled.div`
-  max-width: ${p => p.$reading ? '1080px' : '1320px'};
-  margin: 0 auto;
-  padding: clamp(42px, 6vw, 78px) 20px 110px;
-  color: ${p => p.theme.colors.text};
-
-  @media (max-width: 600px) { padding: 34px 14px 76px; }
+  ${pageLayout}
 `;
 
 const Hero = styled.header`
@@ -68,20 +64,7 @@ const Eyebrow = styled.div`
 `;
 
 const Title = styled.h1`
-  margin: 0 0 12px;
-  max-width: min(100%, 860px);
-  font-size: clamp(3rem, 6vw, 4.5rem);
-  font-weight: 580;
-  line-height: 1.01;
-  letter-spacing: -0.055em;
-  overflow-wrap: break-word;
-
-  &:focus { outline: none; }
-
-  @media (max-width: 600px) {
-    font-size: clamp(2.1rem, 9vw, 2.6rem);
-    letter-spacing: -0.045em;
-  }
+  ${pageTitleStyle}
 `;
 
 const Lead = styled.p`
@@ -162,7 +145,7 @@ const FormBody = styled.div`
 const SectionHead = styled.div`
   max-width: 820px;
   margin-bottom: 42px;
-  h2 { margin: 0 0 9px; font-size: clamp(1.85rem, 3vw, 2.5rem); font-weight: 590; letter-spacing: -0.04em; }
+  h2 { margin: 0 0 9px; ${sectionTitleStyle} font-weight: 590; letter-spacing: -0.04em; }
   p { margin: 0; color: ${p => p.theme.colors.textMuted}; font-size: 0.96rem; line-height: 1.6; }
 `;
 
@@ -476,7 +459,7 @@ const ResultTop = styled.section`
   padding: clamp(34px, 5vw, 66px);
   border: 1px solid ${p => p.theme.colors.border};
   background: ${p => p.theme.colors.surface};
-  h1 { font-size: clamp(2rem, 4vw, 3.25rem); max-width: 100%; }
+  h1 { ${pageTitleStyle} }
   ${p => p.$reading && `padding: 0; border: 0; background: transparent; &::before { display: none; }`}
 
   &::before {

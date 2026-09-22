@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../theme/layout';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -42,23 +43,16 @@ async function updateReassessment({ id, status, resolutionNote }) {
 }
 
 const Page = styled.div`
-  width: min(1320px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 4.25rem 0 7.5rem;
+  ${pageLayout}
   color: ${(p) => p.theme.colors.ink};
-
-  @media (max-width: 720px) {
-    width: calc(100% - 32px);
-    padding: 2.75rem 0 4.5rem;
-  }
 `;
 
 const Hero = styled.header`
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-  gap: clamp(2.5rem, 7vw, 7.5rem);
+  gap: 32px;
   align-items: end;
-  padding-bottom: clamp(3rem, 6vw, 5.25rem);
+  padding-bottom: 32px;
   border-bottom: 1px solid ${(p) => p.theme.colors.line};
 
   @media (max-width: 940px) {
@@ -78,19 +72,7 @@ const Eyebrow = styled.div`
 `;
 
 const Title = styled.h1`
-  max-width: 820px;
-  margin: 0 0 1.25rem;
-  color: ${(p) => p.theme.colors.ink};
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: clamp(3.25rem, 5.2vw, 4.4rem);
-  font-weight: 590;
-  letter-spacing: -0.052em;
-  line-height: 1;
-
-  @media (max-width: 720px) {
-    font-size: clamp(2.4rem, 11vw, 3.25rem);
-    letter-spacing: -0.04em;
-  }
+  ${pageTitleStyle}
 `;
 
 const Lede = styled.p`
@@ -136,7 +118,7 @@ const ActionPanel = styled.aside`
 `;
 
 const PrimaryButton = styled.button`
-  min-height: 48px;
+  ${controlStyle}
   width: 100%;
   padding: 0.75rem 1.15rem;
   background: ${(p) => p.theme.colors.primary};
@@ -144,10 +126,6 @@ const PrimaryButton = styled.button`
   border-radius: 0;
   color: ${(p) => p.theme.colors.white};
   cursor: pointer;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.9rem;
-  font-weight: 680;
-  line-height: 1.35;
   transition: background-color 0.18s ease-out, border-color 0.18s ease-out;
 
   &:hover:not(:disabled) {
@@ -171,16 +149,13 @@ const PrimaryButton = styled.button`
 `;
 
 const SecondaryButton = styled.button`
-  min-height: 44px;
+  ${controlStyle}
   padding: 0.65rem 1rem;
   background: transparent;
   border: 1px solid ${(p) => p.theme.colors.primary};
   border-radius: 0;
   color: ${(p) => p.theme.colors.primaryDark};
   cursor: pointer;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.88rem;
-  font-weight: 650;
 
   &:hover {
     background: ${(p) => p.theme.colors.primarySoft};
@@ -251,13 +226,9 @@ const SectionHeader = styled.div`
 `;
 
 const SectionTitle = styled.h2`
+  ${sectionTitleStyle}
   margin: 0;
   color: ${(p) => p.theme.colors.ink};
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: clamp(2rem, 3vw, 2.65rem);
-  font-weight: 590;
-  letter-spacing: -0.045em;
-  line-height: 1.08;
 `;
 
 const SectionMeta = styled.p`

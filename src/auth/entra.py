@@ -201,7 +201,7 @@ def get_current_user(
 ) -> UserPrincipal:
     settings = get_auth_settings()
     if settings.mode == "development":
-        return UserPrincipal(
+        principal = UserPrincipal(
             oid="development-local-user",
             name=settings.development_user,
             username="local@development.invalid",
@@ -209,6 +209,8 @@ def get_current_user(
             auth_mode="development",
             identity_assurance="development_only",
         )
+        request.state.user = principal
+        return principal
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

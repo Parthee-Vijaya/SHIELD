@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import styled from 'styled-components';
+import { pageLayout, pageTitleStyle, sectionTitleStyle } from '../theme/layout';
 import { useQuery } from 'react-query';
 import axios from 'axios';
 import { modelLabel } from '../utils/modelPresentation';
@@ -7,9 +8,7 @@ import { modelLabel } from '../utils/modelPresentation';
 // ---- Layout primitives ----------------------------------------------------
 
 const Page = styled.div`
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 3rem 2.5rem 5rem;
+  ${pageLayout}
 `;
 
 const Eyebrow = styled.div`
@@ -23,13 +22,7 @@ const Eyebrow = styled.div`
 `;
 
 const Title = styled.h1`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 2.4rem;
-  font-weight: 700;
-  letter-spacing: -0.022em;
-  line-height: 1.12;
-  margin: 0 0 0.6rem;
-  color: ${(p) => p.theme.colors.ink};
+  ${pageTitleStyle}
 `;
 
 const Lede = styled.p`
@@ -69,12 +62,8 @@ const StatusDot = styled.span`
 `;
 
 const SectionH = styled.h2`
-  font-family: ${(p) => p.theme.fonts.display};
-  font-size: 1.45rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  ${sectionTitleStyle}
   margin: 2.5rem 0 1rem;
-  color: ${(p) => p.theme.colors.ink};
 `;
 
 // ---- Card grids -----------------------------------------------------------
