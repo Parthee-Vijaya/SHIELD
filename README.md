@@ -314,11 +314,10 @@ Docker-konfigurationen er **ikke en komplet pakning af den aktuelle AI Gateway-a
 
 System- og leverandørfelterne søger i et lokalt importeret katalog fra Excel. Importen gemmer systemnavn, UUID, tilgængelighed og organisationernes dokumenterede roller samt filhash og importtidspunkt. Rettighedshaver og databehandler er forslag; de er ikke automatisk kommunens aftalepart. Kontaktpersoner og øvrig fritekst importeres ikke. Valg fra kataloget dokumenterer heller ikke, at løsningen indeholder AI.
 
-Tag backup af databasen, aktivér backendens Python-miljø, og kontrollér importen:
+Tag backup af databasen, aktivér backendens Python-miljø, og kontrollér importen fra projektroden. Importen bruger backendens `DATABASE_URL` fra miljøet eller `.env`:
 
 ```bash
-DATABASE_URL=sqlite:///./data/shield-review.db \
-  python scripts/import_system_catalog.py "/sti/IT Systemkatalog Overblik.xlsx" --dry-run
+python scripts/import_system_catalog.py "/sti/IT Systemkatalog Overblik.xlsx" --dry-run
 ```
 
 Fjern `--dry-run` for at importere. Gentagen import af samme fil ændrer intet. Eksisterende sager og tidligere katalogudgaver bevares; søgningen bruger seneste import. Ingen forbindelse til KITOS er nødvendig. Det er et lokalt øjebliksbillede, som opdateres ved en ny import.
