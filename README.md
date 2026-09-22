@@ -274,6 +274,8 @@ FRONTEND_HOST=127.0.0.1 FRONTEND_PORT=8090 API_BACKEND=http://127.0.0.1:8001 nod
 
 Til frontendudvikling kan `npm run dev:frontend` bruges i stedet. Scriptet starter udviklingsserveren på port 8090 og bruger projektets proxy til backend på port 8001. Kør kun én frontend-server på porten ad gangen. Stop lokale terminalservere med `Ctrl+C`.
 
+Til vedvarende lokal fremvisning på macOS beskriver [driftsvejledningen til launchd og Tailscale](docs/MACOS_TAILSCALE.md) automatisk genstart, privat fjernadgang og kontrol af forbindelsen.
+
 ### Data efter en ny kloning
 
 Repositoryet indeholder **ikke den lokale sagsdatabase, uploadede dokumenter, lokale rapporter eller API-nøgler**. En ny installation indeholder derfor ikke automatisk sagerne fra skærmbillederne.
