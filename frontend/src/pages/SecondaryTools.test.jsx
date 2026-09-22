@@ -46,10 +46,17 @@ test('lovassistent kræver final event før et svar er færdigt', async () => {
   await askLaw([{ event: 'delta', text: 'Afbrudt svar' }]);
   expect(await screen.findByRole('alert')).toHaveTextContent('Forbindelsen blev afbrudt, før svaret var færdigt.');
 });
+test('lovassistent kalder ikke et søgeresultat uden modelkørsel for et AI-svar', async () => {
+  await askLaw([{ event: 'retrieval', sources: [] }, { event: 'final', answer: 'Jeg kunne ikke finde relevante love for dit spørgsmål.' }]);
+  expect(await screen.findByRole('heading', { name: 'Søgeresultat' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'AI-genereret svar' })).not.toBeInTheDocument();
+  expect(screen.getByText('Jeg kunne ikke finde relevante love for dit spørgsmål.')).toBeInTheDocument();
+});
 test('modeltekst vises som tekst og kan ikke injicere HTML i lovassistenten', async () => {
   const answer = '<img src=x onerror="window.compromised=true"> Lovtekst.';
   await askLaw([{ event: 'final', answer, model: 'gpt-5.6-sol', key_points: [], citations: [] }]);
   expect(await screen.findByText(answer)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'AI-genereret svar' })).toBeInTheDocument();
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });

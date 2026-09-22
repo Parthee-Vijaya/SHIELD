@@ -527,7 +527,11 @@ const LawAssistantPage = () => {
           >
             <h3>
               {phase === 'done' && <FaCheckCircle className="icon" />}
-              {phase === 'error' ? 'Svaret kunne ikke færdiggøres' : 'AI-genereret svar'}
+              {phase === 'error'
+                ? 'Svaret kunne ikke færdiggøres'
+                : phase === 'done'
+                  ? (result.model ? 'AI-genereret svar' : 'Søgeresultat')
+                  : 'Udarbejder svar'}
               {phase === 'retrieving' && (
                 <span style={{ marginLeft: '0.7rem', fontSize: '0.8rem', fontWeight: 400, opacity: 0.7 }}>
                   · Søger i love…
