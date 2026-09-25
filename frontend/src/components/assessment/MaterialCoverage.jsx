@@ -30,6 +30,7 @@ const Action = styled.button`
 `;
 
 const CATEGORIES = [
+  ['needs_description', 'Kommunens behovsbeskrivelse'],
   ['data_processing_agreement', 'Databehandleraftale'],
   ['supplier_documentation', 'Leverandørmateriale'],
   ['security_documentation', 'Sikkerhedsdokumentation'],

@@ -33,6 +33,7 @@ from src.database.connection import Base
 
 DOCUMENT_STATUSES = {"draft", "approved", "superseded", "withdrawn"}
 DOCUMENT_CATEGORIES = {
+    "needs_description",
     "data_processing_agreement",
     "policy",
     "security_documentation",

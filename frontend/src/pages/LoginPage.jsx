@@ -6,48 +6,74 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Page = styled.main`
   min-height: 100dvh;
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
-  background: ${p => p.theme.colors.surface};
-  @media (max-width: 800px) { grid-template-columns: 1fr; }
+  display: flex;
+  flex-direction: column;
+  background: ${p => p.theme.colors.background};
+  color: ${p => p.theme.colors.text};
+  font-family: ${p => p.theme.fonts.body};
+  h1, h2, p, strong { overflow-wrap: anywhere; }
+`;
+const Header = styled.header`
+  width: 100%; max-width: 1320px; margin-inline: auto;
+  padding: 32px; box-sizing: border-box;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+  strong { font-size: 1.3rem; letter-spacing: .08em; font-weight: 650; }
+  span { padding: 4px 7px; border: 1px solid ${p => p.theme.colors.border}; border-radius: ${p => p.theme.borderRadius}; font: 500 .72rem ${p => p.theme.fonts.mono}; color: ${p => p.theme.colors.textMuted}; }
+  @media (max-width: 640px) { padding: 24px 20px; }
+  @media (max-width: 400px) { padding-inline: 14px; }
+`;
+const Content = styled.div`
+  width: 100%; max-width: 1320px; margin: auto; padding: 48px 32px 80px;
+  box-sizing: border-box; display: grid; align-items: center;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(40px, 7vw, 104px);
+  @media (max-width: 900px) { gap: 36px; }
+  @media (max-width: 760px) { grid-template-columns: 1fr; padding-top: 20px; gap: 32px; }
+  @media (max-width: 640px) { padding: 16px 20px 40px; }
+  @media (max-width: 400px) { padding-inline: 14px; }
 `;
 const Introduction = styled.section`
-  display: flex; flex-direction: column; justify-content: space-between;
-  gap: 64px; padding: clamp(28px, 5vw, 80px);
-  color: #fffefb; background: #283b3b;
-  .brand { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; }
-  .brand strong { font-size: 1.3rem; letter-spacing: .08em; }
-  .brand span { font: 500 .75rem ${p => p.theme.fonts.mono}; color: #d3ded9; }
-  h2 { margin: 0 0 24px; max-width: 12ch; font-size: clamp(2rem, 4.2vw, 4rem); font-weight: 620; line-height: 1.08; letter-spacing: -.045em; color: inherit; }
-  p { max-width: 46ch; color: #dce5e0; font-size: 1rem; line-height: 1.7; margin: 0; }
-  ol { list-style: none; padding: 0; margin: 32px 0 0; }
-  li { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; border-top: 1px solid #627674; }
-  li > span { font: 500 .8rem/1.65 ${p => p.theme.fonts.mono}; color: #edbda8; }
+  min-width: 0;
+  .eyebrow { margin-bottom: 18px; font-size: .73rem; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; color: ${p => p.theme.colors.textMuted}; }
+  h2 { margin: 0 0 24px; max-width: 13ch; font-size: clamp(2.4rem, 4.2vw, 3.75rem); font-weight: 560; line-height: 1.09; letter-spacing: -.045em; color: inherit; }
+  h2 span { color: ${p => p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primary}; }
+  p { max-width: 46ch; color: ${p => p.theme.colors.textMuted}; font-size: 1rem; line-height: 1.75; margin: 0; }
+  ol { list-style: none; padding: 0; margin: 36px 0 0; }
+  li { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; border-top: 1px solid ${p => p.theme.colors.borderSoft}; }
+  li > span { flex-shrink: 0; font: 500 .75rem/1.7 ${p => p.theme.fonts.mono}; color: ${p => p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark}; }
   li strong { display: block; margin-bottom: 5px; font-size: .93rem; font-weight: 600; }
   li p { font-size: .86rem; }
-  @media (max-width: 800px) { gap: 26px; padding: 28px; h2 { max-width: 21ch; font-size: 2rem; margin-bottom: 14px; } ol { display: none; } }
+  @media (max-width: 760px) {
+    h2 { max-width: 17ch; font-size: clamp(2.25rem, 7vw, 3rem); margin-bottom: 16px; }
+    ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 24px; }
+    li { gap: 9px; padding: 12px 0 0; } li p { font-size: .8rem; }
+  }
+  @media (max-width: 520px) { ol { grid-template-columns: 1fr; gap: 0; } li { padding: 12px 0; } }
 `;
 const Access = styled.section`
-  min-width: 0; display: flex; flex-direction: column; justify-content: center;
-  padding: clamp(28px, 6vw, 96px);
-  > div { width: 100%; max-width: 420px; margin-inline: auto; }
-  .organisation { display: block; width: 172px; height: auto; margin-bottom: 56px; }
+  min-width: 0; padding: clamp(24px, 3vw, 40px);
+  border: 1px solid ${p => p.theme.colors.border}; border-radius: ${p => p.theme.borderRadiusLarge};
+  background: ${p => p.theme.colors.surface}; box-shadow: ${p => p.theme.shadows.md};
+  > div { width: 100%; }
+  .organisation { display: block; width: 172px; max-width: 100%; height: auto; margin-bottom: 28px; }
+  .organisation-divider { border-top: 1px solid ${p => p.theme.colors.borderSoft}; padding-top: 26px; }
   .eyebrow { font-size: .75rem; font-weight: 650; color: ${p => p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark}; letter-spacing: .08em; text-transform: uppercase; }
-  h1 { margin: 12px 0 16px; font-size: clamp(1.9rem, 2.8vw, 2.5rem); line-height: 1.12; font-weight: 620; letter-spacing: -.035em; }
-  p { color: ${p => p.theme.colors.textMuted}; line-height: 1.65; }
-  .identity { margin-block: 28px 20px; padding: 16px 0; border-block: 1px solid ${p => p.theme.colors.border}; display: flex; gap: 12px; align-items: center; }
-  .initial { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; font-weight: 650; background: ${p => p.theme.colors.primarySoft}; color: ${p => p.theme.colors.primaryDark}; }
+  h1 { margin: 12px 0 14px; font-size: clamp(1.65rem, 2.4vw, 2rem); line-height: 1.18; font-weight: 560; letter-spacing: -.035em; }
+  p { color: ${p => p.theme.colors.textMuted}; font-size: .93rem; line-height: 1.65; }
+  .identity { margin-block: 26px 20px; display: flex; gap: 12px; align-items: center; }
+  .initial { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; font-weight: 650; background: ${p => p.theme.colors.primarySoft}; color: ${p => p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark}; }
   .identity strong, .identity small { display: block; }
   .identity small { color: ${p => p.theme.colors.textMuted}; margin-top: 4px; font-size: .8rem; }
-  .local-notice { font-size: .82rem; margin: 16px 0 0; }
-  .error { padding: 14px 16px; margin: 20px 0; background: ${p => p.theme.colors.dangerSoft}; color: ${p => p.theme.colors.dangerDark}; }
-  .support { border-top: 1px solid ${p => p.theme.colors.border}; margin-top: 36px; padding-top: 20px; font-size: .82rem; }
-  @media (max-width: 800px) { padding: 32px 28px 40px; .organisation { margin-bottom: 28px; } }
+  .local-notice { font-size: .78rem; margin: 16px 0 0; }
+  .error { padding: 14px 16px; margin: 20px 0; border-radius: ${p => p.theme.borderRadius}; background: ${p => p.theme.colors.dangerSoft}; color: ${p => p.theme.mode === 'dark' ? p.theme.colors.dangerLight : p.theme.colors.dangerDark}; }
+  .support { border-top: 1px solid ${p => p.theme.colors.borderSoft}; margin-top: 26px; padding-top: 20px; font-size: .8rem; }
+  @media (max-width: 760px) { max-width: 560px; width: 100%; box-sizing: border-box; }
+  @media (max-width: 400px) { padding: 22px; }
 `;
 const Button = styled.button`
   display: flex; align-items: center; justify-content: center; gap: 10px;
   width: 100%; min-height: 48px; padding: 12px 20px; margin-top: 20px;
   border: 1px solid ${p => p.theme.colors.primary}; background: ${p => p.theme.colors.primary};
+  border-radius: ${p => p.theme.borderRadius};
   color: #fff; font: inherit; font-size: .94rem; font-weight: 600;
   cursor: pointer; &:hover { background: ${p => p.theme.colors.primaryDark}; }
   &:focus-visible { outline: 3px solid ${p => p.theme.colors.text}; outline-offset: 4px; }
@@ -76,10 +102,12 @@ export default function LoginPage() {
   };
   const name = availableUser?.name;
   return <Page id="main-content">
+    <Header><strong>{BRAND.name}</strong><span>{BRAND.version}</span></Header>
+    <Content>
     <Introduction aria-label="Om SHIELD">
-      <div className="brand"><strong>{BRAND.name}</strong><span>{BRAND.version}</span></div>
       <div>
-        <h2>Fra AI-idé til oplyst beslutning.</h2>
+        <div className="eyebrow">Dokumentation · Vurdering · Ansvar</div>
+        <h2>Fra AI-idé til <span>oplyst beslutning.</span></h2>
         <p>Saml dokumentationen, forstå risiciene og skab et fælles grundlag for den faglige og juridiske vurdering.</p>
         <ol>
           <li><span>01</span><div><strong>Saml grundlaget</strong><p>Beskriv AI-løsningen, og tilføj leverandørens dokumentation.</p></div></li>
@@ -90,7 +118,7 @@ export default function LoginPage() {
     </Introduction>
     <Access aria-labelledby="login-heading"><div>
       <img className="organisation" src={BRAND.organisationLogoPath} alt={BRAND.organisation} width="172" height="57" />
-      <span className="eyebrow">Dit arbejdsrum for AI-vurderinger</span>
+      <div className="organisation-divider"><span className="eyebrow">Dit arbejdsrum for AI-vurderinger</span></div>
       <h1 id="login-heading">Velkommen til SHIELD</h1>
       <p>Fortsæt til dine sager, konsekvensanalyser og risikovurderinger.</p>
       {!ready && <p role="status">Forbinder til dit arbejdsrum…</p>}
@@ -103,5 +131,6 @@ export default function LoginPage() {
       {ready && error && <Button type="button" onClick={retry}>Prøv forbindelsen igen</Button>}
       <p className="support">AI hjælper med at udarbejde grundlaget. Den faglige vurdering og godkendelse ligger altid hos mennesker.</p>
     </div></Access>
+    </Content>
   </Page>;
 }

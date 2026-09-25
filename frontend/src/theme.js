@@ -1,4 +1,4 @@
-/** S.H.I.E.L.D. — Kalundborg editorial civic design system. */
+/** S.H.I.E.L.D. — Kalundborg light workspace design system. */
 import { layoutTokens, typographyTokens } from './theme/layout';
 
 const commonThemeTokens = {
@@ -12,12 +12,12 @@ const commonThemeTokens = {
     serif: 'Georgia, "Times New Roman", serif',
     mono: '"Geist Mono Variable", "SF Mono", Consolas, monospace',
   },
-  borderRadius: '0px',
-  borderRadiusLarge: '0px',
+  borderRadius: '8px',
+  borderRadiusLarge: '16px',
   shadows: {
     sm: '0 1px 2px rgba(37, 37, 37, 0.04)',
-    md: '0 8px 20px rgba(37, 37, 37, 0.07)',
-    lg: '0 22px 56px rgba(37, 37, 37, 0.14)',
+    md: '0 5px 20px rgba(37, 37, 37, 0.04)',
+    lg: '0 16px 48px rgba(37, 37, 37, 0.10)',
     xl: '0 30px 72px rgba(37, 37, 37, 0.18)',
     glass: '0 8px 26px rgba(37, 37, 37, 0.08)',
     glow: '0 0 0 3px rgba(188, 77, 48, 0.12)',
@@ -134,11 +134,12 @@ export const lightTheme = {
   glass: {
     background: 'rgba(255, 254, 251, 0.92)',
     border: '1px solid #c9cbc7',
-    backdropFilter: 'blur(8px)',
-    borderRadius: '0px',
+    backdropFilter: 'none',
+    borderRadius: '8px',
   },
 
   layout: {
+    ...layoutTokens,
     nav: {
       background: 'rgba(255, 254, 251, 0.96)',
       border: '#c9cbc7',
@@ -270,11 +271,12 @@ export const darkTheme = {
   glass: {
     background: 'rgba(20, 24, 31, 0.92)',
     border: '1px solid #2e333c',
-    backdropFilter: 'blur(8px)',
-    borderRadius: '0px',
+    backdropFilter: 'none',
+    borderRadius: '8px',
   },
 
   layout: {
+    ...layoutTokens,
     nav: {
       background: 'rgba(20, 24, 31, 0.92)',
       border: '#2e333c',

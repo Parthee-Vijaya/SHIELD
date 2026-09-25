@@ -4,10 +4,16 @@ import { TextLink } from '../workflow/WorkflowUi';
 
 const Tools = styled.section`
   margin-top: 30px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
+  background: ${p => p.theme.colors.surface};
   min-width: 0;
   h2 { margin: 0 0 10px; font-size: 1.35rem; }
   > p { max-width: 76ch; color: ${p => p.theme.colors.inkSoft}; line-height: 1.6; }
-  article { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 18px 30px; padding: 22px 0; border-top: 1px solid ${p => p.theme.colors.line}; }
+  article { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 18px 30px; padding: 22px 0; border-top: 1px solid ${p => p.theme.colors.lineSoft}; }
+  article > div { min-width: 0; overflow-wrap: anywhere; }
+  article:last-child { padding-bottom: 0; }
   h3 { margin: 0 0 8px; font-size: 1rem; }
   p { margin: 0 0 10px; font-size: 0.86rem; line-height: 1.6; }
   small { display: block; margin-top: 8px; color: ${p => p.theme.colors.inkSoft}; line-height: 1.5; }

@@ -56,7 +56,7 @@ export const Button = styled.button`
   ${controlStyle}
   padding: 11px 18px;
   border: 1px solid ${(p) => p.theme.colors.primary};
-  border-radius: 0;
+  border-radius: ${(p) => p.theme.borderRadius};
   background: ${(p) => p.theme.colors.primary};
   color: #fff;
   font: 600 0.875rem/1.3 ${(p) => p.theme.fonts.sans};
@@ -153,7 +153,8 @@ export const Grid = styled.div`
 export const Card = styled.article`
   min-width: 0;
   padding: 22px;
-  border: 1px solid ${(p) => p.theme.colors.line};
+  border: 1px solid ${(p) => p.theme.colors.lineSoft};
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
   background: ${(p) => p.theme.colors.surface};
 
   h3 {
@@ -171,6 +172,7 @@ export const Card = styled.article`
 `;
 
 export const Inset = styled.div`
+  border-radius: ${(p) => p.theme.borderRadius};
   padding: 18px;
   border-left: 3px solid ${(p) => p.$accent || p.theme.colors.secondary};
   background: ${(p) => p.theme.colors.paperSoft};
@@ -185,6 +187,9 @@ const STATUS_COLORS = {
 };
 
 export const StatusPill = styled.span`
+  border-radius: 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   display: inline-flex;
   align-items: center;
   width: fit-content;
@@ -202,15 +207,15 @@ export const StatusPill = styled.span`
     const colors = STATUS_COLORS[p.$tone] || STATUS_COLORS.neutral;
     return p.theme.colors[colors[1]] || p.theme.colors.inkSoft;
   }};
-  font: 650 0.68rem/1 ${(p) => p.theme.fonts.sans};
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 0.72rem/1.35 ${(p) => p.theme.fonts.sans};
+  letter-spacing: 0.02em;
 `;
 
 export const StatePanel = styled.div`
   margin: 32px 0;
   padding: 28px;
-  border: 1px solid ${(p) => p.theme.colors.line};
+  border: 1px solid ${(p) => p.theme.colors.lineSoft};
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
   background: ${(p) => p.theme.colors.surface};
   color: ${(p) => p.theme.colors.inkSoft};
 
@@ -239,6 +244,8 @@ export const ErrorPanel = styled(StatePanel)`
 `;
 
 export const MetricGrid = styled.div`
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
+  overflow: hidden;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border-left: 1px solid ${(p) => p.theme.colors.line};
@@ -274,7 +281,8 @@ export const Metric = styled.div`
 
 export const TabList = styled.div`
   display: flex;
-  gap: 0;
+  gap: 8px;
+  padding-top: 10px;
   overflow-x: auto;
   border-bottom: 1px solid ${(p) => p.theme.colors.line};
 `;
@@ -285,7 +293,8 @@ export const Tab = styled.button`
   padding: 14px 17px;
   border: 0;
   border-bottom: 3px solid ${(p) => (p.$active ? p.theme.colors.primary : 'transparent')};
-  background: transparent;
+  border-radius: ${(p) => p.theme.borderRadius} ${(p) => p.theme.borderRadius} 0 0;
+  background: ${(p) => p.$active ? p.theme.colors.primarySoft : 'transparent'};
   color: ${(p) => (p.$active ? p.theme.colors.primaryDark : p.theme.colors.inkSoft)};
   font: ${(p) => (p.$active ? 650 : 520)} 0.82rem/1.2 ${(p) => p.theme.fonts.sans};
   white-space: nowrap;
@@ -297,11 +306,13 @@ export const Form = styled.form`
 `;
 
 export const Fieldset = styled.fieldset`
+  min-width: 0;
   display: grid;
   gap: 16px;
   margin: 0;
   padding: 24px;
-  border: 1px solid ${(p) => p.theme.colors.line};
+  border: 1px solid ${(p) => p.theme.colors.lineSoft};
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
   background: ${(p) => p.theme.colors.surface};
 
   legend {
@@ -334,7 +345,7 @@ export const Field = styled.div`
     min-height: 44px;
     padding: 10px 12px;
     border: 1px solid ${(p) => p.theme.colors.line};
-    border-radius: 0;
+    border-radius: ${(p) => p.theme.borderRadius};
     background: ${(p) => p.theme.colors.inputBackground};
     color: ${(p) => p.theme.colors.ink};
     font: 400 0.9rem/1.45 ${(p) => p.theme.fonts.body};
@@ -357,6 +368,8 @@ export const ChoiceGrid = styled.div`
 `;
 
 export const Choice = styled.label`
+  min-width: 0;
+  border-radius: ${(p) => p.theme.borderRadius};
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 11px;
@@ -391,12 +404,14 @@ export const Choice = styled.label`
 
 export const FormActions = styled.div`
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   padding-top: 8px;
 
   > div {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
   }
 `;

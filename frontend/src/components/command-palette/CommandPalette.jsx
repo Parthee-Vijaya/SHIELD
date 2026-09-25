@@ -9,6 +9,7 @@ const Backdrop = styled.div`
   display: flex; align-items: flex-start; justify-content: center; padding: min(12vh,100px) 16px 24px;
 `;
 const Panel = styled.div`
+  border-radius: ${p => p.theme.borderRadiusLarge};
   width: min(760px,100%); max-height: 82vh; overflow-y: auto; padding: 24px;
   border: 1px solid ${p => p.theme.colors.border}; background: ${p => p.theme.colors.surface}; box-shadow: ${p => p.theme.shadows.xl};
   .palette-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 20px; }

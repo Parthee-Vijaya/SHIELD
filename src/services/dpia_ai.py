@@ -298,6 +298,8 @@ def add_case_document_sources(
         excerpt_source_id,
     )
 
+    from src.services.source_origin import source_classification, source_warnings
+
     limitations = [
         "AI-udkast og Jev-kontrol er beslutningsstøtte og kræver fagligt review.",
         "Skalaer, risikoscorer, blokeringer og lovkvitteringer er bevaret fra grundvurderingen.",
@@ -348,9 +350,10 @@ def add_case_document_sources(
                 f"Dokumentversion {version.id} kunne ikke læses sikkert og er udeladt."
             )
             continue
+        category = getattr(link.document, "category", None)
         limitations.extend(
             f"Dokumentversion {version.id}: {warning}"
-            for warning in extraction.warnings
+            for warning in source_warnings(extraction.warnings, category)
         )
         if not extraction.excerpts:
             limitations.append(
@@ -369,7 +372,7 @@ def add_case_document_sources(
             "version": str(version.version_number),
             "checksum": version.content_sha256,
             "document_version_id": version.id,
-            "evidence_type": "supplier_statement",
+            **source_classification(category),
             "review_status": "unreviewed",
             **_document_source_provenance(version.version_metadata),
         }

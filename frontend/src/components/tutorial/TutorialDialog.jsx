@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 
@@ -9,7 +9,7 @@ export const TUTORIAL_STEPS = [
   { id: 'assessment', title: 'Udarbejd konsekvensanalysen', text: 'Gennemgå AI-forslagene og deres kilder, før oplysninger overføres til konsekvensanalysen. Afklar kommunens hjemmel, personoplysninger og sikkerhedsforanstaltninger. AI kan hjælpe med udkastet, og JEV markerer udsagn, der kræver kontrol.', note: 'JEV peger på mulige fejl og mangler. En fagperson skal stadig kontrollere faktum, hjemmel, risici og foranstaltninger. Guiden trykker aldrig på AI-knappen.' },
   { id: 'review', title: 'Gennemgå og bevar historikken', text: 'Åbn sagens Vurderinger for at læse en gemt version. Kontrollér åbne spørgsmål og JEV-markeringer, dokumentér foranstaltninger og inddrag de rette fagpersoner. En ny AI-kørsel gemmer en ny version.', note: 'Gemte versioner og faglige godkendelser er forskellige ting. Godkendelsen skal gives særskilt på et dokumenteret grundlag.' },
   { id: 'export', title: 'Hent samme version som Word og Excel', text: 'Fra den gemte vurdering henter du konsekvensanalysen i Word og risikovurderingen i Excel. Begge filer bygger på den samme vurderingsversion og kan genfindes gennem sagen.', note: 'Word og Excel følger Datatilsynets skabelonstruktur. Et udkast og dets åbne spørgsmål skal gennemgås før anvendelse.' },
-  { id: 'finish', title: 'Du er klar til at gå i gang', text: 'Arbejdsgangen er AI-løsning → leverandørmateriale → kildegennemgang → vurdering og jura → download. Start med en eksempelsag, hvis du vil prøve at finde dokumenterne og læse en vurdering.', note: 'Du kan altid åbne guiden igen under Flere eller i Indstillinger.' },
+  { id: 'finish', title: 'Du er klar til at gå i gang', text: 'Arbejdsgangen er AI-løsning → leverandørmateriale → kildegennemgang → vurdering og jura → download. Start med en eksempelsag, hvis du vil prøve at finde dokumenterne og læse en vurdering.', note: 'Du kan altid åbne guiden igen fra profilmenuen øverst til højre eller i Indstillinger.' },
 ];
 
 const Layer = styled.div`
@@ -87,7 +87,8 @@ export default function TutorialDialog({ step, stepIndex, saving, error, targetS
   const [waiting, setWaiting] = useState(false);
   const maskId = useId().replace(/:/g, '');
 
-  useEffect(() => {
+  // Release the modal lock and restore focus in the same commit that closes it.
+  useLayoutEffect(() => {
     const previousFocus = document.activeElement;
     const content = contentRef.current;
     const oldOverflow = document.body.style.overflow;

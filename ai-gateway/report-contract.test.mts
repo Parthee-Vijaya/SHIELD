@@ -177,7 +177,7 @@ test('structured prose retains detailed topics, locked text and source reference
   });
   assert.equal(generationCalls, 2);
   assert.equal(result.prompt_version, PROMPT_VERSION);
-  assert.match(result.prompt_version, /v5-structured-prose$/);
+  assert.match(result.prompt_version, /v6-needs$/);
   assert.equal(result.draft.executive_summary, summary);
   assert.equal(result.draft.sections[0].text, sectionText);
   assert.equal(result.draft.sections[1].text, locked);

@@ -1,290 +1,162 @@
-> **Historisk dokument:** Dette dokument beskriver tidligere udgaver af løsningen. Brug [SHIELD README](README.md) til den aktuelle arbejdsgang og lokale opstart. Versions-, port- og driftsoplysninger nedenfor kan være forældede.
+# SHIELD — handoff til næste AI-agent
 
-# Tyr v3 — Handoff
+**Opdateret 25. september 2026 · produktversion v0.10.1.** Dette er en praktisk overdragelse af den eksisterende løsning, ikke en opgave om at bygge den på ny. Læs [AGENTS.md](AGENTS.md) for Parthees arbejdspræferencer og produktkrav.
 
-**Senest opdateret:** 7. maj 2026 (alpha.13)
-**Branch:** `v3-hjemmel` (på [Parthee-Vijaya/Judge_dredd](https://github.com/Parthee-Vijaya/Judge_dredd))
-**Senest pushede commit:** se `git log v3-hjemmel -1` efter pull
+## Fortsæt herfra
 
-Dette dokument lader dig fortsætte v3-arbejdet fra en anden maskine eller efter en pause uden tab af kontekst.
+Repository: `Parthee-Vijaya/SHIELD` (privat). Arbejdsbranch ved overdragelsen: **`codex/technical-run-overview`**. GitHubs standardbranch er `main`; den har ikke automatisk denne branches seneste ændringer. Brug den angivne branch, og verificér seneste commit med Git. Der oprettes ikke automatisk PR eller merge som del af denne handoff.
 
----
+På Parthees Mac bruges den eksisterende checkout:
 
-## 1. Sådan resumer du arbejdet
-
-```bash
-git clone https://github.com/Parthee-Vijaya/Judge_dredd.git
-cd Judge_dredd
-git checkout v3-hjemmel
-git pull
-
-# Backend
-python3.11 -m venv venv  # python3.13 også OK
-./venv/bin/pip install -r requirements.txt
-
-# Frontend
-npm install
-
-# .env (fra .env.example)
-cp .env.example .env
-# Sæt mindst én LLM-provider:
-#   LM_STUDIO_BASE_URL=http://localhost:1234/v1  (lokal, anbefalet)
-#   AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_API_KEY
-#   OPENAI_API_KEY
-# SQLite for lokal dev:
-#   DATABASE_URL=sqlite:///./judge_dredd.db
-# Sæt API_PORT=8001 hvis 8000 er taget på maskinen
-# Sæt PORT=8090 i package.json's dev:frontend hvis 8080 er taget
-
-# Verifikation
-./venv/bin/python -m src.rule_engine validate rules
-./venv/bin/python -m src.rule_engine.regression tests/regression/cases.yaml
-./venv/bin/pytest tests/rule_engine -q
-
-# Spin op
-npm run dev
-# → backend på :8001, frontend på :8090
+```sh
+cd /Users/parthee/Desktop/Claude/projekter/aktive/SHIELD
+git status --short --branch
+git fetch origin --prune
+git log -5 --oneline
+git rev-list --left-right --count HEAD...@{u}
+npm run version:check
 ```
 
-Forventet:
-- 15 regler markeret `ok`
-- 3/3 regression cases passed
-- 94 unit tests passed (1 fejl ved aktiv LM Studio i .env — env-isolation, ikke kode-regression)
+På en anden maskine, efter at adgang til det private repository er etableret:
 
----
-
-## 2. Hvor er vi nu?
-
-### Status på `v3-hjemmel` (alpha.13)
-
-| Tæller | Værdi |
-|---|---|
-| Aktive regler | 15 (AI Act ×5, GDPR ×5, Forvaltningslov ×4, Offentlighedslov ×1) |
-| Sektorlov-templates klar til jurist | 6 (`_template_*.yaml`) |
-| Unit tests | 94 grønne |
-| API-endpoints | 11 v3-endpoints |
-| Frontend pages | 7 (Forside, Vurdering, Sager, Historik, Sammenlign, Lov-overvågning, Indstillinger) |
-
-### Commit-historik (alle alpha-versioner)
-
-```
-e71927e  alpha.13  M4 forberedelse — 6 sektorlov-templates + jurist-pakke
-bac61e4  alpha.12  M2 sager-kanban + M3 citation-verifier
-5a64b78  alpha.11  M1 dokument-analyse (PDF/DOCX → regelmotor)
-8308771  alpha.10  3 eksempler (GO/BETINGET-GO/NO-GO) + foldable forklaringer
-5b9c8e7  alpha.9   Steps 3-5 + tech debt + sammenlign-mode
-72487e4  alpha.8   Vurderingshistorik (Step 2)
-e8cf9c0  alpha.7   Design C global rebrand + nav-konsolidering
-17f34bd  docs      HANDOFF.md + audit metadata på V3VurderingPage
-1f608d8  alpha.6   audit-log + 5 nye regler (15 i alt)
+```sh
+git clone --branch codex/technical-run-overview https://github.com/Parthee-Vijaya/SHIELD.git
+cd SHIELD
 ```
 
-### Hvad er live (verificeret end-to-end)
+Læs derefter `AGENTS.md`, denne fil, `README.md`, `DESIGN.md` og den relevante drifts-/AI-vejledning. Kør ikke `git checkout`, `pull`, migrationer eller oprydning over lokale ændringer uden først at vurdere dem.
 
-**Vurdering** (`/vurdering`):
-- 3 example-cards (GO / BETINGET-GO / NO-GO) med foldable forklaringer
-- Drag-drop drop-zone for PDF/DOCX upload (M1)
-- LLM-baseret signal- og predikat-extraction (M1.5 — alpha.13)
-- Result-mode i Design C med inline ¹²³ fodnoter + sidenotes-kolonne
-- Audit-log persistering (kind=document for upload-flow)
-- LLM-udtrukne predikater vises så sagsbehandler kan verificere
+Den aktuelle overdragelsesopgave er at committe og pushe den færdige kode med instruktionerne. Start ikke en ny feature, ny modelanalyse, Vercel-deploy eller flytning af data alene fordi noget står som et muligt næste skridt her.
 
-**Sager** (`/sager`):
-- Kanban med 6 status-kolonner: Kladde · Vurderet · Remediation · Godkendt · Idriftsat · Arkiveret
-- Drag-drop mellem kolonner → status-skift med audit-trail
-- "+ Ny sag"-modal
-- Auto-transition: kladde→vurderet ved første assessment, vurderet→remediation ved BETINGET-GO/NO-GO
+## Hvad Parthee bygger
 
-**Historik** (`/historik`, `/historik/:id`):
-- Tabel med filter-chips (Alle/GO/Betinget GO/NO-GO)
-- Klik → detail-mode med fuld vurdering reproduceret fra audit-log
+SHIELD skal være et brugbart kommunalt arbejdsrum til **AI-løsninger og IT-løsninger med AI**. En bruger beskriver behovet og anvendelsen, vedlægger leverandørpræsentation, databehandleraftale, sikkerheds-/revisionsmateriale og links, gennemgår AI-forslag og får et dokumenteret grundlag til jura, DPO og ansvarlig godkender.
 
-**Lov-overvågning** (`/lov-overvaagning`):
-- Daglig job kl. 04:00 verificerer hver regels citat mod kilde-URL
-- Status per regel: ✓ Verificeret / ⚠ Flagget / — Ukendt
-- "Kør verifikation nu"-knap
-- Warning-banner i Vurdering hvis triggered regel er flagget
+Konsekvensanalyse og risikovurdering følger den versionslåste Datatilsynet-struktur, gemmes under sagen og kan læses i løsningen samt downloades som Word/Excel. Dokumenteret viden, åbne afklaringer, mangler før godkendelse og anbefalinger skal kunne skelnes hurtigt, også af en leder uden juridisk baggrund.
 
-**Sammenlign** (`/sammenlign`):
-- Side-om-side diff mellem legacy ComplianceController og v3 rule_engine
-- Bruges til at validere Kategori A-sletning
+GPT skriver og strukturerer. JEV kontrollerer udsagn mod medsendte kilder. Reglerne beregner grundstatus/risici. Mennesker gennemgår og beslutter. Ingen af de automatiske lag beviser juridisk korrekthed eller godkendelse.
 
-**Forside** (`/`):
-- Rebrandet til Tyr (alpha.13). Educational cards om Forbudt AI / GPAI / Højrisiko.
+Parthee har specifikt bedt om at bevare funktioner under redesign, samle overlappende funktioner, bruge kommunale termer og tydeligt vise systemnavn, organisation, ansvar, version og AI-handlinger. Brug ikke “test” og “eksempel” som unødige labels på almindelige kommunale arbejdssager, men skjul heller ikke testantagelser eller opfind en kommunal godkendelse.
 
-### Beslutninger der er taget
+## Senest leveret
 
-- **Brand:** "Tyr" som arbejdstitel — "Project Judge Dredd" droppet undervejs
-- **Design:** Ren Design C ("editorial workspace") — cream-paper, Lora body, Source Serif Pro display, Inter chrome, JetBrains Mono mono. Sidenotes-kolonne for lov-citater
-- **Rulemotor:** Hybrid YAML + LLM. LLM må aldrig ændre afgørelsen — kun udtrække signaler og predikater fra fritekst
-- **Hosting:** Backend on-prem; LLM via API (Azure West Europe / LM Studio lokalt / OpenAI fallback)
-- **Single-tenant:** Kun Kalundborg Kommune i v1
-- **Lovdækning v1:** AI Act + GDPR + Forvaltningslov + Offentlighedslov + (afventer) Sektorlove
+| Version | Indhold |
+| --- | --- |
+| 0.9.1 | Lyst redesign inden for SHIELDs varme palette og Geist. Login, startside, søgning, procesoverblik, sagsfaner, formularer og læsevenlige vurderinger. Ingen ripple eller dekorativ animation. |
+| 0.10.0 | Kompakt logo/navn/version; én profilmenu under Parthee med søgning, tema, øvrige værktøjer, guide og session. Forsidens introduktion er udfoldet. Historik viser seneste version pr. sag og type med foldbare ældre versioner og ansvar/tid. Kommunal behovsbeskrivelse kan vedlægges på første oprettelsestrin. |
+| 0.10.1 | Repareret ENOENT ved ekstern åbning: frontend-build lå under `build 3`, mens serveren forventede `build`. Serverkode, afhængigheder og aktive builds ligger nu uden for Desktop/iCloud. Komplette releases publiceres atomisk, og gamle hashede filer bevares til åbne faner. |
 
----
+Der er ingen migration i denne ændringsrunde. `needs_description` er en dokumentkategori i den eksisterende dokumentmodel. Dens oprindelse følger analyse, kildegrundlag og eksport: kommunens ønsker er ikke dokumentation for leverandørens faktiske implementering.
 
-## 3. Arbejde i gang
+Historikgruppering bruger sag/type eller eksplicit versionsrelation; to vurderinger med samme titel er ikke automatisk samme sag. Ukendt igangsættelsestid og aktør vises som ikke registreret. Rapportversioner er ikke det samme som appens produktversion.
 
-### Færdige milestones (i orden)
+## Skills til næste agent
 
-- ✅ M1 — Document-analyse (alpha.11)
-- ✅ M1.5 — Predikat-extraction fra dokument (alpha.13)
-- ✅ M2 — Workflow state-machine for sager (alpha.12)
-- ✅ M3 — Citation-Verifier (alpha.12)
-- ✅ M4 forberedelse — Sektorlov-templates + jurist-interview-pakke (alpha.13)
+Læs relevante skill-instruktioner før brug og nævn kort anvendelsen for Parthee. Navne nedenfor er fra den tilgængelige Codex-opsætning; andre værter kan bruge tilsvarende værktøjer. Kopiér ikke hele skill-pakker ind i Git, og installer ikke noget alene for at gennemføre et simpelt check.
 
-### Næste skridt (i prioriteret rækkefølge)
+| Opgave | Skill / arbejdsgang |
+| --- | --- |
+| Genoptag projekt | `load-project`: kanonisk workspace, projektinstruktioner, Git/upstream og relevant live health. På denne Mac: `~/.codex/skills/load-project/SKILL.md`. |
+| Overdrag/afslut session | `shutdown-project`: verificér Git, dokumentér ændringer, begrænsninger og næste skridt. `~/.codex/skills/shutdown-project/SKILL.md`. Dette betyder ikke stop af appen. |
+| Find en fejl | `investigate` til rodårsag; lav reproduktion før rettelse. ENOENT kræver kontrol af faktisk filsti og HTTP, ikke kun `/readyz`. |
+| UI og brugerflow | `design-review` og `qa` ved passende omfang; `qa-only` ved ren undersøgelse. Følg `DESIGN.md`, test faktisk UI, tastatur og mobil. Brug værtens tilladte browsermetode; i denne session blev Codex' CUA brugt. |
+| Ændring af AI-flow | `vercel:ai-sdk` og `vercel:ai-gateway`; ved relevant persistence `vercel:ai-generation-persistence`. Læs også lokale kontrakter og tests. Ingen modelsubstitution uden eksplicit valg og korrekt proveniens. |
+| Nye bilag/skabeloner | `pdf:pdf`, `documents:documents`, `presentations:Presentations` eller `spreadsheets:Spreadsheets` efter filtype. Bevar originaler; inspicér/render relevante artefakter. |
+| Reel Vercel-opsætning | `vercel:deployments-cicd` / `vercel:vercel-cli`, og storage/auth efter behov. Kun ved en konkret deploymentopgave. |
+| Commit/release | `review` eller relevant lokal review; `ship` hvis dens fulde releaseforløb ønskes. Opret ikke merge/deploy/PR alene fordi en skill beskriver det som et senere trin. |
 
-**M4 aktivering — book jurist-møde:** Templates ligger klar i [rules/sektorlove/](rules/sektorlove/) prefixet med `_template_`. Jurist gennemgår dem ifølge [docs/JURIST_INTERVIEW.md](docs/JURIST_INTERVIEW.md). Briefing til jurist findes i [docs/JURIST_BRIEFING.md](docs/JURIST_BRIEFING.md).
+Brugerens konkrete instruktioner går foran vejledende lokale konventioner; værtens system- og sikkerhedsregler gælder fortsat. Når en skill kræver godkendelse, forklar præcis hvilken regel og hvorfor. En manglende valgfri skill er ikke grund til at opgive arbejdet.
 
-**M5 — Auth + Entra ID SSO:** Udskudt indtil pilot-deploy hos Kalundborg er besluttet. Kræver Microsoft tenant + IT-koordinering. Estimat: 2-3 dages arbejde efter tenant er klar.
+## Kørende installation på Parthees Mac
 
-**Optional (hvis behov dukker op):**
-- Reminder-job for cases (APScheduler finder cases hvor `next_review_at <= today`)
-- PDF-annotering i M1 (overlay highlights på faktisk PDF i resultat-mode)
-- Lov-RAG (bygger ovenpå eksisterende `src/database/vector_store.py`)
-- Headless-browser-baseret citation-verifier (for SPA-renderede lovsider)
+| Del | Verificeret placering / port |
+| --- | --- |
+| Kanonisk kode | `/Users/parthee/Desktop/Claude/projekter/aktive/SHIELD` |
+| Lokal build-/testkopi | `~/.cache/shield-redesign-runtime` (hydraterede filer, ikke kanonisk kildekode) |
+| Backend | `http://127.0.0.1:8001`, LaunchAgent `dk.parthee.shield.backend` |
+| Frontend + API-proxy | `http://127.0.0.1:8090`, LaunchAgent `dk.parthee.shield.frontend` |
+| Backend-venv | `~/Library/Application Support/SHIELD/runtime/venv` |
+| Frontend-server | `~/Library/Application Support/SHIELD/runtime/frontend-server/serve_prod.js` med lokale afhængigheder |
+| Aktiv frontend | `~/Library/Application Support/SHIELD/frontend/current` → komplet mappe under `releases/` |
+| Lokal sagsdatabase | `data/shield-review.db`, eksisterende konfiguration skal bevares |
+| Lokal dokumentbank | `data/document-bank/` og relateret konfigureret lager, udeladt fra Git |
+| Maskinens konfiguration | `~/Library/LaunchAgents/dk.parthee.shield.*.plist`, udeladt fra Git |
 
-**Sletning af Kategori A backend (~4 800 linjer):** Beskrevet i [SLETNING-EVAL.md](SLETNING-EVAL.md). Anbefalet workflow: 10-15 sektor-test-cases gennem `/api/v3/compare`, jurist sign-off, og sektorlove-coverage før sletning godkendes.
+Tailscale Serve har den eksisterende private HTTPS-rute på port **9443** til frontendens **8090**. Find den konkrete adresse med `tailscale serve status`; bevar andre ruter. Mac'en skal være vågen, brugeren logget ind og den besøgende enhed have netværksadgang. Dette er ikke en offentligt deployet SaaS.
 
----
+**Lokal identitet:** Parthee er backendens fælles udviklingsidentitet. Loginvisningen er ikke et personligt kommunalt login. Entra ID-understøttelse findes, men reel tenant/roller og SaaS-drift skal opsættes og verificeres særskilt.
 
-## 4. Vigtige filer at kende
+Fuld runbook: [docs/MACOS_TAILSCALE.md](docs/MACOS_TAILSCALE.md). Frontendens `FRONTEND_BUILD_DIR` peger på den stabile `current`. `frontend/build` i repositoryet må ikke være et symlink til denne aktive release. En tidligere midlertidig symlink er fjernet.
 
-### Backend
-- [main.py](main.py) — FastAPI app med alle v3-endpoints (lifespan + cases + freshness + document + compare)
-- [src/rule_engine/](src/rule_engine/) — deklarativ regelmotor
-  - `models.py` — Pydantic Rule, RuleInput, RuleDecision
-  - `loader.py` — YAML + JSON Schema validator (skipper `_*`-filer)
-  - `executor.py` — deterministisk evaluator + aggregate_status
-  - `signal_extractor.py` — LLM fritekst → signaler + predikater (M1.5)
-  - `audit.py` — V3AssessmentLog SQLAlchemy-model
-  - `regression.py` — YAML-baseret test-harness
-- [src/services/](src/services/)
-  - `document_analyzer.py` — PDF/DOCX → chunk → signal-ekstraktion → predikat-ekstraktion → regelmotor
-  - `citation_verifier.py` — daglig job der verificerer hver regels citat mod kilde-URL
-  - `news_service.py`, `tech_ticker_service.py` — legacy news (ikke v3)
-- [src/database/](src/database/)
-  - `cases.py` — Case + CaseTransition workflow-state-machine (M2)
-  - `connection.py` — SQLAlchemy session + init_db
-- [rules/](rules/) — 15 aktive YAML-regler + 6 `_template_`-sektorlove
+Build i en separat lokal outputmappe, efter at kanoniske kildefiler er synkroniseret. Kopiér aldrig ukritisk cachekoden tilbage over nyere arbejde. Ved iCloud-pladsholdere: undgå at sidde fast i gentagne filoperationer, og bevar alle originale ændringer.
 
-### Frontend
-- [App.js](frontend/src/App.js) — routes + lazy-loaded pages
-- [Sidebar.js](frontend/src/components/Sidebar.js) — Design C-rebrandet sidebar
-- [components/rules/](frontend/src/components/rules/) — design-primitives
-- [components/command-palette/CommandPalette.jsx](frontend/src/components/command-palette/CommandPalette.jsx) — ⌘K + g-prefix shortcuts
-- [pages/V3VurderingPage.jsx](frontend/src/pages/V3VurderingPage.jsx) — primær vurderings-side
-- [pages/VurderingHistorikPage.jsx](frontend/src/pages/VurderingHistorikPage.jsx) — list + detail
-- [pages/SagerPage.jsx](frontend/src/pages/SagerPage.jsx) — kanban (M2)
-- [pages/LovOvervaagningPage.jsx](frontend/src/pages/LovOvervaagningPage.jsx) — citat-verifier admin (M3)
-- [pages/SammenlignPage.jsx](frontend/src/pages/SammenlignPage.jsx) — v3 vs legacy
-- [pages/HomePage.js](frontend/src/pages/HomePage.js) — Forside (rebrandet alpha.13)
-
-### Dokumentation
-- [docs/RULE_AUTHORING.md](docs/RULE_AUTHORING.md) — jurist-guide til at skrive regler
-- [docs/JURIST_INTERVIEW.md](docs/JURIST_INTERVIEW.md) — strukturet 30-45 min interview-guide
-- [docs/JURIST_BRIEFING.md](docs/JURIST_BRIEFING.md) — 5 min onboarding
-- [SLETNING-EVAL.md](SLETNING-EVAL.md) — Kategori A sletning workflow
-- [CHANGELOG.md](CHANGELOG.md) — versionshistorik
-- [mockups/](mockups/) — design-a (afvist), design-b (afvist), design-c (valgt), design-d (afvist), index
-
----
-
-## 5. Kommandoer du ofte får brug for
-
-```bash
-# Tests
-./venv/bin/pytest tests/rule_engine -q                          # 94 unit tests
-./venv/bin/python -m src.rule_engine validate rules              # 15 regler
-./venv/bin/python -m src.rule_engine.regression tests/regression/cases.yaml
-
-# Backend + frontend
-npm run dev    # concurrent: python3 main.py + react-scripts på :8001/:8090
-
-# Manuel kørsel af citation-verifier
-curl -X POST http://localhost:8001/api/v3/law/freshness/run | jq
-
-# v3 endpoints test
-curl -X POST http://localhost:8001/api/v3/assess \
-  -H 'Content-Type: application/json' \
-  -d '{"system_description":"test","predicates":{}}'
-
-curl -X POST http://localhost:8001/api/v3/document/analyze \
-  -F "file=@dokument.pdf" -F "case_id=K-test"
-
-curl http://localhost:8001/api/v3/cases | jq
-
-# Compare engines
-curl -X POST http://localhost:8001/api/v3/compare \
-  -H 'Content-Type: application/json' \
-  -d '{"system_description":"...","predicates":{}}'
-
-# DB schema (idempotent)
-./venv/bin/python -c "
-from src.rule_engine import audit
-from src.database import cases
-from src.services import citation_verifier
-from src.database.connection import init_db
-init_db()
-"
+```sh
+# Fra den synkroniserede lokale arbejdskopi
+npm run version:check
+npm run build:frontend
+npm run deploy:frontend -- /absolut/sti/til/frontend/build
 ```
 
----
+Publicering ændrer kun frontendrelease. Ved ændring af `serve_prod.js` skal den lokale serverkopi opdateres og frontend-LaunchAgent genstartes. Ved plist-ændring skal LaunchAgent genindlæses; `kickstart` læser ikke nyt plist-miljø. Start ikke de gamle `start_tyr.sh`-scripts parallelt med LaunchAgents.
 
-## 6. Konfiguration (.env)
+## Ny maskine og data
 
-```bash
-# Database
-DATABASE_URL=sqlite:///./judge_dredd.db
-# DATABASE_URL=postgresql://user:pass@host:5432/compliance_db
+Følg [README — lokal opstart](README.md#lokal-opstart) og [AI-opsætning](docs/AI_GATEWAY.md). Der kræves Node 22.18+ og et Python-miljø med `requirements.txt`. Koden er et npm-workspace med React/CRA og FastAPI; det er ikke en Next.js-app.
 
-# API porte
-API_PORT=8001
+Private sager, katalogimport, uploads, miljøfiler, maskinspecifikke LaunchAgents og CLI-login følger **ikke** med en kloning. En tom lokal database er derfor forventelig på en ny maskine. Overfør kun nødvendige data særskilt efter konkret autorisation; brug aldrig Git til det. Originale Gentofte-bilag, lokale Excel-kataloger og modelkildepakker må ikke inkluderes i repositoryet.
 
-# LLM-provider — vælg én. Auto-prioritet: LM Studio → Azure → OpenAI
-LM_STUDIO_BASE_URL=http://localhost:1234/v1
-LM_STUDIO_API_KEY=lm-studio
-LM_STUDIO_MODEL=google/gemma-4-26b-a4b
-LM_STUDIO_TIMEOUT=120
+De tidligere Vercel-designpreviews er separate præsentationer. At frontend kan vises på Vercel beviser ikke, at FastAPI, database, uploads, baggrundsarbejde, modelkald og organisationslogin fungerer dér. En rigtig hostingopgave kræver et særskilt vedvarende data- og backendsetup.
 
-# (Eller Azure)
-# AZURE_OPENAI_ENDPOINT=...
-# AZURE_OPENAI_API_KEY=...
-# AZURE_DEPLOYMENT_NAME=gpt-4o-mini
+## AI, modeller og kvalitet
 
-# (Eller OpenAI)
-# OPENAI_API_KEY=sk-...
+- Standardmodel til materialeanalyse og rapportudkast: `openai/gpt-5.5` via serverens AI Gateway. Evaluator: `typesafe-ai/jev`.
+- `AI_GATEWAY_API_KEY` opbevares i lokal ignoreret `.env.local`. Brugeren indtaster den lokalt. Nøglen må aldrig læses, udskrives, logges eller committes.
+- `npm run ai:example` og `npm run ai:jev-example` er rigtige netværks-/modelkald med muligt forbrug. Kør dem ved en autoriseret forbindelsestest, ikke som en skjult del af docs/commit.
+- Parthee har tilladt midlertidig afprøvning via GPT-5.6 Sol eller GPT-6 Astra i agentmiljøet. Det er ikke en automatisk erstatning for Gateway eller JEV, og en anden agent må ikke attestere, at en model kørte, hvis det ikke skete.
+- Manuel rapportimport og backendens valgfrie lokale tekstassistent er forskellige veje. `SHIELD_ENABLE_CODEX_LOCAL=true` aktiverer den lokale CLI-vej for bestemte juridiske assistentfunktioner; det gør ikke alle knapper til et Codex-backend. Se README og AI-runbook før ændring.
+- Teknisk revisionsspor skal bevare faktisk provider/model, kildebelæg og kontrolresultater, selv om rapportens læsevenlige del kun viser relevant modelnavn.
+- JEVs tærskel er ikke kalibreret som juridisk godkendelse. Planlagt kontrol, testantagelse, leverandørudsagn og gennemført lokal foranstaltning er forskellige ting.
+- Der er **ikke** kørt nye live GPT/JEV-analyser i v0.9.1–v0.10.1-runderne. Testsucces og readiness må ikke beskrives som verificeret aktuel modeladgang.
 
-# Anthropic placeholder (legacy ComplianceOrchestrator boots med tom værdi)
-ANTHROPIC_API_KEY=
+## Kontrolgrundlag ved overdragelsen
+
+| Kontrol | Senest verificeret |
+| --- | --- |
+| Frontend | 438 tests i 44 suites bestået for v0.10.0-produktændringerne. |
+| Backend | 897 tests bestået med eksternt netværk blokeret, separat testdata. |
+| AI Gateway | 49 tests og TypeScript-kontrol bestået; kontrollerede modelresultater, ikke livekald. |
+| Frontendserver og publicering | 10 tests bestået for v0.10.1: index, proxy, kontrolleret 404/503, invalid build, hashede assets, sourcemaps og atomisk versionsskift. |
+| Produktionsbuild/version | v0.10.1 build, `version:check` og diff-kontrol bestået. |
+| Faktisk drift | Tailscale: alle 70 manifestfiler HTTP 200 med korrekte checksums; direkte ruter og readiness OK. Browser viste v0.10.1 og Krisp-sagens vurderinger. Frontendgenstart verificeret. |
+
+Ved selve commit-/handoff-kontrollen bestod yderligere 81 målrettede frontendtests, 10 server-/publiceringstests, 49 Gateway-tests og AI-typekontrollen. Alle 63 ændrede kode-/pakkefiler matchede den verificerede lokale testkopi byte-for-byte. Der blev ikke kørt live modelkald.
+
+Disse er daterede resultater, ikke evige garantier. [QA v0.10.0](docs/QA_V010_MENU_HISTORY_NEEDS.md), [QA redesign](docs/QA_V091_LIGHT_REDESIGN.md) og [driftsnoterne](docs/MACOS_TAILSCALE.md) beskriver omfanget. UI er også prøvet ved 320/390 px. Behovsupload er testet i separat SQLite-lager og localhost:8093/8003; de midlertidige servere er stoppet.
+
+Kommandoer til relevante kontroller fra en opsat arbejdskopi:
+
+```sh
+npm run version:check
+CI=true npm run test:frontend -- --watchAll=false --runInBand
+npm run ai:typecheck
+npm run ai:test
+npm run test:frontend-server
+# Brug separat testdatabase/miljø; ikke den aktive fremvisnings konfiguration:
+python -m pytest tests/
 ```
 
-Hvis ingen LLM er konfigureret, skipper backend signal/predikat-extraction og returnerer en advarsel — vurderingen virker stadig hvis caller selv leverer signaler/predikater.
+Den generelle Python-mypy-kørsel har kendte baselinefejl, og ældre frontendkode har build-lintadvarsler. Hæv ikke dette til en påstand om fejlfri samlet lint/typecheck. Undgå gentagelse af hele testpakken, når kun dokumentation er ændret; kør de kontroller ændringen kræver.
 
----
+## Før næste produktændring
 
-## 7. Kendt teknisk gæld / blockers
+1. Bekræft ønsket næste opgave og live tilstand. `git status` og dokumentationen skal stemme med runtime; start ikke en gammel checkout.
+2. Kontrollér hovedarbejdsgangen: login → sag/materiale → kildegennemgang → vurdering → læsevenlig udgave → eksport/historik. Brug isolerede testdata ved oprettelse eller AI-kald.
+3. Bevar organisation, navngivet ansvar og ukendte metadata sandfærdigt. Historiske data må ikke omskrives for at se pænere ud.
+4. Ved funktionelle ændringer: relevant regression, produktversionsløft, build og faktisk browserkontrol. Tjek også Tailscale, hvis det er den adresse Parthee bruger.
+5. Ved afslutning: dokumentér resultat, hvad der ikke blev afprøvet, branch/commit/push-status og eventuelle lokale rester. Bevar den kørende app.
 
-| Punkt | Status | Hvorfor |
-|---|---|---|
-| QuickCheckPage.js (1720 linjer) refaktor | Skipped | Erstattet af V3VurderingPage. Slet sammen med Kategori A |
-| Sektorlove i `rules/sektorlove/` | Templates klar (alpha.13) | Afventer jurist-interview |
-| Frontend tests for nye pages | Mangler | Pris vs værdi — ikke kritisk for pilot |
-| Authentication (Entra ID SSO) | Ikke startet (M5) | Afventer pilot-godkendelse + IT-tenant |
-| Old engine vs new engine sammenligning | Aktiveret (alpha.9) | `/sammenlign` virker; mangler 10-15 cases for SLETNING-EVAL |
-| Citation-verifier på SPA-renderede sider | Flagger 13/15 | Forventet — kræver Playwright for fuld dækning |
+`data/news_fallback.json` og `data/ticker_fallback.json` kan være ændret af lokale baggrundsopdateringer. De er genererede cacheændringer og skal ikke blandes ind i produkt-/handoff-committet. Bevar dem lokalt, hvis de ikke udtrykkeligt indgår i opgaven.
 
----
+## Startbesked til en ny agent
 
-## 8. Når du resumerer — checklist
-
-1. `git pull` på `v3-hjemmel`
-2. Læs CHANGELOG.md for nyligt arbejde
-3. Kør `./venv/bin/pytest tests/rule_engine -q` — skal sige `94 passed`
-4. Kør `./venv/bin/python -m src.rule_engine validate rules` — skal vise 15 regler ok
-5. Læs Status (sektion 2) og Næste skridt (sektion 3)
-6. Hvis tvivl: åbn `/vurdering`, klik "Indsæt" på et af de 3 eksempler → "Vurder"
-7. Eller upload `tests/fixtures/documents/borgerassistent_pension.docx` som dokument-test
-
-God arbejdslyst.
+> Fortsæt arbejdet på Parthee-Vijaya/SHIELD, branch codex/technical-run-overview. Læs AGENTS.md og HANDOFF.md først, og verificér Git og runtime før ændringer. Bevar den eksisterende løsning og dens data. Kommunikér på dansk, arbejd autonomt inden for opgaven, brug relevante skills og kontrollér resultatet i den faktiske brugerflade. Produktet samler dokumentation og udarbejder kommunale konsekvensanalyser og risikovurderinger for AI-løsninger; GPT, JEV og menneskelig godkendelse skal holdes tydeligt adskilt. Giv kort status og fortsæt derefter med min næste konkrete anmodning.

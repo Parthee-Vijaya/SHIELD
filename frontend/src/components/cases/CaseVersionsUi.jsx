@@ -17,7 +17,9 @@ export const VersionGroup = styled.section`
 `;
 export const VersionCard = styled.article`
   min-width: 0; padding: clamp(17px, 3vw, 24px);
-  border: 1px solid ${p => p.theme.colors.line};
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
+  box-shadow: ${p => p.$latest ? p.theme.shadows.sm : 'none'};
   border-left: ${p => p.$latest ? '4px' : '1px'} solid ${p => p.$latest ? p.theme.colors.primary : p.theme.colors.line};
   background: ${p => p.$latest ? p.theme.colors.surface : p.theme.colors.paperSoft};
   margin: 12px 0;
@@ -43,7 +45,7 @@ export const Actions = styled.div`
   > * { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 `;
 export const OlderVersions = styled.details`
-  margin-top: 16px; border-top: 1px solid ${p => p.theme.colors.line}; padding-top: 14px;
+  margin-top: 16px; border-top: 1px solid ${p => p.theme.colors.lineSoft}; padding-top: 14px;
   > summary { color: ${p => p.theme.colors.inkSoft}; font-weight: 600; }
 `;
 export function GenerationMetadata({ item }) {

@@ -1,6 +1,6 @@
-"""Case-pinned supplier evidence with bounded text extraction and exact locators.
+"""Case-pinned evidence with bounded text extraction and exact locators.
 
-Text is a supplier statement awaiting review, never legal approval. Documents
+Municipal needs and supplier statements remain distinct, never legal approval. Documents
 and web snapshots keep their original checksum and version; no AI is called.
 """
 
@@ -17,6 +17,12 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
+
+from src.services.source_origin import (
+    SUPPLIER_NOTICE,
+    source_classification,
+    source_warnings,
+)
 
 from src.services.analysis_limits import (
     MAX_DOCUMENT_TEXT_CHARS,
@@ -53,7 +59,6 @@ MAX_SEGMENTS = MAX_EXTRACTION_SEGMENTS
 HTML_BLOCK_CHARS = 2_000
 SOURCE_EXTENSIONS = {".pptx", ".docx", ".pdf", ".txt"}
 EXTRACTION_VERSION = "municipal-sources-3"
-SUPPLIER_NOTICE = "Kildematerialet er leverandøroplysninger og er ikke juridisk godkendt. Oplysninger skal efterprøves i den konkrete anvendelse."
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
@@ -385,7 +390,7 @@ def _source_payload(
         "document_id": version.document_id,
         "version_id": version.id,
         "title": version.document.title,
-        "category": version.document.category,
+        **source_classification(version.document.category),
         "original_filename": version.original_filename,
         "media_type": version.media_type,
         "uploaded_at": version.created_at.isoformat() if version.created_at else None,
@@ -394,11 +399,12 @@ def _source_payload(
         "checksum": version.content_sha256,
         "status": "extracted" if excerpts else "unreadable",
         "extraction_complete": material.get("complete", True),
-        "evidence_type": "supplier_statement",
         "review_status": "unreviewed",
         "document_status": version.status,
         "excerpts": excerpts,
-        "warnings": material.get("warnings", [SUPPLIER_NOTICE]),
+        "warnings": source_warnings(
+            material.get("warnings", []), version.document.category
+        ),
         "download_url": f"/api/v3/documents/{version.document_id}/versions/{version.id}/download",
     }
 
@@ -423,14 +429,15 @@ def save_case_source(
     if len(normalized_title) < 3 or len(normalized_title) > 500:
         raise ValueError("Dokumentets titel skal være mellem 3 og 500 tegn.")
     extraction = extract_source(content, filename)
+    classification = source_classification(category)
     metadata = {
         **(provenance or {}),
         "source_material": {
             "extraction_version": EXTRACTION_VERSION,
-            "evidence_type": "supplier_statement",
+            **classification,
             "review_status": "unreviewed",
             "excerpts": extraction.excerpts,
-            "warnings": extraction.warnings,
+            "warnings": source_warnings(extraction.warnings, category),
             "complete": extraction.complete,
         },
     }
@@ -442,7 +449,7 @@ def save_case_source(
             title=normalized_title,
             category=category,
             created_by=actor,
-            description=SUPPLIER_NOTICE,
+            description=classification["evidence_notice"],
             tags=["sagsgrundlag", "ikke-juridisk-godkendt"],
         )
         stored = store_document_bytes(
@@ -469,7 +476,7 @@ def save_case_source(
             link_role="evidence",
             linked_by=actor,
             allow_unapproved=True,
-            note=SUPPLIER_NOTICE,
+            note=classification["evidence_notice"],
         )
         result = _source_payload(version)
         db.commit()
@@ -501,7 +508,7 @@ def save_case_url(
         filename=filename,
         content=content,
         actor=actor,
-        title=title or f"Leverandørside: {urlsplit(source.url).hostname}",
+        title=title or f"Kildeside: {urlsplit(source.url).hostname}",
         category=category,
         provenance=provenance,
     )
@@ -599,6 +606,8 @@ def case_source_evidence(db: Session, case_id: str) -> list[dict[str, Any]]:
                 "checksum": item["checksum"],
                 "locator": excerpt["locator"],
                 "document_version_id": item["version_id"],
+                **source_classification(item["category"]),
+                "review_status": "unreviewed",
             }
             if item["source_url"]:
                 evidence["source_url"] = item["source_url"]

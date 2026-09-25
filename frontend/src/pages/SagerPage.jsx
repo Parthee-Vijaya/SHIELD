@@ -46,9 +46,8 @@ const Header = styled.header`
   justify-content: space-between;
   align-items: end;
   gap: 24px;
-  margin-bottom: 0;
-  padding-bottom: 24px;
-  border-bottom: 1px solid ${(p) => p.theme.colors.line};
+  margin-bottom: 24px;
+  padding-bottom: 0;
   flex-wrap: wrap;
   > div:first-child { flex: 1 1 580px; min-width: 0; }
 `;
@@ -81,7 +80,7 @@ const PrimaryButton = styled.button`
   color: white;
   border: none;
   padding: 0.7rem 1.4rem;
-  border-radius: 0;
+  border-radius: ${(p) => p.theme.borderRadius};
   ${controlStyle}
   cursor: pointer;
   align-self: flex-end;
@@ -94,15 +93,18 @@ const SummaryGrid = styled.section`
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 26px;
-  border-bottom: 1px solid ${(p) => p.theme.colors.line};
+  border: 1px solid ${(p) => p.theme.colors.lineSoft};
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
+  background: ${(p) => p.theme.colors.surface};
+  box-shadow: ${(p) => p.theme.shadows.sm};
 
   @media (max-width: 760px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 `;
 
 const SummaryItem = styled.div`
   min-width: 0;
-  padding: 16px 20px;
-  border-right: 1px solid ${(p) => p.theme.colors.line};
+  padding: 22px 24px;
+  border-right: 1px solid ${(p) => p.theme.colors.lineSoft};
 
   &:last-child { border-right: 0; }
   small { color: ${(p) => p.theme.colors.inkSoft}; font-size: 0.72rem; }
@@ -110,7 +112,8 @@ const SummaryItem = styled.div`
   span { display: block; margin-top: 8px; color: ${(p) => p.theme.colors.inkSoft}; font-size: 0.68rem; line-height: 1.5; }
 
   @media (max-width: 760px) {
-    border-bottom: 1px solid ${(p) => p.theme.colors.line};
+    padding: 18px;
+    &:nth-child(-n + 2) { border-bottom: 1px solid ${(p) => p.theme.colors.lineSoft}; }
     &:nth-child(2) { border-right: 0; }
   }
 `;
@@ -131,14 +134,20 @@ const BoardHeader = styled.div`
 
 const ViewFilters = styled.div`
   display: flex;
-  gap: 8px 24px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin: 0 0 18px;
-  border-bottom: 1px solid ${(p) => p.theme.colors.line};
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  margin: 0 0 22px;
+  border: 1px solid ${(p) => p.theme.colors.lineSoft};
+  border-radius: ${(p) => p.theme.borderRadius};
+  background: ${(p) => p.theme.colors.paperSoft};
   button {
     border: 0;
-    border-bottom: 2px solid transparent;
-    padding: 12px 0;
+    border-radius: ${(p) => p.theme.borderRadius};
+    min-height: 44px;
+    padding: 10px 16px;
     background: transparent;
     color: ${(p) => p.theme.colors.inkSoft};
     font: inherit;
@@ -146,7 +155,8 @@ const ViewFilters = styled.div`
     cursor: pointer;
   }
   button[aria-pressed='true'] {
-    border-color: ${(p) => p.theme.colors.primary};
+    background: ${(p) => p.theme.colors.surface};
+    box-shadow: ${(p) => p.theme.shadows.sm};
     color: ${(p) => p.theme.colors.primary};
     font-weight: 600;
   }
@@ -170,14 +180,16 @@ const ModalOverlay = styled.div`
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 14vh;
+  overflow-y: auto;
+  padding: max(24px, 8vh) 0;
 `;
 
 const ModalPanel = styled.form`
   width: min(540px, 92vw);
   background: ${(p) => p.theme.colors.card};
   border: 1px solid ${(p) => p.theme.colors.line};
-  border-radius: 0;
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
+  box-shadow: ${(p) => p.theme.shadows.lg};
   padding: 1.6rem 1.75rem;
   display: flex; flex-direction: column;
   gap: 0.85rem;
@@ -192,6 +204,7 @@ const ModalTitle = styled.h2`
 const DecisionSummary = styled.div`
   padding: 14px 16px;
   border-left: 4px solid ${(p) => p.theme.colors.primary};
+  border-radius: ${(p) => p.theme.borderRadius};
   background: ${(p) => p.theme.colors.paperSoft};
   font-size: 0.84rem;
   line-height: 1.55;
@@ -206,7 +219,8 @@ const Confirmation = styled.label`
   gap: 10px;
   align-items: start;
   padding: 13px 14px;
-  border: 1px solid ${(p) => p.theme.colors.line};
+  border: 1px solid ${(p) => p.theme.colors.lineSoft};
+  border-radius: ${(p) => p.theme.borderRadius};
   background: ${(p) => p.theme.colors.paperSoft};
   font-size: 0.8rem;
   line-height: 1.5;
@@ -229,7 +243,8 @@ const Field = styled.div`
   }
   input, textarea {
     border: 1px solid ${(p) => p.theme.colors.line};
-    border-radius: 0;
+    border-radius: ${(p) => p.theme.borderRadius};
+    min-height: 44px;
     padding: 0.55rem 0.75rem;
     font-family: ${(p) => p.theme.fonts.body};
     font-size: 0.95rem;
@@ -250,7 +265,7 @@ const SecondaryButton = styled.button`
   color: ${(p) => p.theme.colors.ink};
   border: 1px solid ${(p) => p.theme.colors.line};
   padding: 0.55rem 1rem;
-  border-radius: 0;
+  border-radius: ${(p) => p.theme.borderRadius};
   cursor: pointer;
 `;
 

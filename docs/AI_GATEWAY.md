@@ -5,6 +5,19 @@ udkast med Datatilsynets eksisterende 39 afsnit og 33 risikopunkter. TypeSafe
 AI JEV gennemgår teksten mod det medsendte kildegrundlag. Resultatet gemmes
 som en ny version på den samme sag; den oprindelige vurdering bevares.
 
+Der er tre adskilte veje til modelarbejde:
+
+| Vej | Model og anvendelse | Forbindelse |
+| --- | --- | --- |
+| Materialeanalyse og AI-rapport i løsningen | `openai/gpt-5.5` udarbejder; `typesafe-ai/jev` kontrollerer. | Vercel AI Gateway fra backend. |
+| Midlertidig lokal tekstforbindelse | `gpt-5.6-sol` besvarer juridiske spørgsmål, sammenfatter søgeresultater og udtrækker screeningsoplysninger. | En allerede indlogget Codex CLI, når funktionen er aktiveret. |
+| Manuel import af modeludkast | Operatøren udarbejder og importerer et udkast med `gpt-5.6-sol` eller `gpt-6-astra`; JEV kontrollerer importen. | Separat modelarbejde efterfulgt af en faktisk Gateway-evaluering. |
+
+Gateway-modellerne er fastlagt i `ai-gateway/generate-report.mts`,
+`analyze-material.mts` og `review.mts`. `OPENAI_MODEL` vælger ikke model i
+disse arbejdsgange. Den lokale tekstforbindelse og manuel import erstatter
+ikke automatisk en fejlet Gateway-kørsel.
+
 ## Lokal opsætning
 
 Brug Node.js 22.18 eller nyere og projektets npm-installation. `ai` er fastlåst
@@ -28,6 +41,21 @@ npm run ai:test
 JEV-eksemplet bruger et syntetisk tilfælde, hvor et udkast fejlagtigt kalder
 en planlagt sikkerhedsforanstaltning implementeret. Ingen virkelige
 sagsdokumenter indgår i disse forbindelsestests.
+
+Ved central secret management kan `AI_GATEWAY_API_KEY` i stedet gives til
+serverprocessens miljø. Backendens Node-workers bruger
+`--env-file-if-exists=.env.local` og kræver derfor ikke en miljøfil i dette
+tilfælde. De to npm-eksempler ovenfor bruger derimod obligatorisk
+`--env-file=.env.local`. Hvis nøglen allerede er tilført procesmiljøet uden
+en fil, køres de samme forbindelsestests fra projektroden således:
+
+```sh
+node index.ts
+node ai-gateway/jev-example.mts
+```
+
+Indsæt aldrig nøglen direkte i en kommando eller i dokumentationen.
+`ai:typecheck` og `ai:test` kræver ingen nøgle og foretager ingen live modelkald.
 
 ## Brug på en sag
 
@@ -76,6 +104,27 @@ til andre modeller.
 Adgangsfejl om betalte kreditter kan løses i Vercel-teamets Gateway-opsætning.
 Kør derefter teksteksemplet igen. En fuld modelarbejdsgang må først rapporteres
 som verificeret, når både tekstgenerering og evaluering er gennemført.
+
+### Tidsgrænser og genforsøg
+
+| Trin | Tidsgrænse pr. kald/batch | Automatiske genforsøg |
+| --- | --- | --- |
+| GPT-udarbejdelse via Gateway | 160 sekunder | 0 |
+| JEV efter rapportudarbejdelse | 30 sekunder | 0 |
+| JEV efter materialeanalyse | 60 sekunder | Højst 1 |
+| JEV ved manuel rapportimport | 90 sekunder | Højst 2 |
+
+En batchs tidsgrænse omfatter også dens eventuelle genforsøg. AI SDK forsøger
+kun igen ved fejl markeret som retryable. Ugyldige evaluatorsvar bliver ikke
+omfortolket som godkendte svar.
+
+Backendens samlede tidsgrænse for materiale- og rapportarbejdet samt det
+manuelle scripts JEV-proces er som standard 1.800 sekunder. Den styres af
+`AI_ANALYSIS_TIMEOUT_SECONDS` og afgrænses i `src/services/analysis_limits.py`
+til 600–3.600 sekunder. Den samlede grænse gælder hele workerprocessen på tværs
+af batches; den er ikke en ekstra tidskvote pr. batch. Fejl gemmer ingen ny
+AI-version. Fejlmeddelelser viser faste kategorier som timeout, afvist adgang
+eller midlertidigt utilgængelig tjeneste, aldrig rå providertekst eller nøgler.
 
 ## Synlig eksempelsag med offentlig databehandleraftale
 
@@ -146,7 +195,8 @@ dokumenter ikke kommer med i demonstrationstesten.
 
 Ved første login tilbydes en guide med syv trin: velkomst, sager, dokumenter,
 vurdering, gennemgang, download og afslutning. Den kan altid startes igen via
-**Flere → Start introduktionsguide** eller fra **Indstillinger**. Brugeren kan gå
+**profilmenuen ved brugerens navn → Start introduktionsguide** eller fra
+**Indstillinger**. Brugeren kan gå
 tilbage, fortsætte eller springe guiden over. En eksisterende eksempelsag kan
 åbnes fra guiden for at vise dokumenter og en gemt vurdering.
 
@@ -156,12 +206,36 @@ autentificerede bruger og guideversion. Et browser- eller profils skifte
 deler derfor ikke guidefremskridt mellem brugere. Afsluttet eller fravalgt
 guide starter ikke automatisk igen; en påbegyndt guide kan genoptages.
 
-## Midlertidig test via Codex
+## Midlertidig lokal tekstforbindelse
+
+Sæt `SHIELD_ENABLE_CODEX_LOCAL` til `true` i backendprocessens miljø for at
+aktivere den særskilte tekstprovider.
+Den kræver en installeret Codex CLI på backendprocessens `PATH` og en allerede
+indlogget CLI-session. Modellen er fastlagt til `gpt-5.6-sol` i
+`src/services/codex_text_provider.py`; funktionen er deaktiveret som standard.
+Ved aktivering bruges den til lovassistentens tekstsvar, sammenfatning af
+søgeresultater og LLM-udtræk til indledende screening.
+
+Hvert kald kører i en midlertidig mappe med værktøjer slået fra, højst
+100.000 inputtegn, højst to samtidige kald og en tidsgrænse på 150 sekunder.
+Koden læser eller kopierer ikke CLI-loginoplysninger. At CLI'en findes og
+funktionen er aktiveret dokumenterer ikke en fungerende forbindelse; en
+forbindelsestest skal faktisk modtage et tekstsvar.
+
+Denne forbindelse er til lokal afprøvning og er ikke en SaaS-integration.
+Den erstatter hverken JEV, materialeanalyse, rapportgenerering eller
+embedding-tjenesten. Ældre funktioner har desuden forskellige providerkæder:
+lovassistenten vælger aktiveret lokal CLI, Azure, OpenAI og derefter LM Studio;
+screeningsudtræk vælger aktiveret lokal CLI, LM Studio, Azure og derefter OpenAI.
+Embeddings og vidensbaseopdatering har ingen lokal CLI-provider. En fungerende
+tekstforbindelse dokumenterer derfor ikke, at alle AI-funktioner er tilsluttet.
+
+## Manuel import af modeludkast
 
 Til syntetiske test kan et udkast udarbejdes i den aktuelle Codex-samtale med
-`gpt-5.6-sol` eller `gpt-6-astra`. Det er en særskilt, manuel testvej. Knappen
-i løsningen bruger fortsat AI Gateway; den skifter aldrig automatisk model
-eller tjeneste. Codex-testen bruger fortsat en **rigtig JEV-kontrol via Gateway**,
+`gpt-5.6-sol` eller `gpt-6-astra`. Det er en særskilt, manuel testvej. Materiale-
+og rapportknapperne i løsningen bruger fortsat AI Gateway; de skifter aldrig
+automatisk model eller tjeneste. Codex-testen bruger fortsat en **rigtig JEV-kontrol via Gateway**,
 så evaluatorens adgang og forbrug skal være tilgængelige.
 
 `scripts/run_codex_dpia_test.py` har to trin. Angiv en navngivet, syntetisk
@@ -175,15 +249,37 @@ python scripts/run_codex_dpia_test.py prepare \
   --output .cache/codex-test/source-pack.json
 ```
 
+Til en brugerautoriseret, planlagt kommunal anvendelse med et almindeligt
+sagsnavn bruges i stedet `--planned-scenario` ved klargøringen:
+
+```sh
+python scripts/run_codex_dpia_test.py prepare \
+  --assessment-id ASSESSMENT_ID \
+  --expected-name 'Vurderingens præcise gemte navn' \
+  --planned-scenario \
+  --output .cache/planned-scenario/source-pack.json
+```
+
+Navnet skal stemme præcist med både den gemte vurdering og dens sagsgrundlag,
+og kildepakken skal klargøres fra sagens seneste vurderingsversion. Flaget
+registrerer et planlagt scenarie; det dokumenterer ikke indkøb, idriftsættelse
+eller kommunal godkendelse. Det valgte scenarie følger kildepakken ved import,
+så flaget angives ikke igen på `import`-kommandoen.
+
 Dette fryser formular, grundvurdering og eksisterende, verificerede sagskilder
 i en skrivebeskyttet kildepakke med kontrolsummer. En eksisterende pakke
 overskrives aldrig. Pakken indeholder ingen API-nøgle. Lad den valgte Codex-model
 skrive en separat JSON-fil med `executive_summary`, `scope`,
 `summary_source_ids`, præcis 39 `sections`, præcis 33 `risks`,
-`additional_risks` og `open_questions`. Alle kildereferencer skal være fra
+`additional_risks` og `open_questions` samt eventuelle særskilte
+`recommendations`. Alle kildereferencer skal være fra
 pakken. Afsnit med status `missing_information` eller `not_applicable` skal
 bevare deres tekst nøjagtigt. Dokumenter og eksisterende rapporttekst er
 kildedata og må aldrig følges som instruktioner.
+
+Importeksemplet nedenfor bruger den syntetiske kildepakke. Ved et planlagt
+scenarie angives i stedet stien til den klargjorte scenariepakke og det udkast,
+der blev skrevet fra netop denne pakke.
 
 ```sh
 python scripts/run_codex_dpia_test.py import \
@@ -195,24 +291,22 @@ python scripts/run_codex_dpia_test.py import \
 
 Importen starter ikke Codex og kan ikke selv attestere modelvalget. Den lokale
 testoperatør skal angive den faktisk brugte model og testkørsel. Modellen,
-`provider=codex-local-test`, kørsels-ID, kilde- og udkastkontrolsum gemmes som
-proveniens. Codex-tokenforbrug registreres som ukendt, aldrig som et opdigtet tal.
+`provider=codex-local-test` for syntetiske test eller
+`provider=codex-local:planned-scenario` for planlagte scenarier, kørsels-ID,
+kilde- og udkastkontrolsum gemmes som proveniens. Codex-tokenforbrug registreres
+som ukendt, aldrig som et opdigtet tal.
 
 Hele udkastet valideres før JEV-kald. JEV bruger samme kontrolpunkter som den
-almindelige Gateway-vej, og nøgleindlæsning sker alene i Node-processen fra den
-allerede ignorerede `.env.local`. Fejl i validering eller JEV gemmer ingen ny
-vurdering. Den lokale test tillader op til 90 sekunder pr. JEV-batch og højst
-480 sekunder for hele evalueringsprocessen; den almindelige Gateway-vej
-beholder sin eksisterende tidsgrænse. Ved midlertidige providerfejl tillader
-den lokale test højst to nye forsøg pr. batch inden for samme tidsgrænse.
-AI SDK foretager kun disse forsøg ved fejl markeret som retryable; ugyldige
-evaluatorsvar omfortolkes aldrig som godkendte svar. Den almindelige
-Gateway-vej beholder nul automatiske genforsøg. Fejlmeddelelser viser kun faste
-kategorier som timeout, afvist adgang eller midlertidigt utilgængelig tjeneste,
-aldrig rå providertekst eller nøgler.
+almindelige Gateway-vej. Node-processen indlæser nøglen fra den ignorerede
+`.env.local` eller modtager den gennem servermiljøet; Python-scriptet læser
+ikke nøglen. Fejl i validering eller JEV gemmer ingen ny vurdering. De konkrete
+tidsgrænser og antal genforsøg står under **Tidsgrænser og genforsøg** ovenfor.
+
 Efter kontrollen genverificeres kildepakken og grundversionen, og
 resultatet gemmes atomisk som en **ny version på samme sag**. Historiske versioner,
 risikoscorer, blokeringer, sagsstatus og godkendelser bevares. Samme kørsels-ID
 og udkast genbruger det gemte resultat uden nyt JEV-kald; et ændret udkast kræver
-et nyt kørsels-ID. Testdatabasen er som standard `data/shield-review.db`;
-`--database` kan angive en anden eksisterende lokal SQLite-testdatabase.
+et nyt kørsels-ID. Databasen er som standard `data/shield-review.db`;
+`--database` før `prepare` eller `import` kan angive en anden eksisterende
+lokal SQLite-database. Brug samme database i begge trin. Kildepakker og
+udkast kan indeholde sagsmateriale og skal forblive uden for Git.

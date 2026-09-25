@@ -44,5 +44,15 @@ test('tæller en dokumentversion én gang og håndterer tomt eller mangelfuldt g
   expect(within(row('Databehandleraftale')).getByText('1 fil vedlagt')).toBeInTheDocument();
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
   rerender(view({ sources: null }));
-  expect(screen.getAllByText('Ikke vedlagt · behovet skal afklares')).toHaveLength(3);
+  expect(screen.getAllByText('Ikke vedlagt · behovet skal afklares')).toHaveLength(4);
+});
+
+
+test('municipal needs remain distinct from vendor material and do not imply implemented controls', () => {
+  const onSelectCategory=jest.fn();
+  render(view({sources:[{id:'need-1',category:'needs_description'}],onSelectCategory}));
+  expect(row('Kommunens behovsbeskrivelse')).toHaveTextContent('1 fil vedlagt');
+  expect(row('Leverandørmateriale')).toHaveTextContent('Ikke vedlagt');
+  fireEvent.click(screen.getByRole('button',{name:'Tilføj kommunens behovsbeskrivelse'}));
+  expect(onSelectCategory).toHaveBeenCalledWith('needs_description');
 });

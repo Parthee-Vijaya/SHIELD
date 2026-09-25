@@ -151,3 +151,22 @@ test('only explicitly nullable evidence fields may preserve unknown values', () 
     assert.throws(() => validateMaterialDraft(input, candidate));
   }
 });
+
+test('municipal needs cannot establish hosting and keep their origin for generation and JEV', async () => {
+  const needs = { ...source, category: 'needs_description', evidence_type: 'municipal_needs_statement', evidence_label: 'Kommunens behovsbeskrivelse' };
+  assert.throws(() => validateMaterialDraft({ ...input, sources: [needs] }, draft), /NEEDS_CANNOT_ESTABLISH_DEPLOYMENT/);
+  const planned = { ...draft, summary: 'Kommunens behovsbeskrivelse angiver planlagt støtte til møder. Leverandøregenskaber skal afklares.', facts: [{ ...draft.facts[0], field: 'purpose', value: 'Planlagt støtte til kommunale møder.' }] };
+  let generated = false, reviewed = false;
+  await analyzeMaterial({ ...input, sources: [needs] }, async (_units, evidence) => {
+    reviewed = true;
+    assert.equal((evidence[0] as typeof needs).evidence_type, 'municipal_needs_statement');
+    return { model: 'typesafe-ai/jev', rubric_version: 'test', checks: [], status: 'requires_human_review', threshold: .5, threshold_note: 'test', usage: [] };
+  }, async request => {
+    generated = true;
+    assert.match(request.system, /Kommunens behovsbeskrivelse/);
+    assert.match(request.system, /aldrig leverandørens dokumentation/);
+    assert.match(request.prompt, /municipal_needs_statement/);
+    return { output: planned };
+  });
+  assert(generated && reviewed);
+});

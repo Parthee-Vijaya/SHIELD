@@ -1,4 +1,5 @@
 import { pageLayout, pageTitleStyle, sectionTitleStyle } from '../theme/layout';
+import { formatAssessmentDate } from '../features/overview/reviewDates';
 import { modelLabel } from '../utils/modelPresentation';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -31,18 +32,18 @@ const Page = styled.div`
 `;
 const Eyebrow = styled.p`color: ${p => p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark}; font-size: .75rem; font-weight: 650; letter-spacing: .12em; text-transform: uppercase;`;
 const Lead = styled.p`max-width: 760px; font-size: 1.05rem; color: ${p => p.theme.colors.textMuted};`;
-const Steps = styled.nav`display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); margin: 32px 0; border-block: 1px solid ${p => p.theme.colors.border}; @media(max-width:700px) { grid-template-columns: repeat(2,minmax(0,1fr)); }`;
-const Step = styled.button`text-align: left; padding: 18px 12px; color: ${p => p.$active ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : p.theme.colors.text}; background: ${p => p.$active ? p.theme.colors.primarySoft : 'transparent'}; font: inherit; font-size: .86rem; border-bottom: 3px solid ${p => p.$active ? p.theme.colors.primary : 'transparent'}; &:disabled { opacity: .45; cursor: default; }`;
+const Steps = styled.nav`display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); margin: 32px 0; padding: 5px; gap: 5px; border: 1px solid ${p => p.theme.colors.borderSoft}; border-radius: ${p => p.theme.borderRadiusLarge}; background: ${p => p.theme.colors.surface}; @media(max-width:700px) { grid-template-columns: repeat(2,minmax(0,1fr)); }`;
+const Step = styled.button`border-radius: ${p => p.theme.borderRadius}; text-align: left; padding: 18px 12px; color: ${p => p.$active ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : p.theme.colors.text}; background: ${p => p.$active ? p.theme.colors.primarySoft : 'transparent'}; font: inherit; font-size: .86rem; border-bottom: 3px solid ${p => p.$active ? p.theme.colors.primary : 'transparent'}; &:disabled { opacity: .45; cursor: default; }`;
 const Grid = styled.div`display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; margin: 24px 0; > * { min-width: 0; } @media(max-width:700px) { grid-template-columns: 1fr; }`;
-const Section = styled.section`padding: 26px 0; border-bottom: 1px solid ${p => p.theme.colors.border};`;
+const Section = styled.section`margin: 18px 0; padding: 24px; border: 1px solid ${p => p.theme.colors.borderSoft}; border-radius: ${p => p.theme.borderRadiusLarge}; background: ${p => p.theme.colors.surface}; @media(max-width:600px) { padding: 18px; }`;
 const Actions = styled.div`display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px;`;
-const Button = styled.button`display: inline-flex; align-items: center; justify-content: center; padding: 12px 18px; min-height: 44px; max-width: 100%; white-space: normal; font: inherit; font-size: .875rem; border: 1px solid ${p => p.theme.colors.primary}; background: ${p => p.$secondary ? 'transparent' : p.theme.colors.primary}; color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; &:hover { color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; opacity:.9; } &:disabled { opacity:.5; cursor:wait; }`;
-const Notice = styled.div`margin: 18px 0; padding: 16px 20px; background: ${p => p.theme.colors.surfaceAlt}; border-left: 3px solid ${p => p.$error ? p.theme.colors.danger : p.theme.colors.primary};`;
-const Fact = styled.article`padding: 22px 0; border-bottom: 1px solid ${p => p.theme.colors.border}; > label { display:flex; align-items:flex-start; gap:12px; }`;
+const Button = styled.button`border-radius: ${p => p.theme.borderRadius}; display: inline-flex; align-items: center; justify-content: center; padding: 12px 18px; min-height: 44px; max-width: 100%; white-space: normal; font: inherit; font-size: .875rem; border: 1px solid ${p => p.theme.colors.primary}; background: ${p => p.$secondary ? 'transparent' : p.theme.colors.primary}; color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; &:hover { color: ${p => p.$secondary ? (p.theme.mode === 'dark' ? p.theme.colors.primaryLight : p.theme.colors.primaryDark) : '#fff'}; opacity:.9; } &:disabled { opacity:.5; cursor:wait; }`;
+const Notice = styled.div`border-radius: ${p => p.theme.borderRadius}; margin: 18px 0; padding: 16px 20px; background: ${p => p.theme.colors.surfaceAlt}; border-left: 3px solid ${p => p.$error ? p.theme.colors.danger : p.theme.colors.primary};`;
+const Fact = styled.article`margin: 12px 0; padding: 22px; border: 1px solid ${p => p.theme.colors.borderSoft}; border-radius: ${p => p.theme.borderRadius}; background: ${p => p.theme.colors.surface}; > label { display:flex; align-items:flex-start; gap:12px; }`;
 const EMPTY = { system_name:'', supplier_name:'', organisation:'Kalundborg Kommune', department:'', owner:'', intended_use:'', procurement_stage:'new_purchase', journal_reference:'' };
 const STEP_NAMES = ['AI-løsning og behov','Leverandørmateriale','Oplysninger og kilder','Vurdering og jura'];
 const STEP_KEYS = ['profile','materials','facts','review'];
-const CATEGORIES = [['supplier_documentation','Leverandørmateriale'],['data_processing_agreement','Databehandleraftale'],['security_documentation','Sikkerhedsdokumentation'],['other','Øvrigt materiale']];
+const CATEGORIES = [['supplier_documentation','Leverandørmateriale'],['data_processing_agreement','Databehandleraftale'],['security_documentation','Sikkerhedsdokumentation'],['needs_description','Kommunens behovsbeskrivelse'],['other','Øvrigt materiale']];
 const FACT_LABELS = { purpose:'Formål', processing_description:'Behandling af oplysninger', supplier_name:'Leverandør', solution_type:'Løsningstype', hosting_region:'Hosting', transfer_outside_eea:'Overførsel uden for EU/EØS', model_training:'Brug af data til modeltræning', retention_period:'Opbevaring', data_subjects:'Registrerede', personal_data_categories:'Personoplysninger', special_categories:'Følsomme oplysninger', criminal_data:'Strafbare forhold', cpr_data:'CPR-numre', vulnerable_subjects:'Sårbare personer', large_scale:'Stort omfang', systematic_monitoring:'Systematisk overvågning', automated_decisions:'Automatiske afgørelser', human_oversight:'Menneskeligt tilsyn', controls:'Oplyste sikkerhedsforanstaltninger', secondary_uses:'Sekundære formål' };
 const VALUE_LABELS = {
   controls: Object.fromEntries(CONTROL_OPTIONS),
@@ -53,7 +54,7 @@ const showValue = (field,value) => Array.isArray(value)
   ? value.map(item=>showValue(field,item)).join(', ') || 'Ikke oplyst'
   : typeof value === 'boolean' ? (value ? 'Ja' : 'Nej')
   : VALUE_LABELS[field]?.[value] || OPTION_LABELS[field]?.[value] || String(value ?? 'Ikke oplyst');
-const date = value => value ? new Date(value).toLocaleString('da-DK') : '';
+const date = value => value ? formatAssessmentDate(value) : 'Ikke registreret';
 const positiveCount = value => Number.isInteger(value) && value > 0;
 const count = value => value.toLocaleString('da-DK');
 
@@ -74,6 +75,9 @@ export default function ProcurementPage() {
   const [profile,setProfile] = useState(EMPTY);
   const [catalogSystem,setCatalogSystem] = useState(null);
   const [sources,setSources] = useState([]);
+  const [needsFiles,setNeedsFiles] = useState([]);
+  const needsTransfer = useRef(null);
+  const needsCase = useRef(caseId);
   const [analysisLimits,setAnalysisLimits] = useState(null);
   const [analysis,setAnalysis] = useState(null);
   const [review,setReview] = useState(null);
@@ -94,7 +98,16 @@ export default function ProcurementPage() {
   const request = useCallback(async (path,options) => {
     const operation = operationSequence.current;
     const requestCase = activeCase.current;
-    const response = await authFetch(path,options);
+    let response;
+    try { response = await authFetch(path,options); }
+    catch (failure) {
+      if (activeCase.current !== requestCase || operationSequence.current !== operation) {
+        const cancelled = new Error('Sagen blev ændret, mens forespørgslen kørte.');
+        cancelled.name = 'AbortError';
+        throw cancelled;
+      }
+      throw failure;
+    }
     const body = await response.json().catch(() => null);
     if (activeCase.current !== requestCase || operationSequence.current !== operation) {
       const cancelled = new Error('Sagen blev ændret, mens forespørgslen kørte.');
@@ -126,7 +139,12 @@ export default function ProcurementPage() {
     const controller = new AbortController();
     ++operationSequence.current; setBusy('');
     setProfile(EMPTY); setCatalogSystem(null); setSources([]); setAnalysisLimits(null); setAnalysis(null); setReview(null);
-    setAccepted([]); setNote(''); setUrl(''); setMessage(''); setError(''); setLoadError(false);
+    const transfer = needsTransfer.current?.caseId === caseId ? needsTransfer.current : null;
+    needsTransfer.current = null;
+    if (transfer) setNeedsFiles(transfer.files);
+    else if (needsCase.current !== caseId) setNeedsFiles([]);
+    needsCase.current = caseId;
+    setAccepted([]); setNote(''); setUrl(''); setMessage(''); setError(transfer?.error || ''); setLoadError(false);
     if (!caseId) { setLoading(false); return () => { controller.abort(); ++loadSequence.current; ++operationSequence.current; }; }
     setLoading(true);
     load(controller.signal).catch(e => { if(live && !controller.signal.aborted) { setError(e.message); setLoadError(true); } }).finally(() => { if(live) setLoading(false); });
@@ -139,8 +157,38 @@ export default function ProcurementPage() {
   const saveProfile = event => { event.preventDefault(); run('Gemmer AI-løsning…',async () => {
     const payload = Object.fromEntries(Object.keys(EMPTY).map(key => [key,profile[key]]));
     const data = await request(caseId ? `${base}/procurement` : '/api/v3/procurements',{method:caseId ? 'PATCH':'POST',...json({...payload,...(caseId ? {revision:profile.revision} : {})})});
-    setProfile(data.profile); go(1,caseId || data.case_id);
+    setProfile(data.profile);
+    setAnalysis(previous => previous ? {...previous,outdated:true} : previous);
+    setReview(null);
+    const savedCaseId = caseId || data.case_id;
+    let remaining = needsFiles;
+    try {
+      for (const file of needsFiles) {
+        const body = new FormData(); body.append('file',file); body.append('category','needs_description');
+        const source = await request(`/api/v3/cases/${encodeURIComponent(savedCaseId)}/source-material`,{method:'POST',body});
+        remaining = remaining.filter(item => item !== file);
+        setNeedsFiles(remaining);
+        setSources(items => [...items.filter(item => item.id !== source.id),source]);
+      }
+    } catch (failure) {
+      if (failure.name === 'AbortError') throw failure;
+      const explanation = `Sagen er gemt, men en behovsbeskrivelse kunne ikke uploades. ${failure instanceof TypeError ? 'Forbindelsen blev afbrudt.' : failure.message} De resterende filer står klar; prøv at gemme igen.`;
+      if (!caseId) {
+        needsTransfer.current = {caseId:savedCaseId,files:remaining,error:explanation};
+        go(0,savedCaseId);
+      }
+      throw new Error(explanation);
+    }
+    if (caseId) await load();
+    go(1,savedCaseId);
   }); };
+  const chooseNeedsFiles = event => {
+    const files = Array.from(event.target.files || []); event.target.value = '';
+    const invalid = files.find(file => !/\.(pdf|docx|pptx|txt)$/i.test(file.name) || file.size > 5 * 1024 * 1024 || file.size === 0);
+    if (invalid) { setError(`${invalid.name}: Vælg en PDF, Word (DOCX), PowerPoint (PPTX) eller tekstfil på højst 5 MB. Filen må ikke være tom.`); return; }
+    setError('');
+    setNeedsFiles(previous => [...previous,...files.filter(file => !previous.some(item => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified))]);
+  };
   const upload = event => { if (!caseId) return; const files=Array.from(event.target.files || []); event.target.value=''; if(!files.length) return; run('Gemmer og læser materialet…',async () => {
     let saved=0;
     try { for(const file of files) { const body=new FormData(); body.append('file',file); body.append('category',category); await request(`${base}/source-material`,{method:'POST',body}); saved+=1; } }
@@ -189,6 +237,15 @@ export default function ProcurementPage() {
           {catalogSystem.parties?.length > 0 ? <><p>Katalogets relationer fremgår nedenfor. Kontrollér, hvem der er jeres aftalepart, før du bruger navnet som leverandør. Dit nuværende leverandørnavn ændres kun, når du vælger det.</p><Actions>{catalogSystem.parties.map(party=><Button key={`${party.id}-${party.role}`} type="button" $secondary onClick={()=>update('supplier_name',party.name)}>{party.role_label}: {party.name} · Brug som leverandør</Button>)}</Actions></> : <p>Der er ingen leverandørrelation i kataloget. Søg efter leverandøren eller skriv navnet manuelt.</p>}
         </Notice>}
         <FieldLabel htmlFor="intended-use" label="Kommunens påtænkte anvendelse" help="Beskriv den konkrete opgave, hvem der bruger AI, hvilke oplysninger der indgår, og hvordan medarbejderne kontrollerer resultatet. Beskriv kommunens behov frem for kun at kopiere leverandørens produkttekst." /><textarea id="intended-use" aria-describedby="intended-use-help" required minLength={20} maxLength={10000} value={profile.intended_use} onChange={e=>update('intended_use',e.target.value)} placeholder="Hvad skal AI-funktionen gøre, hvem skal bruge den, hvilke oplysninger behandler den, og hvordan gennemgår medarbejdere dens output?" />
+        <Section aria-labelledby="needs-upload-title">
+          <h3 id="needs-upload-title">Vedlæg kommunens behovsbeskrivelse</h3>
+          <p>Har I allerede beskrevet behovet i et dokument? Vedlæg fx et behovsnotat, en kravbeskrivelse eller en præsentation. Skriv stadig et kort resumé af den påtænkte anvendelse ovenfor.</p>
+          <FieldLabel htmlFor="needs-files" label="Upload behovsbeskrivelse (valgfri)" help="Dokumentet gemmes på sagen som Kommunens behovsbeskrivelse og indgår som kilde, når du starter materialeanalysen. Det beskriver jeres behov og krav; det dokumenterer ikke, at leverandøren opfylder dem." />
+          <input id="needs-files" aria-describedby="needs-files-help needs-file-formats" type="file" multiple accept=".pdf,.docx,.pptx,.txt" disabled={Boolean(busy)} onChange={chooseNeedsFiles} />
+          <small id="needs-file-formats">PDF, Word (DOCX), PowerPoint (PPTX) eller tekst · højst 5 MB pr. fil. Filerne uploades, når du gemmer. Scannede dokumenter skal have tekstgenkendelse.</small>
+          {needsFiles.length > 0 && <ul aria-label="Behovsbeskrivelser klar til upload" style={{marginTop:18}}>{needsFiles.map((file,index)=><li key={`${file.name}-${index}`}><strong>{file.name}</strong> · Klar til upload <Button type="button" $secondary disabled={Boolean(busy)} onClick={()=>setNeedsFiles(files=>files.filter(item=>item!==file))} aria-label={`Fjern ${file.name} fra upload`}>Fjern</Button></li>)}</ul>}
+          {sources.filter(source=>source.category==='needs_description').length > 0 && <div style={{marginTop:18}}><strong>Allerede gemt på sagen</strong><ul>{sources.filter(source=>source.category==='needs_description').map(source=><li key={source.id}>{source.title} · {date(source.uploaded_at)} <Button type="button" $secondary disabled={Boolean(busy)} onClick={()=>run('Henter behovsbeskrivelse…',()=>download(source.download_url,source.original_filename))}>Hent behovsbeskrivelse</Button></li>)}</ul></div>}
+        </Section>
         <Grid><div><FieldLabel htmlFor="journal-reference" label="Journalreference (valgfri)" help="Sagsnummeret fra kommunens journalsystem, hvis sagen allerede er oprettet der. Feltet kan stå tomt." /><input id="journal-reference" aria-describedby="journal-reference-help" maxLength={100} value={profile.journal_reference} onChange={e=>update('journal_reference',e.target.value)} /></div></Grid>
         <Actions><Button disabled={Boolean(busy)}>Gem og tilføj materiale →</Button></Actions>
       </form>}
@@ -210,7 +267,7 @@ export default function ProcurementPage() {
         <h3>Materiale på sagen · {sources.length}</h3>
         {sources.length>0&&<details><summary>Søg i sagens dokumenter og kildeuddrag</summary><EvidenceNavigator sources={sources} compact /></details>}
         {!sources.length && <Notice>Start med en produktbeskrivelse og den databehandleraftale, der skal gælde for jeres anvendelse.</Notice>}
-        {sources.map(source=><Section key={source.id}><h3>{source.title}</h3><p><small>{date(source.uploaded_at)} · {source.excerpts.length} tekstuddrag · Ikke fagligt godkendt</small></p>{source.source_url && <p><a href={source.source_url} target="_blank" rel="noreferrer">{source.source_url}</a></p>}{source.warnings.map((warning,i)=><Notice key={i}>{warning}</Notice>)}<details><summary>Se tekstgrundlag</summary>{source.excerpts.slice(0,8).map(excerpt=><div key={excerpt.id}><small>{excerpt.locator}</small><blockquote>{excerpt.text}</blockquote></div>)}{source.excerpts.length>8&&<p>Viser de første 8 uddrag. Hent dokumentet for at læse hele materialet.</p>}</details><Button $secondary disabled={Boolean(busy)} onClick={()=>run('Henter dokument…',()=>download(source.download_url,source.original_filename))}>Hent kilde</Button></Section>)}
+        {sources.map(source=><Section key={source.id}><h3>{source.title}</h3><p><small>{CATEGORIES.find(([value])=>value===source.category)?.[1] || 'Kildemateriale'} · {date(source.uploaded_at)} · {source.excerpts.length} tekstuddrag · Ikke fagligt godkendt</small></p>{source.source_url && <p><a href={source.source_url} target="_blank" rel="noreferrer">{source.source_url}</a></p>}{source.warnings.map((warning,i)=><Notice key={i}>{warning}</Notice>)}<details><summary>Se tekstgrundlag</summary>{source.excerpts.slice(0,8).map(excerpt=><div key={excerpt.id}><small>{excerpt.locator}</small><blockquote>{excerpt.text}</blockquote></div>)}{source.excerpts.length>8&&<p>Viser de første 8 uddrag. Hent dokumentet for at læse hele materialet.</p>}</details><Button $secondary disabled={Boolean(busy)} onClick={()=>run('Henter dokument…',()=>download(source.download_url,source.original_filename))}>Hent kilde</Button></Section>)}
         <Actions><Button disabled={Boolean(busy)||!caseId||!sources.some(source=>source.excerpts.length)} onClick={()=>run(batchingEnabled ? 'AI gennemgår materialet, samler eventuelle delanalyser og kører JEV-kontrol…' : 'AI gennemgår materialet, og JEV kontrollerer kildegrundlaget…',async()=>{const data=await request(`${base}/procurement/analyze`,{method:'POST'});setAnalysis(data);setReview(null);setAccepted([]);go(2);})}>Analysér leverandørmateriale →</Button>{analysis&&<Button $secondary disabled={Boolean(busy)} onClick={()=>go(2)}>Se seneste analyse</Button>}</Actions>
         <p style={{marginTop:14}}><small>AI udleder forslag fra materialet. JEV markerer udsagn, der kan mangle belæg; den faglige og juridiske vurdering ligger hos kommunen.</small></p>
       </>}

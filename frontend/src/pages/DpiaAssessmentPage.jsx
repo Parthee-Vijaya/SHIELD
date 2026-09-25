@@ -76,6 +76,7 @@ const Lead = styled.p`
 `;
 
 const SafetyNote = styled.div`
+  border-radius: ${p => p.theme.borderRadius};
   max-width: 350px;
   padding: 20px 22px;
   border-left: 4px solid ${p => p.theme.colors.primary};
@@ -86,6 +87,9 @@ const SafetyNote = styled.div`
 `;
 
 const Workspace = styled.section`
+  margin-top: 24px;
+  border: 1px solid ${p => p.theme.colors.borderSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   overflow: hidden;
@@ -139,7 +143,7 @@ const StepItem = styled.li`
 
 const FormBody = styled.div`
   min-width: 0;
-  padding: clamp(34px, 5vw, 66px);
+  padding: clamp(20px, 3vw, 40px);
 `;
 
 const SectionHead = styled.div`
@@ -187,7 +191,7 @@ const Input = styled.input`
   box-sizing: border-box;
   min-height: 48px;
   padding: 12px 14px;
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   border-color: ${p => p.$invalid ? p.theme.colors.danger : p.theme.colors.border};
 `;
 
@@ -199,7 +203,7 @@ const Textarea = styled.textarea`
   min-height: 148px;
   resize: vertical;
   padding: 12px 14px;
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   border-color: ${p => p.$invalid ? p.theme.colors.danger : p.theme.colors.border};
 `;
 
@@ -210,7 +214,7 @@ const Select = styled.select`
   box-sizing: border-box;
   min-height: 48px;
   padding: 12px 14px;
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   border-color: ${p => p.$invalid ? p.theme.colors.danger : p.theme.colors.border};
 `;
 
@@ -236,7 +240,7 @@ const VerificationList = styled.div`
 const VerificationCard = styled.div`
   padding: 12px;
   border: 1px solid ${p => p.$verified ? p.theme.colors.success : p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.$verified ? p.theme.colors.successSoft : p.theme.colors.surface};
 
   > label {
@@ -259,7 +263,7 @@ const CheckLabel = styled.label`
   margin: 0 !important;
   padding: 10px 12px;
   border: 1px solid ${p => p.$checked ? p.theme.colors.primary : p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.$checked ? p.theme.colors.primaryBg : p.theme.colors.surface};
   font-weight: 500 !important;
   cursor: pointer;
@@ -274,7 +278,7 @@ const Question = styled.fieldset`
   margin: 0;
   padding: 15px;
   border: 1px solid ${p => p.$invalid ? p.theme.colors.danger : p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   legend { float: left; width: 100%; max-width: 100%; padding: 0; margin: 0 0 14px; font-size: 0.87rem; font-weight: 650; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
 `;
 
@@ -294,7 +298,7 @@ const Radios = styled.div`
     margin: 0;
     padding: 8px 12px;
     border: 1px solid ${p => p.theme.colors.border};
-    border-radius: 0;
+    border-radius: ${p => p.theme.borderRadius};
     cursor: pointer;
     font-weight: 550;
     line-height: 1.4;
@@ -306,7 +310,7 @@ const FormError = styled.div`
   margin-bottom: 20px;
   padding: 12px 14px;
   border: 1px solid ${p => p.theme.colors.danger};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.theme.colors.dangerSoft};
   color: ${p => p.theme.colors.danger};
   font-size: 0.87rem;
@@ -329,7 +333,7 @@ const Button = styled.button`
   min-height: 48px;
   padding: 11px 20px;
   border: 1px solid ${p => p.$primary ? p.theme.colors.primary : p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.$primary ? p.theme.colors.primary : p.theme.colors.surface};
   color: ${p => p.$primary ? '#fff' : p.theme.colors.text};
   font-size: 0.82rem;
@@ -351,7 +355,7 @@ const Saved = styled.span`
 const Review = styled.div`
   padding: 18px;
   border: 1px solid ${p => p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.theme.colors.surfaceAlt};
   h3 { margin: 0 0 10px; }
   dl { display: grid; grid-template-columns: 180px 1fr; gap: 8px 16px; margin: 0; }
@@ -456,7 +460,7 @@ const ResultLegalWrap = styled.div`margin-bottom: 24px;`;
 
 const ResultTop = styled.section`
   position: relative;
-  padding: clamp(34px, 5vw, 66px);
+  padding: clamp(20px, 3vw, 40px);
   border: 1px solid ${p => p.theme.colors.border};
   background: ${p => p.theme.colors.surface};
   h1 { ${pageTitleStyle} }
@@ -485,7 +489,7 @@ const Pill = styled.span`
   display: inline-flex;
   padding: 6px 9px;
   border: 1px solid ${p => p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.theme.colors.surfaceAlt};
   font: 650 0.75rem ${p => p.theme.fonts.mono};
 `;
@@ -534,7 +538,7 @@ const Card = styled.section`
   margin-bottom: 24px;
   padding: 26px;
   border: 1px solid ${p => p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.theme.colors.surface};
   h2, h3 { margin: 0 0 12px; }
   p { white-space: pre-wrap; }
@@ -602,7 +606,7 @@ const ReviewDetails = styled.details`
 const InlineError = styled.div`
   margin-top: 16px;
   padding: 12px 14px;
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.theme.colors.dangerSoft};
   color: ${p => p.theme.colors.danger};
   font-weight: 600;

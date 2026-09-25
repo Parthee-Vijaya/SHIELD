@@ -7,7 +7,9 @@ import { actorLabel, categoryLabel, normalizeTimestamp, NOT_RECORDED, recordedDa
 
 const HistoryList = styled.ol`
   list-style: none; margin: 18px 0 0; padding: 0;
-  > li { border-top: 1px solid ${p => p.theme.colors.line}; padding: 21px 0; min-width: 0; }
+  > li { position: relative; border-left: 2px solid ${p => p.theme.colors.lineSoft}; padding: 0 0 26px 26px; margin-left: 6px; min-width: 0; }
+  > li::before { content: ''; position: absolute; top: 5px; left: -6px; width: 10px; height: 10px; border-radius: 50%; background: ${p => p.theme.colors.secondary}; box-shadow: 0 0 0 4px ${p => p.theme.colors.background}; }
+  > li:last-child { padding-bottom: 0; }
   h4 { margin: 0; font-size: 1.04rem; line-height: 1.45; }
   p { margin: 9px 0; white-space: pre-wrap; }
 `;
@@ -16,7 +18,7 @@ const Conditions = styled.ul`
   li { margin: 7px 0; font-size: .88rem; line-height: 1.6; }
 `;
 const Changes = styled.dl`
-  margin: 16px 0; padding: 15px; background: ${p => p.theme.colors.paperSoft};
+  margin: 16px 0; padding: 15px; border-radius: ${p => p.theme.borderRadius}; background: ${p => p.theme.colors.paperSoft};
   > div + div { border-top: 1px solid ${p => p.theme.colors.line}; margin-top: 13px; padding-top: 13px; }
   dt { font-size: .8rem; font-weight: 650; }
   dd { margin: 7px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; font-size: .84rem; line-height: 1.6; }

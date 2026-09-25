@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from src.services.source_origin import source_origin_label, NEEDS_NOTICE
+
 from datetime import UTC, datetime
 from io import BytesIO
 import re
@@ -110,6 +112,8 @@ def references(doc, refs: list[dict], sources: dict[str, dict]):
             f"{source.get('title', ref['source_id'])} · {locator} · version {source.get('version', 'ukendt')}",
             label="Kilde",
         )
+        if source_origin_label(source):
+            paragraph(doc, source_origin_label(source), label="Kildetype")
         if source.get("source_url"):
             paragraph(doc, source["source_url"], label="Hjemmeside")
 
@@ -300,6 +304,11 @@ def build_procurement_review_docx(
         doc,
         "Leverandørmateriale dokumenterer leverandørens udsagn. Det bekræfter ikke i sig selv kommunens konkrete anvendelse, aftalens indgåelse eller den faktiske drift.",
     )
+    if any(
+        source.get("evidence_type") == "municipal_needs_statement"
+        for source in sources.values()
+    ):
+        paragraph(doc, NEEDS_NOTICE)
     doc.add_heading("Oplysninger valgt til vurderingsgrundlaget", level=1)
     paragraph(
         doc,
@@ -405,6 +414,8 @@ def build_procurement_review_docx(
             doc,
             f"{group['locator_label']} · version {source.get('version', 'ukendt')}",
         )
+        if source_origin_label(source):
+            paragraph(doc, source_origin_label(source), label="Kildetype")
         if source.get("source_url"):
             paragraph(doc, source["source_url"], label="Hjemmeside")
         paragraph(doc, group["reference_label"], label="Kildereference")

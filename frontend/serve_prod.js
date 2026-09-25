@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Tyr production-frontend server.
+ * SHIELD production-frontend server.
  *
  * Why this exists: the `serve` package is static-only — it can't proxy
  * /api/* to the backend, so a production build of the React app loses
@@ -9,7 +9,7 @@
  *
  * 1. Proxies /api/*, /metrics, /health, /readyz to the FastAPI backend
  *    (default localhost:8001) so the React app can fetch with relative URLs
- * 2. Serves the static bundle from frontend/build/
+ * 2. Serves the static bundle from FRONTEND_BUILD_DIR (default frontend/build/)
  * 3. Falls back to index.html for unknown routes (SPA routing)
  *
  * Bound to 0.0.0.0 by default so Tailscale-clients on iPhone can reach it.
@@ -18,16 +18,27 @@
  *   FRONTEND_PORT  default 8090
  *   FRONTEND_HOST  default 0.0.0.0
  *   API_BACKEND    default http://localhost:8001
+ *   FRONTEND_BUILD_DIR  stable published build outside synced folders in production
  */
 
 const express = require('express');
+const fs = require('node:fs');
 const path = require('path');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const PORT = parseInt(process.env.FRONTEND_PORT || '8090', 10);
 const HOST = process.env.FRONTEND_HOST || '0.0.0.0';
 const BACKEND = process.env.API_BACKEND || 'http://localhost:8001';
-const BUILD_DIR = path.resolve(__dirname, 'build');
+const BUILD_DIR = path.resolve(process.env.FRONTEND_BUILD_DIR || path.join(__dirname, 'build'));
+
+// Refuse to start with an unpublished release instead of returning ENOENT to users.
+try {
+  if (!fs.statSync(path.join(BUILD_DIR, 'index.html')).isFile()) throw new Error('missing index');
+  fs.accessSync(path.join(BUILD_DIR, 'index.html'), fs.constants.R_OK);
+} catch {
+  console.error('[shield-frontend] No readable index.html in the configured build directory. Publish a complete frontend build before starting.');
+  process.exit(1);
+}
 
 const app = express();
 
@@ -78,21 +89,31 @@ app.use(express.static(BUILD_DIR, {
   },
 }));
 
-// SPA fallback — anything not handled above renders the React app
+// Missing chunks must never become HTML responses or be cached as JavaScript.
+app.use('/static', (_req, res) => {
+  res.setHeader('Cache-Control', NO_STORE_CACHE);
+  res.status(404).type('text/plain').send('Filen findes ikke. Genindlæs siden for at hente den aktuelle version.');
+});
+
+// SPA fallback — application routes render the React app
 app.get('*', (_req, res) => {
   res.setHeader('Cache-Control', NO_STORE_CACHE);
-  res.sendFile(path.join(BUILD_DIR, 'index.html'));
+  res.sendFile(path.join(BUILD_DIR, 'index.html'), (error) => {
+    if (!error) return;
+    if (res.headersSent) return res.end();
+    res.status(503).type('html').send('<!doctype html><html lang="da"><meta charset="utf-8"><title>SHIELD opdateres</title><h1>SHIELD er midlertidigt utilgængelig</h1><p>Genindlæs siden om et øjeblik.</p></html>');
+  });
 });
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`[tyr-frontend] serving ${BUILD_DIR}`);
-  console.log(`[tyr-frontend] listening on http://${HOST}:${PORT}`);
-  console.log(`[tyr-frontend] proxying /api, /health, /readyz, /metrics → ${BACKEND}`);
+  console.log(`[shield-frontend] serving ${BUILD_DIR}`);
+  console.log(`[shield-frontend] listening on http://${HOST}:${server.address().port}`);
+  console.log(`[shield-frontend] proxying /api, /health, /readyz, /metrics → ${BACKEND}`);
 });
 
 // Graceful shutdown so SIGTERM from stop_tyr.sh finishes pending requests
 function shutdown(signal) {
-  console.log(`[tyr-frontend] received ${signal}, shutting down`);
+  console.log(`[shield-frontend] received ${signal}, shutting down`);
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 8000).unref();
 }

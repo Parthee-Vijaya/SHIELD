@@ -16,13 +16,14 @@ const Navigation = styled.nav`
   div { display: flex; flex-wrap: wrap; gap: 8px; }
   a {
     padding: 10px 14px;
+    border-radius: ${p => p.theme.borderRadius};
     font-size: 0.83rem;
     color: ${p => p.theme.colors.textMuted};
     border: 1px solid transparent;
     overflow-wrap: anywhere;
   }
   a[aria-current='page'] {
-    background: ${p => p.theme.colors.surface};
+    background: ${p => p.theme.colors.primarySoft};
     border-color: ${p => p.theme.colors.border};
     color: ${p => p.theme.colors.primary};
     font-weight: 650;

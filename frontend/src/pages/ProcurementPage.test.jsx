@@ -365,3 +365,157 @@ test('summary and conflict flags are visible alongside actual generation provena
   expect(screen.queryByText('codex-local-test')).not.toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Gem gennemgang og fortsæt →'})).toBeEnabled();
 });
+
+
+test('stages a municipal needs description across tabs and uploads it after the new case is saved', async()=>{
+  const needs={...source,id:'needs-1',title:'Behovsnotat',category:'needs_description'};
+  let material=[];
+  authFetch.mockImplementation((path,options)=>{
+    if(path==='/api/v3/procurements') return reply({case_id:'case-created',profile});
+    if(path.endsWith('/procurement')) return reply({profile,analysis:null,review:null});
+    if(path.endsWith('/source-material') && options?.method==='POST') {material=[needs]; return reply(needs);}
+    if(path.endsWith('/source-material')) return reply({items:material});
+    throw new Error(`Unexpected request ${path}`);
+  });
+  mount('/anskaffelse');
+  const file=new File(['Kommunens behov og krav til AI-løsningen.'],'behov.txt',{type:'text/plain'});
+  fireEvent.change(screen.getByLabelText('Upload behovsbeskrivelse (valgfri)'),{target:{files:[file]}});
+  expect(authFetch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'2. Leverandørmateriale'}));
+  fireEvent.click(screen.getByRole('button',{name:'1. AI-løsning og behov'}));
+  expect(screen.getByText('behov.txt')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Løsningens navn'),{target:{value:profile.system_name}});
+  fireEvent.change(screen.getByLabelText('Ansvarlig for sagen'),{target:{value:profile.owner}});
+  fireEvent.change(screen.getByLabelText('Kommunens påtænkte anvendelse'),{target:{value:profile.intended_use}});
+  fireEvent.click(screen.getByRole('button',{name:'Gem og tilføj materiale →'}));
+  expect(await screen.findByRole('heading',{name:'Behovsnotat'})).toBeInTheDocument();
+  const upload=authFetch.mock.calls.find(([,options])=>options?.body instanceof FormData);
+  expect(upload[0]).toBe('/api/v3/cases/case-created/source-material');
+  expect(upload[1].body.get('category')).toBe('needs_description');
+  expect(upload[1].body.get('file').name).toBe('behov.txt');
+  expect(authFetch.mock.calls.filter(([path])=>/analyze/.test(path))).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button',{name:'1. AI-løsning og behov'}));
+  expect(screen.getByText('Allerede gemt på sagen')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Behovsbeskrivelser klar til upload')).not.toBeInTheDocument();
+});
+
+test('a partial needs upload keeps the saved case and retries only remaining files without duplicate creation', async()=>{
+  const needs={...source,id:'needs-1',title:'Første behovsnotat',category:'needs_description'};
+  let uploads=0; let created=0; let material=[];
+  authFetch.mockImplementation((path,options)=>{
+    if(path==='/api/v3/procurements') {created+=1;return reply({case_id:'case-created',profile});}
+    if(path.endsWith('/procurement')) return reply({profile,analysis:null,review:null});
+    if(path.endsWith('/source-material') && options?.method==='POST') {
+      uploads+=1;
+      if(uploads===2) return reply({detail:'Dokumentet kunne ikke læses.'},false);
+      material=[...material,needs]; return reply(needs);
+    }
+    if(path.endsWith('/source-material')) return reply({items:material});
+    throw new Error(`Unexpected request ${path}`);
+  });
+  mount('/anskaffelse');
+  fireEvent.change(screen.getByLabelText('Løsningens navn'),{target:{value:profile.system_name}});
+  fireEvent.change(screen.getByLabelText('Ansvarlig for sagen'),{target:{value:profile.owner}});
+  fireEvent.change(screen.getByLabelText('Kommunens påtænkte anvendelse'),{target:{value:profile.intended_use}});
+  fireEvent.change(screen.getByLabelText('Upload behovsbeskrivelse (valgfri)'),{target:{files:[new File(['et'],'første.txt'),new File(['to'],'anden.txt')]}});
+  fireEvent.click(screen.getByRole('button',{name:'Gem og tilføj materiale →'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Sagen er gemt, men en behovsbeskrivelse kunne ikke uploades.');
+  await screen.findByText('Allerede gemt på sagen');
+  expect(screen.getByTestId('location')).toHaveTextContent('case=case-created&step=profile');
+  expect(screen.getByText('anden.txt')).toBeInTheDocument();
+  expect(screen.queryByText('første.txt')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Gem og tilføj materiale →'}));
+  await screen.findByRole('heading',{name:'Saml leverandørmaterialet'});
+  expect(created).toBe(1);
+  expect(uploads).toBe(3);
+  const retry=authFetch.mock.calls.filter(([,options])=>options?.body instanceof FormData).at(-1);
+  expect(retry[1].body.get('file').name).toBe('anden.txt');
+});
+
+test('invalid and removed needs files never get uploaded, and queued files are not carried to another case', async()=>{
+  mockCase();
+  mount('/anskaffelse');
+  const input=screen.getByLabelText('Upload behovsbeskrivelse (valgfri)');
+  fireEvent.change(input,{target:{files:[new File(['x'],'behov.exe')]}});
+  expect(screen.getByRole('alert')).toHaveTextContent('behov.exe');
+  fireEvent.change(input,{target:{files:[new File(['x'],'behov.txt')]}});
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Fjern behov.txt fra upload'}));
+  expect(screen.queryByText('behov.txt')).not.toBeInTheDocument();
+  fireEvent.change(input,{target:{files:[new File(['x'],'behov.txt')]}});
+  fireEvent.click(screen.getByRole('button',{name:'Skift sag i testen'}));
+  await screen.findByDisplayValue(profile.system_name);
+  expect(screen.queryByText('behov.txt')).not.toBeInTheDocument();
+  expect(authFetch.mock.calls.filter(([,options])=>options?.method)).toHaveLength(0);
+});
+
+
+test('saving needs material refreshes the analysis and blocks reuse of an outdated review', async()=>{
+  let saved=false;
+  const needs={...source,category:'needs_description'};
+  authFetch.mockImplementation((path,options)=>{
+    if(path.endsWith('/procurement') && options?.method==='PATCH') return reply({profile:{...profile,revision:2}});
+    if(path.endsWith('/source-material') && options?.method==='POST') {saved=true;return reply(needs);}
+    if(path.endsWith('/procurement')) return reply({profile,analysis:{...analysis,outdated:saved},review:{id:'old-review',analysis_id:analysis.id,accepted_fact_ids:['f1'],note:''}});
+    if(path.endsWith('/source-material')) return reply({items:saved?[needs]:[]});
+    if(path.includes('/clarifications?')) return reply({items:[]});
+    throw new Error(`Unexpected request ${path}`);
+  });
+  mount();
+  await screen.findByDisplayValue(profile.system_name);
+  fireEvent.change(screen.getByLabelText('Upload behovsbeskrivelse (valgfri)'),{target:{files:[new File(['Nye krav til løsningen'],'nye-behov.txt')]}});
+  fireEvent.click(screen.getByRole('button',{name:'Gem og tilføj materiale →'}));
+  await screen.findByRole('heading',{name:'Saml leverandørmaterialet'});
+  fireEvent.click(screen.getByRole('button',{name:'3. Oplysninger og kilder'}));
+  expect(screen.getByRole('button',{name:'Gem gennemgang og fortsæt →'})).toBeDisabled();
+  fireEvent.click(screen.getByRole('button',{name:'4. Vurdering og jura'}));
+  expect(screen.getByRole('button',{name:'Fortsæt til konsekvensanalyse →'})).toBeDisabled();
+});
+
+
+test('a rejected upload from a departed case cannot navigate back or carry files to the new case', async()=>{
+  let rejectUpload;
+  authFetch.mockImplementation((path,options)=>{
+    if(path==='/api/v3/procurements') return reply({case_id:'case-created',profile});
+    if(options?.body instanceof FormData) return new Promise((resolve,reject)=>{rejectUpload=reject;});
+    if(path.endsWith('/procurement')) return reply({profile:{...profile,system_name:'Anden sag'},analysis:null,review:null});
+    if(path.endsWith('/source-material')) return reply({items:[]});
+    throw new Error(`Unexpected request ${path}`);
+  });
+  mount('/anskaffelse');
+  fireEvent.change(screen.getByLabelText('Løsningens navn'),{target:{value:profile.system_name}});
+  fireEvent.change(screen.getByLabelText('Ansvarlig for sagen'),{target:{value:profile.owner}});
+  fireEvent.change(screen.getByLabelText('Kommunens påtænkte anvendelse'),{target:{value:profile.intended_use}});
+  fireEvent.change(screen.getByLabelText('Upload behovsbeskrivelse (valgfri)'),{target:{files:[new File(['behov'],'behov.txt')]}});
+  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Gem og tilføj materiale →'}));});
+  expect(rejectUpload).toBeDefined();
+  fireEvent.click(screen.getByRole('button',{name:'Skift sag i testen'}));
+  await screen.findByDisplayValue('Anden sag');
+  await act(async()=>{rejectUpload(new TypeError('Network failed'));});
+  expect(screen.getByTestId('location')).toHaveTextContent('case=case-b&step=profile');
+  expect(screen.queryByText('behov.txt')).not.toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+test('retrying a failed reload after case creation preserves the remaining needs files', async()=>{
+  let loadFails=true;
+  authFetch.mockImplementation((path,options)=>{
+    if(path==='/api/v3/procurements') return reply({case_id:'case-created',profile});
+    if(options?.body instanceof FormData) return reply({detail:'Upload afbrudt.'},false);
+    if(path.endsWith('/procurement')) return loadFails ? reply({detail:'Sagen kunne ikke hentes.'},false) : reply({profile,analysis:null,review:null});
+    if(path.endsWith('/source-material')) return reply({items:[]});
+    throw new Error(`Unexpected request ${path}`);
+  });
+  mount('/anskaffelse');
+  fireEvent.change(screen.getByLabelText('Løsningens navn'),{target:{value:profile.system_name}});
+  fireEvent.change(screen.getByLabelText('Ansvarlig for sagen'),{target:{value:profile.owner}});
+  fireEvent.change(screen.getByLabelText('Kommunens påtænkte anvendelse'),{target:{value:profile.intended_use}});
+  fireEvent.change(screen.getByLabelText('Upload behovsbeskrivelse (valgfri)'),{target:{files:[new File(['behov'],'behov.txt')]}});
+  fireEvent.click(screen.getByRole('button',{name:'Gem og tilføj materiale →'}));
+  await screen.findByRole('button',{name:'Hent oplysninger igen'});
+  loadFails=false;
+  fireEvent.click(screen.getByRole('button',{name:'Hent oplysninger igen'}));
+  expect(await screen.findByText('behov.txt')).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Fjern behov.txt fra upload'})).toBeEnabled();
+  expect(authFetch.mock.calls.filter(([path])=>path==='/api/v3/procurements')).toHaveLength(1);
+});

@@ -8,6 +8,12 @@ SHIELD samler materiale, dokumenterer faglige afklaringer og udarbejder konsekve
 
 Brug eksisterende logoer og farver fra `frontend/src/theme.js`. Den primære farve er teglrød `#bc4d30`, baggrunden `#f5f5f1`, overflader `#fffefb`, teksten `#252525`. Mørkt tema bruger sine egne semantiske farver. Undgå hårdkodede lyse farver i nye komponenter.
 
+## Visuel retning
+
+Den lyse designudgave er godkendt som udgangspunkt for den eksisterende applikation. Bevar SHIELDs varme farver og Geist-typografi. Brug afrundede kontroller (8 px), paneler (16 px), rolige skillelinjer og diskrete skygger. Ingen ripple-effekt, WebGL, glød eller dekorative baggrundsanimationer. Den eksisterende mulighed for mørkt tema bevares som brugerpræference.
+
+Navigation, datakilder, rollebeskyttelse, formulartrin, modelkørsler, kildebelæg, eksport og historik må ikke erstattes af previewets fiktive indhold eller handlinger. Alle oplysninger og funktioner skal stadig kunne tilgås, også på mobil.
+
 ## Typografi og mål
 
 - Geist Variable bruges til overskrifter, brødtekst, felter og knapper. Geist Mono bruges kun til tekniske identifikatorer og tilsvarende metadata.
@@ -19,7 +25,9 @@ Brug eksisterende logoer og farver fra `frontend/src/theme.js`. Den primære far
 
 ## Hierarki og funktioner
 
-Startsiden prioriterer søgning, fortsættelse af sager og én tydelig oprettelseshandling. Introduktion og materialehjælp er tilgængelig efter behov. Undgå gentagne statistikfelter eller dekorative kort, som skubber brugerens opgave ned.
+Startsiden prioriterer søgning, fortsættelse af sager og én tydelig oprettelseshandling. Introduktion og materialehjælp er foldet ud fra start og kan foldes sammen. Undgå gentagne statistikfelter eller dekorative kort, som skubber brugerens opgave ned.
+
+Headeren har én profilmenu under brugerens navn til søgning, tema, supplerende værktøjer, guide og session. Kommunelogo, produktnavn og version står kompakt ved siden af hinanden.
 
 Søgning på forsiden og via ⌘K er samme funktion. Resultater opdeles i sager, vurderinger, dokumenter og sider/vejledning. En søgning efter dokumentation er ikke en AI-analyse eller juridisk vurdering.
 
@@ -36,6 +44,10 @@ Lokal fremvisning må hedde “Fortsæt som Parthee”, når det er serverens ko
 Katalogfelter skal kunne søges og betjenes med tastatur samt acceptere ukendte navne. Rettighedshaver, databehandler og aftalepart er forskellige roller. Et katalogvalg må ikke tavst erstatte et allerede indtastet leverandørnavn eller opfinde en AI-funktion i et system.
 
 Vis hjælpetekst tæt på feltet, konkrete valideringsfejl og tydelige loading-/tom-/fejltilstande. Brug én main-region pr. side. Bevar formulararbejde ved navigation mellem trin.
+
+Vurderingshistorik viser seneste version pr. sag og vurderingstype. Ældre versioner foldes ud. Vis navn, ansvarlig og registreret start- og gemmetid separat; ukendte metadata må ikke opfindes.
+
+Behovsbeskrivelser kan vælges på første formulartrin og uploades ved gem. De mærkes som kommunens behov og indgår som kilde, uden at krav fremstilles som implementerede leverandørforanstaltninger.
 
 ## Kontrol før levering
 

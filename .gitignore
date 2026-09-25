@@ -61,3 +61,6 @@ frontend/public/mockups
 *.pfx
 .claude/
 .gstack/
+
+# FileProvider conflict copies of generated frontend output
+/frontend/build [0-9]*/

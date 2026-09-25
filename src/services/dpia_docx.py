@@ -7,6 +7,8 @@ sources, accept risks, or infer an approval from an assessment status.
 
 from __future__ import annotations
 
+from src.services.source_origin import source_origin_label, NEEDS_NOTICE
+
 from collections.abc import Iterable, Mapping
 from io import BytesIO
 import re
@@ -787,6 +789,12 @@ def _provenance(doc: DocumentType, result: DPIAAssessmentResponse) -> None:
                         )
                     )
                 )
+                if source_origin_label(source):
+                    _paragraph(
+                        doc, source_origin_label(source), label="Kildens oprindelse"
+                    )
+                if source_origin_label(source) == "Kommunens behovsbeskrivelse":
+                    _paragraph(doc, NEEDS_NOTICE)
                 if source_url:
                     _paragraph(doc, source_url, label="Kildeadresse")
                 for key, label in (

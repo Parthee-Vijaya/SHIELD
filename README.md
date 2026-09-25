@@ -8,11 +8,15 @@ Målet er et dokumenteret grundlag for dialog mellem sagsbehandler, systemejer, 
 
 En konsekvensanalyse vedrørende databeskyttelse kaldes også en **DPIA**. I SHIELD forbindes beskrivelsen af behandlingen med de risici, den kan medføre for de registrerede, og de foranstaltninger, kommunen skal tage stilling til.
 
-**Aktuel produktversion: v0.9.0.** Versionsnummeret vises i løsningen og vedligeholdes i [`frontend/src/config/brand.js`](frontend/src/config/brand.js). Ældre pakkenavne og versionsnumre findes fortsat i projektets tekniske historik.
+**Aktuel produktversion: v0.10.1.** Versionsnummeret vises i løsningen og vedligeholdes i [`frontend/src/config/brand.js`](frontend/src/config/brand.js). Ældre pakkenavne og versionsnumre findes fortsat i projektets tekniske historik.
 
 Versionsnummeret hæves ved hver afsluttet samling af ændringer i løsningen. Brug `npm run version:bump -- patch` til rettelser og mindre forbedringer eller `-- minor` til nye funktioner. Kommandoen opdaterer det synlige nummer, pakkefilerne, lockfilen og denne README samlet. Tilføj ændringerne i [CHANGELOG.md](CHANGELOG.md), og byg brugerfladen igen. `npm run version:check` kontrollerer sammenhængen og køres også før frontendstart og build. Genbygning af samme kode hæver ikke i sig selv nummeret.
 
 > SHIELD er beslutningsstøtte. En genereret tekst, en lav risikoscore eller en JEV-kontrol udgør ikke en juridisk godkendelse. Skærmbillederne nedenfor viser en faglig arbejdsversion med en påtænkt kommunal anvendelse. De dokumenterer ikke et faktisk kommunalt indkøb, implementerede foranstaltninger eller en godkendelse fra Kalundborg Kommune.
+
+## Til næste AI-agent
+
+Start i [AGENTS.md](AGENTS.md) for arbejdsregler og [HANDOFF.md](HANDOFF.md) for den aktuelle branch, drift, skills, teststatus og begrænsninger. Den gamle Judge Dredd/Tyr-checkout er ikke grundlaget for denne SHIELD-version.
 
 ## Indhold
 
@@ -64,7 +68,7 @@ Forsiden prioriterer søgning, næste handling og aktuelle sager. Søgning og hu
 
 ### 1. Start med den løsning, kommunen vil bruge
 
-Forsiden giver en indgang til at oprette en AI-løsning, finde eksisterende sager og forstå arbejdsgangen. Brugeren behøver ikke begynde med hele konsekvensanalysen; første skridt er at beskrive behovet og samle et brugbart grundlag.
+Forsiden giver en indgang til at oprette en AI-løsning, finde eksisterende sager og forstå arbejdsgangen. Brugeren behøver ikke begynde med hele konsekvensanalysen; første skridt er at beskrive behovet og samle et brugbart grundlag. På første trin kan kommunens behovsnotat, kravbeskrivelse eller præsentation vedlægges som PDF, DOCX, PPTX eller tekst. Dokumenterne gemmes ved oprettelse og mærkes særskilt som kommunens behovsbeskrivelse.
 
 Alle trin kan åbnes, før felterne er udfyldt, både ved oprettelse af en AI-løsning og i konsekvensanalysens spørgeramme. Man kan orientere sig og vende tilbage uden at miste indtastninger under navigationen. Spørgsmålstegnet ved et felt viser en kort forklaring ved mus, tastaturfokus eller tryk. Materiale knyttes først til en gemt sag, og spørgerammens manglende oplysninger kontrolleres, når brugeren vælger **Udarbejd vurdering**.
 
@@ -220,7 +224,7 @@ Historiske oplysninger vises, hvor de faktisk er gemt. Manglende oplysninger mar
 
 ### Introduktion for nye brugere
 
-Ved første login tilbydes en guide gennem sager, dokumenter, vurdering, gennemgang og download. Guiden kan springes over, genoptages og startes igen fra **Flere → Start introduktionsguide** eller **Indstillinger**. Fremdriften gemmes pr. autentificeret bruger og guideversion. Guiden opretter ikke sager og foretager ikke modelkald.
+Ved første login tilbydes en guide gennem sager, dokumenter, vurdering, gennemgang og download. Guiden kan springes over, genoptages og startes igen fra **profilmenuen under dit navn → Start introduktionsguide** eller **Indstillinger**. Fremdriften gemmes pr. autentificeret bruger og guideversion. Guiden opretter ikke sager og foretager ikke modelkald.
 
 ## Lokal opstart
 

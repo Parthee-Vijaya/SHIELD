@@ -6,21 +6,21 @@ import BRAND from '../config/brand';
 
 const Footer = styled.footer`
   margin-top: auto;
-  border-top: 1px solid ${p => p.theme.colors.border};
-  background: ${p => p.theme.colors.surface};
+  border-top: 1px solid ${p => p.theme.colors.borderSoft};
+  background: ${p => p.theme.colors.background};
 `;
 
 const FooterInner = styled.div`
   width: min(100%, 1320px);
   padding-inline: 32px;
-  min-height: 112px;
+  min-height: 100px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
   align-items: center;
   gap: 32px;
   color: ${p => p.theme.colors.textMuted};
-  font-size: 0.72rem;
+  font-size: 0.76rem;
 
   strong { color: ${p => p.theme.colors.text}; }
 

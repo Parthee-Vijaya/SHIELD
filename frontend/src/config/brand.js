@@ -11,7 +11,7 @@ export const BRAND = Object.freeze({
   organisation: 'Kalundborg Kommune',
   logoPath: '/shield-logo.svg',
   organisationLogoPath: '/kalundborg-logo.svg',
-  version: 'v0.9.0',
+  version: 'v0.10.1',
 });
 
 export default BRAND;

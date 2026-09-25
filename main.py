@@ -300,6 +300,7 @@ from src.api.procurement import router as procurement_router
 from src.api.procurement_exports import router as procurement_exports_router
 from src.api.case_clarifications import router as case_clarifications_router
 from src.api.dpia_revisions import router as dpia_revisions_router
+from src.api.assessment_history import router as assessment_history_router
 from src.api.technical_runs import router as technical_runs_router
 from src.api.system_catalog import router as system_catalog_router
 
@@ -311,6 +312,7 @@ app.include_router(procurement_router)
 app.include_router(procurement_exports_router)
 app.include_router(case_clarifications_router)
 app.include_router(dpia_revisions_router)
+app.include_router(assessment_history_router)
 app.include_router(technical_runs_router)
 app.include_router(system_catalog_router)
 

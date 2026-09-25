@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from src.services.source_origin import NEEDS_EVIDENCE_TYPE, NEEDS_RESTRICTED_FACT_FIELDS
+
 from datetime import UTC, datetime
 from hashlib import sha256
 import json
@@ -36,7 +38,7 @@ from src.services.analysis_limits import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PROMPT_VERSION = "municipal-ai-solution-evidence-2026-09-21-v3-batches"
+PROMPT_VERSION = "municipal-ai-solution-evidence-2026-09-25-v4-needs"
 ALLOWED_CODEX_MODELS = {"gpt-5.6-sol", "gpt-6-astra"}
 ALLOWED_FIELDS = {
     "purpose",
@@ -149,17 +151,24 @@ def source_fingerprint(sources: list[dict]) -> str:
     return digest(
         [
             {
-                key: source.get(key)
-                for key in (
-                    "id",
-                    "title",
-                    "text",
-                    "version",
-                    "checksum",
-                    "locator",
-                    "document_version_id",
-                    "source_url",
-                )
+                **(
+                    {"evidence_type": NEEDS_EVIDENCE_TYPE}
+                    if source.get("evidence_type") == NEEDS_EVIDENCE_TYPE
+                    else {}
+                ),
+                **{
+                    key: source.get(key)
+                    for key in (
+                        "id",
+                        "title",
+                        "text",
+                        "version",
+                        "checksum",
+                        "locator",
+                        "document_version_id",
+                        "source_url",
+                    )
+                },
             }
             for source in sorted(sources, key=lambda source: source["id"])
         ]
@@ -283,6 +292,19 @@ def validate_draft(pack: dict, raw: dict) -> dict:
                 raise MaterialAnalysisError(
                     "Et citat findes ikke i den angivne kilde. Analysen blev ikke gemt."
                 )
+    for draft_fact in draft.facts:
+        if (
+            draft_fact.field in NEEDS_RESTRICTED_FACT_FIELDS
+            and draft_fact.value not in (None, "unknown")
+            and all(
+                sources[ref.source_id].get("evidence_type") == NEEDS_EVIDENCE_TYPE
+                for ref in draft_fact.source_refs
+            )
+        ):
+            raise MaterialAnalysisError(
+                "Kommunens behovsbeskrivelse kan ikke alene dokumentere leverandørforhold "
+                "eller faktisk drift. Angiv forholdet som et afklaringsspørgsmål."
+            )
     if not draft.facts and not any(
         question.priority == "high" for question in draft.questions
     ):

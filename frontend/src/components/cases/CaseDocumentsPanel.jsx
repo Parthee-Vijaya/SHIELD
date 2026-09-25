@@ -5,15 +5,16 @@ import { formatDocumentDate } from '../../features/documents/documentDates';
 import StructuredReportText from '../assessment/StructuredReportText';
 import { actorLabel } from './caseVersionPresentation';
 
-export const DOCUMENT_LABELS = { data_processing_agreement: 'Databehandleraftaler', security_documentation: 'Sikkerhed og revision', supplier_documentation: 'Leverandørmateriale', policy: 'Politikker og procedurer', assessment: 'Vurderinger og rapporter', template: 'Skabeloner', other: 'Øvrig dokumentation' };
+export const DOCUMENT_LABELS = { needs_description: 'Kommunens behovsbeskrivelser', data_processing_agreement: 'Databehandleraftaler', security_documentation: 'Sikkerhed og revision', supplier_documentation: 'Leverandørmateriale', policy: 'Politikker og procedurer', assessment: 'Vurderinger og rapporter', template: 'Skabeloner', other: 'Øvrig dokumentation' };
 const STATUSES = { draft: 'Ikke fagligt godkendt', approved: 'Dokumentversion godkendt', superseded: 'Tidligere version', withdrawn: 'Trukket tilbage', valid: 'Gyldig' };
 const Wrapper = styled.div`
   padding-top: 28px;
   min-width: 0;
-  article { border-top: 1px solid ${p => p.theme.colors.line}; padding: 24px 0; min-width: 0; }
+  article { border: 1px solid ${p => p.theme.colors.lineSoft}; border-radius: ${p => p.theme.borderRadiusLarge}; background: ${p => p.theme.colors.surface}; box-shadow: ${p => p.theme.shadows.sm}; padding: clamp(18px, 3vw, 26px); margin: 14px 0; min-width: 0; }
   article h4 { font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; margin: 0; }
   article header { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
   article header > div { min-width: 0; }
+  article header > span { max-width: 100%; white-space: normal; line-height: 1.5; }
   article p { color: ${p => p.theme.colors.inkSoft}; font-size: 0.87rem; line-height: 1.65; max-width: 80ch; }
   article details { margin: 18px 0; }
   article summary { cursor: pointer; font-weight: 600; font-size: 0.86rem; }
@@ -29,7 +30,8 @@ const Meta = styled.dl`
   @media (max-width: 440px) { grid-template-columns: minmax(0, 1fr); }
 `;
 const Toolbar = styled.div`
-  display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;
+  display: flex; flex-wrap: wrap; gap: 20px; margin: 22px 0;
+  padding: 20px; border: 1px solid ${p => p.theme.colors.lineSoft}; border-radius: ${p => p.theme.borderRadius}; background: ${p => p.theme.colors.surface};
   ${Field} { flex: 1 1 220px; }
 `;
 const eventDate = value => value ? formatDate(typeof value === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::[\d.]+)?$/.test(value) ? `${value}Z` : value, true) : 'Ikke registreret';

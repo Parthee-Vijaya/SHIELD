@@ -1,4 +1,4 @@
-"""Authenticated intake of supplier documentation into a municipal case."""
+"""Authenticated intake of municipal needs and supplier documentation into a municipal case."""
 
 from typing import Annotated
 

@@ -18,6 +18,7 @@ const CONTROL_LABELS = {
 };
 
 const Panel = styled.section`
+  border-radius: ${p => p.theme.borderRadiusLarge};
   scroll-margin-top: 94px;
   min-width: 0;
   margin-bottom: 24px;
@@ -56,7 +57,7 @@ const Filters = styled.div`
   flex-wrap: wrap;
   margin-bottom: 14px;
   label { display: grid; gap: 6px; flex: 1 1 175px; color: ${p => p.theme.colors.textMuted}; font-size: 0.8rem; }
-  select { width: 100%; min-width: 0; padding: 10px 32px 10px 10px; border: 1px solid ${p => p.theme.colors.border}; border-radius: 0; background: ${p => p.theme.colors.surface}; color: ${p => p.theme.colors.text}; }
+  select { width: 100%; min-width: 0; padding: 10px 32px 10px 10px; border: 1px solid ${p => p.theme.colors.border}; border-radius: ${p => p.theme.borderRadius}; background: ${p => p.theme.colors.surface}; color: ${p => p.theme.colors.text}; }
 `;
 const ListNote = styled.p`
   margin: 0 0 16px;
@@ -120,6 +121,7 @@ const ProposalLabel = styled.span`
   margin-top: 7px;
 `;
 const Proposal = styled.section`
+  border-radius: ${p => p.theme.borderRadius};
   padding: 16px;
   border-left: 3px solid ${p => p.theme.colors.primary};
   background: ${p => p.theme.colors.primarySoft};
@@ -166,7 +168,7 @@ const Pagination = styled.nav`
 const Button = styled.button`
   padding: 9px 14px;
   border: 1px solid ${p => p.theme.colors.border};
-  border-radius: 0;
+  border-radius: ${p => p.theme.borderRadius};
   color: ${p => p.theme.colors.primary};
   background: transparent;
   cursor: pointer;

@@ -20,8 +20,10 @@ const Page = styled.section`
   section[id], h4[id] { scroll-margin-top: 100px; }
 `;
 const Introduction = styled.header`
-  padding: 28px 0;
-  border-bottom: 1px solid ${p => p.theme.colors.line};
+  padding: clamp(20px, 3vw, 32px);
+  background: ${p => p.theme.colors.surface};
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
   > p:first-child { margin: 0 0 10px; font-size: 0.74rem; font-weight: 650; letter-spacing: 0.06em; color: ${p => p.theme.colors.inkSoft}; text-transform: uppercase; }
 `;
 const Conclusion = styled.p`
@@ -78,6 +80,7 @@ const TopicMenu = styled.nav`
     gap: 12px;
     min-width: 0;
     padding: 13px 14px;
+    border-radius: ${p => p.theme.borderRadius};
     border: 0;
     border-left: 3px solid transparent;
     background: transparent;
@@ -104,11 +107,13 @@ const MobileTopics = styled.label`
 `;
 const TopicPanel = styled.section`
   min-width: 0;
-  border-left: 1px solid ${p => p.theme.colors.line};
-  padding-left: 30px;
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
+  padding: clamp(18px, 3vw, 30px);
+  background: ${p => p.theme.colors.surface};
   > header { padding-bottom: 22px; border-bottom: 1px solid ${p => p.theme.colors.line}; }
   > header p { margin: 0; color: ${p => p.theme.colors.inkSoft}; }
-  @media (max-width: 850px) { border-left: 0; padding-left: 0; }
+  @media (max-width: 850px) { padding: 20px; }
 `;
 const TopicSection = styled.article`
   padding: 26px 0;
@@ -129,6 +134,7 @@ const ReviewLabel = styled.span`
   border-left: 2px solid ${p => p.theme.colors.warning};
 `;
 const Expand = styled.details`
+  border-radius: ${p => p.theme.borderRadius};
   margin-top: 24px !important;
   padding: 16px 20px;
   background: ${p => p.theme.colors.surface};

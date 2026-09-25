@@ -102,7 +102,7 @@ test('onboards a municipal procurement with a material-first path and explicit h
   mount();
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Goddag, Parthee');
   expect(screen.getByRole('link', { name: 'Opret AI-løsning' })).toHaveAttribute('href', '/anskaffelse');
-  fireEvent.click(screen.getByText('Sådan arbejder I med en AI-løsning'));
+  expect(screen.getByText('Sådan arbejder I med en AI-løsning').closest('details')).toHaveAttribute('open');
   const workflow = screen.getByRole('region', { name: 'Sådan vurderer I en AI-løsning' });
   expect(within(workflow).getAllByRole('listitem')).toHaveLength(4);
   expect(workflow).toHaveTextContent('Den faglige og juridiske vurdering skal gennemgås af kommunen.');
@@ -134,4 +134,15 @@ test('new procurement and workflow explanation remain available if the case over
   fireEvent.click(screen.getByRole('link', { name: 'Opret AI-løsning' }));
   expect(screen.getByTestId('location')).toHaveTextContent('/anskaffelse');
   expect(screen.getByText('Sådan arbejder I med en AI-løsning')).toBeInTheDocument();
+});
+
+
+test('recent summaries distinguish saved time, recorded start and owner without inventing missing metadata', async () => {
+  authFetch.mockResolvedValue({ok:true,json:async()=>({...payload,latest_assessments:[{...payload.latest_assessments[0],version:null,owner:'Faglig ansvarlig',initiated_at:null}]})});
+  mount();
+  const recent=await screen.findByRole('link',{name:/Kommunal referatassistent/});
+  expect(recent).toHaveTextContent('Version ikke registreret');
+  expect(recent).toHaveTextContent('Ansvarlig: Faglig ansvarlig');
+  expect(recent).toHaveTextContent('Igangsat: Ikke registreret');
+  expect(recent).toHaveTextContent('Gemt');
 });

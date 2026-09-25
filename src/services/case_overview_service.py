@@ -29,6 +29,7 @@ from src.database.case_visibility import visible_title
 from src.database.dpia import DPIAAssessmentRecord
 from src.database.legal_monitoring import CaseReassessment
 from src.rule_engine.audit import V3AssessmentLog
+from src.services.assessment_history import group_history
 
 
 Scope = Literal["all", "work", "examples"]
@@ -96,6 +97,7 @@ def build_case_overview(
             Case.title,
             Case.status,
             Case.assigned_to,
+            Case.created_at,
             Case.next_review_at,
             Case.updated_at,
             Case.last_aggregate_status,
@@ -110,6 +112,7 @@ def build_case_overview(
         if scope == "all" or (_is_example(item.case_id) == (scope == "examples"))
     ]
     chosen_ids = {item.id for item in chosen}
+    chosen_cases = {item.id: item for item in chosen}
 
     actions = {
         item.case_db_id: item
@@ -151,16 +154,25 @@ def build_case_overview(
         )
     }
     references: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
+    assessment_owners = {}
     for item in (
         db.query(
             CaseWorkspaceReference.case_db_id,
             CaseWorkspaceReference.reference_type,
             CaseWorkspaceReference.reference_id,
+            CaseWorkspaceReference.details["workspace_metadata"]["owner"]
+            .as_string()
+            .label("owner"),
+            CaseWorkspaceReference.details["workspace_metadata"]["updated_at"]
+            .as_string()
+            .label("owner_updated_at"),
         )
         .filter(CaseWorkspaceReference.reference_type.in_(ASSESSMENT_REFERENCE_TYPES))
         .all()
     ):
         references[item.case_db_id][item.reference_type].add(item.reference_id)
+        if item.owner is not None or item.owner_updated_at:
+            assessment_owners[(item.reference_type, item.reference_id)] = item.owner
     legal_ids: set[str] = set()
     legal_external_ids: set[str] = set()
     for legal in db.query(V3AssessmentLog.id, V3AssessmentLog.case_id).all():
@@ -178,6 +190,13 @@ def build_case_overview(
             DPIAAssessmentRecord.status,
             DPIAAssessmentRecord.risk_level,
             DPIAAssessmentRecord.created_at,
+            DPIAAssessmentRecord.request_payload["owner"].as_string().label("owner"),
+            DPIAAssessmentRecord.result_payload["parent_assessment_id"]
+            .as_string()
+            .label("parent_assessment_id"),
+            DPIAAssessmentRecord.result_payload["ai_generation"]["started_at"]
+            .as_string()
+            .label("initiated_at"),
             DPIAAssessmentRecord.request_payload["department"]
             .as_string()
             .label("department"),
@@ -202,7 +221,26 @@ def build_case_overview(
             continue
         metadata = {
             "id": record.id,
+            "category": "dpia",
             "case_db_id": linked_id,
+            "case_id": (
+                chosen_cases[linked_id].case_id if linked_id in chosen_cases else None
+            ),
+            "owner": assessment_owners.get(
+                ("dpia_assessment", record.id), record.owner
+            ),
+            "case_owner": (
+                chosen_cases[linked_id].assigned_to
+                if linked_id in chosen_cases
+                else None
+            ),
+            "case_created_at": (
+                _iso(chosen_cases[linked_id].created_at)
+                if linked_id in chosen_cases
+                else None
+            ),
+            "initiated_at": record.initiated_at,
+            "parent_assessment_id": record.parent_assessment_id,
             "project_name": record.project_name,
             "version": record.version,
             "status": record.status,
@@ -443,5 +481,8 @@ def build_case_overview(
         "truncated": len(rows) > limit,
         "stats": stats,
         "items": rows[:limit],
-        "latest_assessments": recent[:6],
+        "latest_assessments": [
+            {**group["latest"], "version_count": group["version_count"]}
+            for group in group_history(recent)[:6]
+        ],
     }

@@ -133,7 +133,7 @@ const GlobalStyle = createGlobalStyle`
     &:focus-visible {
       outline: 2px solid ${props => props.theme.colors.primary};
       outline-offset: 2px;
-      border-radius: 0;
+      border-radius: ${props => props.theme.borderRadius};
     }
   }
 
@@ -143,6 +143,7 @@ const GlobalStyle = createGlobalStyle`
     outline: none;
     font-family: ${props => props.theme.fonts.sans};
     background: none;
+    border-radius: ${props => props.theme.borderRadius};
 
     &:focus-visible {
       outline: 2px solid ${props => props.theme.colors.primary};
@@ -158,6 +159,8 @@ const GlobalStyle = createGlobalStyle`
     background-color: ${props => props.theme.colors.inputBackground};
     color: ${props => props.theme.colors.text};
     border: 1px solid ${props => props.theme.colors.border};
+    border-radius: ${props => props.theme.borderRadius};
+    min-width: 0;
 
     &:focus {
       border-color: ${props => props.theme.colors.primary};
@@ -165,7 +168,7 @@ const GlobalStyle = createGlobalStyle`
     }
   }
 
-  /* Lov-citater renderes i Plex Serif italic for "ordret kilde"-signal */
+  /* Citater bevarer et tydeligt signal om ordret kilde. */
   article p.citat, .doc p.citat, .citat {
     font-family: ${props => props.theme.fonts.serif};
     font-style: italic;
@@ -187,7 +190,7 @@ const GlobalStyle = createGlobalStyle`
 
   ::-webkit-scrollbar-thumb {
     background-color: ${props => props.theme.colors.gray[300]};
-    border-radius: 0;
+    border-radius: ${props => props.theme.borderRadius};
 
     &:hover {
       background-color: ${props => props.theme.colors.primary};
@@ -196,6 +199,11 @@ const GlobalStyle = createGlobalStyle`
 
   ::-webkit-scrollbar-track {
     background-color: ${props => props.theme.colors.surfaceAlt};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   }
 
   @keyframes spin {

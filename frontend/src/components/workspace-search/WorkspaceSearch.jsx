@@ -7,7 +7,7 @@ import { safeSearchRoute } from './searchUtils';
 const Shell = styled.div`
   position: relative; min-width: 0; width: 100%; text-align: left;
   label { display: block; margin-bottom: 10px; font-size: .86rem; font-weight: 650; color: ${p => p.theme.colors.text}; }
-  .search-input-row { display: flex; align-items: center; gap: 13px; border: 1px solid ${p => p.theme.colors.border}; background: ${p => p.theme.colors.surface}; padding: 0 18px; min-height: 60px; }
+  .search-input-row { display: flex; align-items: center; gap: 13px; border: 1px solid ${p => p.theme.colors.border}; background: ${p => p.theme.colors.surface}; padding: 0 18px; min-height: 60px; border-radius: ${p => p.theme.borderRadius}; box-shadow: ${p => p.theme.shadows.md}; }
   .search-input-row[data-focused=true] { border-color: ${p => p.theme.colors.primary}; outline: 2px solid ${p => p.theme.colors.primarySoft}; outline-offset: 2px; }
   .search-input-row svg { flex-shrink: 0; color: ${p => p.theme.colors.textMuted}; }
   .search-input-row input { width: 100%; min-width: 0; height: 58px; border: 0; outline: none; padding: 0; background: transparent; color: ${p => p.theme.colors.text}; font: 400 1rem ${p => p.theme.fonts.body}; }
@@ -15,7 +15,7 @@ const Shell = styled.div`
   .search-input-row input:focus-visible { outline: none; }
   .search-clear { border: 0; background: transparent; color: ${p => p.theme.colors.textMuted}; cursor: pointer; padding: 10px; font: inherit; }
   .search-hint { margin: 10px 0 0; color: ${p => p.theme.colors.textMuted}; font-size: .77rem; line-height: 1.55; }
-  .search-dropdown { position: ${p => p.$inline ? 'static' : 'absolute'}; inset: auto 0; z-index: 35; margin-top: 8px; border: 1px solid ${p => p.theme.colors.border}; background: ${p => p.theme.colors.surface}; box-shadow: ${p => p.$inline ? 'none' : p.theme.shadows.lg}; max-height: min(440px, 65vh); overflow-y: auto; overscroll-behavior: contain; }
+  .search-dropdown { position: ${p => p.$inline ? 'static' : 'absolute'}; inset: auto 0; z-index: 35; margin-top: 8px; border: 1px solid ${p => p.theme.colors.border}; background: ${p => p.theme.colors.surface}; box-shadow: ${p => p.$inline ? 'none' : p.theme.shadows.lg}; max-height: min(440px, 65vh); overflow-y: auto; overscroll-behavior: contain; border-radius: ${p => p.theme.borderRadius}; }
   .search-group + .search-group { border-top: 1px solid ${p => p.theme.colors.border}; }
   .search-group-label { display: block; padding: 14px 18px 6px; color: ${p => p.theme.colors.textMuted}; font-size: .73rem; font-weight: 650; letter-spacing: .045em; text-transform: uppercase; }
   .search-result { display: block; padding: 11px 18px; color: ${p => p.theme.colors.text}; text-decoration: none; overflow-wrap: anywhere; }

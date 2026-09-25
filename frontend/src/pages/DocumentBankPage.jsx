@@ -33,6 +33,7 @@ const CATEGORIES = [
   { value: 'security_documentation', label: 'Sikkerhedsdokumentation' },
   { value: 'policy', label: 'Politik og retningslinje' },
   { value: 'assessment', label: 'Tidligere vurdering' },
+  { value: 'needs_description', label: 'Kommunens behovsbeskrivelse' },
   { value: 'supplier_documentation', label: 'Leverandørmateriale' },
   { value: 'template', label: 'Kommunal skabelon' },
   { value: 'other', label: 'Andet' },

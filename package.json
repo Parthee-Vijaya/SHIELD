@@ -1,6 +1,6 @@
 {
   "name": "shield",
-  "version": "0.9.0",
+  "version": "0.10.1",
   "private": true,
   "workspaces": [
     "frontend"
@@ -21,7 +21,9 @@
     "ai:example": "node --env-file=.env.local index.ts",
     "ai:jev-example": "node --env-file=.env.local ai-gateway/jev-example.mts",
     "ai:typecheck": "node node_modules/typescript-ai/bin/tsc -p ai-gateway/tsconfig.json",
-    "ai:test": "node --test ai-gateway/*.test.mts"
+    "ai:test": "node --test ai-gateway/*.test.mts",
+    "deploy:frontend": "node scripts/deploy-local-frontend.cjs",
+    "test:frontend-server": "node --test frontend/serve_prod.test.cjs scripts/deploy-local-frontend.test.cjs"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

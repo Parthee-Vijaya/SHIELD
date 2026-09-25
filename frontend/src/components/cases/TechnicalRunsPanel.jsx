@@ -47,7 +47,7 @@ const Steps = styled.ol`
   @media (max-width: 460px) { grid-template-columns: minmax(0, 1fr); }
 `;
 const Details = styled.details`
-  min-width: 0; border-bottom: 1px solid ${p => p.theme.colors.line}; padding: 14px 0;
+  min-width: 0; border: 1px solid ${p => p.theme.colors.lineSoft}; border-radius: ${p => p.theme.borderRadius}; padding: 15px 18px; margin: 12px 0; background: ${p => p.theme.colors.surface};
   > summary { cursor: pointer; font-size: .85rem; line-height: 1.6; }
   > summary strong { font-weight: 620; }
   > summary span { margin-left: 8px; vertical-align: middle; }
@@ -55,7 +55,7 @@ const Details = styled.details`
 `;
 const Excerpt = styled.blockquote`
   margin: 12px 0; padding: 14px 16px; border-left: 3px solid ${p => p.theme.colors.secondary};
-  background: ${p => p.theme.colors.paperSoft}; max-height: 28rem; overflow: auto;
+  background: ${p => p.theme.colors.paperSoft}; border-radius: ${p => p.theme.borderRadius}; max-height: 28rem; overflow: auto;
   white-space: pre-wrap; overflow-wrap: anywhere; font-size: .81rem; line-height: 1.7;
 `;
 const Fields = styled.dl`

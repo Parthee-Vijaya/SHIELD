@@ -111,7 +111,7 @@ export function TutorialProvider({ children }) {
         }
       }
     }).catch(() => {
-      if (active && userRef.current === owner) setError('Guidens gemte fremdrift kunne ikke hentes. Du kan åbne guiden igen fra Flere.');
+      if (active && userRef.current === owner) setError('Guidens gemte fremdrift kunne ikke hentes. Du kan åbne guiden igen fra profilmenuen øverst til højre.');
     }).finally(() => {
       if (active && userRef.current === owner) setLoading(false);
     });

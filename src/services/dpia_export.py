@@ -9,6 +9,8 @@ appended and filled rows may grow to keep generated text readable.
 
 from __future__ import annotations
 
+from src.services.source_origin import source_origin_label, NEEDS_NOTICE
+
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path, PurePosixPath
@@ -898,6 +900,15 @@ def _ai_supplement(
         rows.extend(
             [
                 (source.get("id", "Kilde"), source.get("title", "")),
+                ("Kildens oprindelse", source_origin_label(source)),
+                (
+                    "Kildens afgrænsning",
+                    (
+                        NEEDS_NOTICE
+                        if source_origin_label(source) == "Kommunens behovsbeskrivelse"
+                        else ""
+                    ),
+                ),
                 ("Kildeindhold", source.get("text", "")),
                 ("Offentlig kilde", source.get("source_url", "")),
                 ("Hentet", source.get("retrieved_at", "")),

@@ -4,7 +4,7 @@
 
 ## Læsevenlig tekst i nye udkast
 
-Skrivekontrakten ligger i `REPORT_WRITING_GUIDANCE`. Promptversionen `datatilsynet-dpia-draft-2026-09-21-v5-structured-prose` bruger:
+Skrivekontrakten ligger i `REPORT_WRITING_GUIDANCE`. Promptversionen `datatilsynet-dpia-draft-2026-09-25-v6-needs` bruger:
 
 - `##` til resuméets hovedoverskrifter: Konklusion, Dokumenteret grundlag, Skal afklares og Før en beslutning.
 - `###` til relevante emner inden for et skabelonafsnit.
@@ -15,6 +15,8 @@ Et afsnit om en databehandleraftale skal, når indholdet er relevant, holde pers
 
 En konstateret oplysning, et leverandørudsagn og en dokumentationsmangel skal kunne skelnes. En leverandøradresse beviser eksempelvis ikke dataplacering; et certifikat beviser ikke alle sikkerhedskontroller; og manglende dokumentation beviser ikke, at en kontrol ikke findes. Modstridende aftaleversioner og forskellige vilkår for forskellige datatyper bevares som afklaringer.
 
+Kommunens behovsbeskrivelse (`needs_description` / `municipal_needs_statement`) dokumenterer påtænkt anvendelse og krav. Den dokumenterer ikke leverandørfunktioner eller implementerede kontroller. Denne skelnen bevares ved analyse af enkelte kilder, samling af batches, rapportudarbejdelse og JEV-kontrol. Materialeprompten er `municipal-ai-solution-evidence-2026-09-25-v4-needs`, og JEV-kriterierne er versioneret som `dpia-evidence-review-2026-09-25-v5-needs`.
+
 ## Fakta, anbefalinger og kontrol
 
 Valgfrie forslag ligger fortsat i den særskilte `recommendations`-liste med begrundelse, forudsætninger og efterprøvning. De bliver ikke til dokumenterede kontroller og ændrer ikke scorer, blokeringer eller status. Hvert forslag får sin egen JEV-kontrol med markering af, at det hverken er en implementeret kontrol eller en juridisk godkendelse.
@@ -24,3 +26,5 @@ Afsnit markeret `missing_information` eller `not_applicable` bevares ordret. Ogs
 ## Lokal validering uden modelkald
 
 Kør `npm run ai:test` og `npm run ai:typecheck`. Testene bruger syntetiske svar og kontrollerer blandt andet, at emneopdelt tekst over den tidligere grænse på 2.500 tegn bevares gennem rapport- og JEV-forløbet, at låste afsnit forbliver uændrede, og at anbefalinger stadig er særskilte forslag. Tests dokumenterer kontrakten og kontrollernes opførsel, ikke kvaliteten af en faktisk modelbesvarelse.
+
+Se [AI-opsætningen](../docs/AI_GATEWAY.md) for nøgleindlæsning, faktiske forbindelsestests, modelvalg, tidsgrænser og forskellen mellem Gateway, den midlertidige lokale tekstprovider og manuel import.

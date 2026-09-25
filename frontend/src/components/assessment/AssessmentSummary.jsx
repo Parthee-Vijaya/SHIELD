@@ -5,9 +5,10 @@ import StructuredReportText from './StructuredReportText';
 
 const Panel = styled.section`
   margin: 26px 0;
-  padding: 24px 0;
-  border-top: 1px solid ${p => p.theme.colors.line};
-  border-bottom: 1px solid ${p => p.theme.colors.line};
+  padding: clamp(18px, 3vw, 28px);
+  background: ${p => p.theme.colors.surface};
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
   min-width: 0;
   overflow-wrap: anywhere;
   h2 { margin: 0 0 10px; font-size: 1.5rem; }
@@ -29,6 +30,8 @@ const Conclusion = styled.p`
 `;
 
 const Facts = styled.div`
+  border-radius: ${p => p.theme.borderRadius};
+  overflow: hidden;
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
   border: 1px solid ${p => p.theme.colors.line};
@@ -59,6 +62,7 @@ const Note = styled.p`
 `;
 
 const Advice = styled.section`
+  border-radius: ${p => p.theme.borderRadiusLarge};
   padding: clamp(18px, 3vw, 28px);
   border: 1px solid ${p => p.theme.colors.line};
   border-left: 4px solid ${p => p.theme.colors.secondary};

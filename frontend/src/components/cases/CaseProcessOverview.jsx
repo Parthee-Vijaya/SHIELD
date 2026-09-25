@@ -24,8 +24,8 @@ const Process = styled.section`
 const Stages = styled.div`
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 24px;
   @media (max-width: 980px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 520px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 `;
@@ -33,15 +33,17 @@ const Stages = styled.div`
 const Stage = styled.button`
   min-width: 0;
   text-align: left;
-  padding: 14px;
+  padding: 17px 15px;
   color: ${p => p.theme.colors.ink};
   background: ${p => p.theme.colors.surface};
-  border: 1px solid ${p => p.theme.colors.line};
-  border-top: 3px solid ${p => p.theme.colors.line};
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
+  box-shadow: ${p => p.theme.shadows.sm};
   overflow-wrap: anywhere;
   &[aria-pressed='true'] {
     border-color: ${p => p.theme.colors.primary};
     background: ${p => p.theme.colors.primarySoft};
+    box-shadow: inset 0 0 0 1px ${p => p.theme.colors.primary};
   }
   &:hover { border-color: ${p => p.theme.colors.primary}; }
   .stage-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -73,7 +75,8 @@ const Search = styled.label`
     box-sizing: border-box;
     padding: 11px 13px;
     border: 1px solid ${p => p.theme.colors.line};
-    border-radius: 0;
+    border-radius: ${p => p.theme.borderRadius};
+    min-height: 44px;
     background: ${p => p.theme.colors.surface};
     color: ${p => p.theme.colors.ink};
     font-size: 0.85rem;
@@ -85,17 +88,21 @@ const Mode = styled.div`
   display: inline-flex;
   flex-wrap: wrap;
   gap: 3px;
-  border: 1px solid ${p => p.theme.colors.line};
-  padding: 3px;
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadius};
+  background: ${p => p.theme.colors.paperSoft};
+  padding: 4px;
   button {
     display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px;
     padding: 9px 12px;
     border: 0;
+    border-radius: ${p => p.theme.borderRadius};
     font-size: 0.78rem;
     color: ${p => p.theme.colors.inkSoft};
     background: transparent;
   }
-  button[aria-pressed='true'] { background: ${p => p.theme.colors.ink}; color: ${p => p.theme.colors.surface}; }
+  button[aria-pressed='true'] { background: ${p => p.theme.colors.surface}; color: ${p => p.theme.colors.primary}; box-shadow: ${p => p.theme.shadows.sm}; font-weight: 600; }
   svg { width: 15px; height: 15px; flex-shrink: 0; }
 `;
 
@@ -126,7 +133,10 @@ const List = styled.ul`
   margin: 0;
   padding: 0;
   min-width: 0;
-  border-top: 1px solid ${p => p.theme.colors.line};
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
+  background: ${p => p.theme.colors.surface};
+  box-shadow: ${p => p.theme.shadows.sm};
 `;
 
 const Row = styled.li`
@@ -137,7 +147,9 @@ const Row = styled.li`
   align-items: start;
   padding: 23px 18px;
   background: ${p => p.theme.colors.surface};
-  border-bottom: 1px solid ${p => p.theme.colors.line};
+  border-bottom: 1px solid ${p => p.theme.colors.lineSoft};
+  &:first-child { border-top-left-radius: ${p => p.theme.borderRadiusLarge}; border-top-right-radius: ${p => p.theme.borderRadiusLarge}; }
+  &:last-child { border-bottom: 0; border-bottom-left-radius: ${p => p.theme.borderRadiusLarge}; border-bottom-right-radius: ${p => p.theme.borderRadiusLarge}; }
   > * { min-width: 0; overflow-wrap: anywhere; }
   &:hover { background: ${p => p.theme.colors.paperSoft}; }
   @media (max-width: 700px) {
@@ -198,7 +210,8 @@ const Verdict = styled.span`
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.5;
-  padding: 3px 7px;
+  padding: 4px 9px;
+  border-radius: 999px;
   color: ${p => p.theme.colors[p.$tone || 'inkSoft']};
   background: ${p => p.theme.colors[p.$tone ? `${p.$tone}Soft` : 'paperSoft']};
   overflow-wrap: anywhere;
@@ -223,7 +236,8 @@ const Board = styled.div`
 
 const Column = styled.section`
   min-width: 0;
-  border: 1px solid ${p => p.$dragOver ? p.theme.colors.primary : p.theme.colors.line};
+  border: 1px solid ${p => p.$dragOver ? p.theme.colors.primary : p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadiusLarge};
   background: ${p => p.$dragOver ? p.theme.colors.primarySoft : p.theme.colors.paperSoft};
   padding: 0 12px 12px;
   box-shadow: ${p => p.$dragOver ? `inset 0 0 0 1px ${p.theme.colors.primary}` : 'none'};
@@ -237,8 +251,10 @@ const Card = styled.article`
   overflow-wrap: anywhere;
   padding: 17px;
   margin-bottom: 10px;
-  border: 1px solid ${p => p.theme.colors.line};
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadius};
   background: ${p => p.theme.colors.surface};
+  box-shadow: ${p => p.theme.shadows.sm};
   cursor: grab;
   &:last-child { margin-bottom: 0; }
   &:active { cursor: grabbing; }

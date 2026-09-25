@@ -125,8 +125,9 @@ const ContentHeader = styled.div`
   align-items: start;
   justify-content: space-between;
   gap: 18px;
+  flex-wrap: wrap;
 
-  > div:first-child { min-width: 0; }
+  > div:first-child { flex: 1 1 260px; min-width: 0; }
 `;
 
 const Metadata = styled.dl`
@@ -161,6 +162,10 @@ const CaseTitle = styled(Title)`
 `;
 const CaseContext = styled.div`
   display: flex; flex-wrap: wrap; gap: 12px 30px; margin-top: 20px;
+  padding: 18px 20px;
+  border: 1px solid ${p => p.theme.colors.lineSoft};
+  border-radius: ${p => p.theme.borderRadius};
+  background: ${p => p.theme.colors.surface};
   p { margin: 0; font-size: 0.9rem; color: ${p => p.theme.colors.inkSoft}; }
   strong { color: ${p => p.theme.colors.ink}; }
 `;
@@ -197,6 +202,8 @@ const WorkflowControls = styled.div`
   padding: 22px;
   border: 1px solid ${(p) => p.theme.colors.line};
   border-left: 4px solid ${(p) => p.theme.colors.primary};
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
+  box-shadow: ${(p) => p.theme.shadows.sm};
   background: ${(p) => p.theme.colors.surface};
 
   h3 { margin: 0; font-size: 1.08rem; }
@@ -216,6 +223,7 @@ const IdentityNote = styled.div`
   padding: 12px 14px;
   background: ${(p) => p.$verified ? p.theme.colors.successSoft : p.theme.colors.warningSoft};
   border-left: 3px solid ${(p) => p.$verified ? p.theme.colors.success : p.theme.colors.warning};
+  border-radius: ${(p) => p.theme.borderRadius};
   color: ${(p) => p.theme.colors.inkSoft};
   font-size: 0.78rem;
   line-height: 1.5;
@@ -231,7 +239,8 @@ const InlineActions = styled.div`
     min-height: 76px;
     padding: 10px 12px;
     border: 1px solid ${(p) => p.theme.colors.line};
-    border-radius: 0;
+    border-radius: ${(p) => p.theme.borderRadius};
+    box-sizing: border-box;
     background: ${(p) => p.theme.colors.inputBackground};
     color: ${(p) => p.theme.colors.ink};
     resize: vertical;

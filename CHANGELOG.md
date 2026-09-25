@@ -4,6 +4,27 @@ Alle bemærkelsesværdige ændringer til dette projekt dokumenteres her.
 
 Formatet er baseret på [Keep a Changelog](https://keepachangelog.com/da/1.0.0/), og projektet følger [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-09-25 — Stabil lokal publicering
+
+- Frontendens aktive build og server-runtime placeres uden for Desktop/iCloud. En konfigurerbar buildsti forhindrer, at omdøbte eller flyttede arbejdsmapper giver ENOENT til besøgende.
+- Nye builds valideres og publiceres ved et atomisk skift til en komplet udgivelse. Tidligere hashede filer bevares til allerede åbne faner.
+- Manglende JavaScript-filer giver 404 i stedet for HTML, og en manglende startside giver en kort driftsbesked uden interne filstier. Serveren kontrollerer startsiden før opstart.
+
+## [0.10.0] - 2026-09-25 — Samlet profilmenu, versionshistorik og kommunale behov
+
+- Kompakt placering af kommunelogo, SHIELD og version. Søgning, tema, supplerende værktøjer, guide og session er samlet i menuen under brugerens navn.
+- Introduktionen til arbejdsgangen er foldet ud fra start.
+- Vurderingshistorik samler versioner under den enkelte sag og vurderingstype. Seneste version står først med ansvarlig og registrerede tidspunkter; tidligere versioner kan foldes ud. Manglende metadata vises eksplicit.
+- Behovsbeskrivelser kan vedlægges allerede ved oprettelse som en særskilt kommunal kilde. Materialet følger dokumentation, analyse og eksport med tydeligt skel mellem kommunens krav, leverandørens oplysninger og dokumenteret implementering.
+- Mislykkede filuploads bevarer den oprettede sag og de resterende filer til et nyt forsøg.
+
+## [0.9.1] - 2026-09-24 — Lyst redesign af arbejdsrummet
+
+- Godkendt preview-design overført til den eksisterende SHIELD med oprindelig lys farvepalette, fælles typografi, afrundede paneler og kontroller. Ingen ripple-effekt eller dekorativ baggrundsanimation.
+- Redesignet login, startside, navigation, søgning, procesoverblik, sagsfaner, formularer og læsevenlige vurderinger. Versionskort, dokumentation, historik og teknisk kørsel følger samme visuelle principper.
+- Eksisterende data, adgangskontrol, upload, katalogsøgning, AI/JEV-flow, redigering, godkendelse og eksport bevares. Produktversionen vises sammen med SHIELD i headeren.
+- Bedre wrapping på smalle skærme, ens fokusmarkering og respekt for reduceret bevægelse.
+
 ## [0.9.0] - 2026-09-22 — Fælles søgning, systemkatalog og tydelig brugeridentitet
 
 - Kategoriseret livesøgning med stavefejlstolerance på startsiden og i tastaturgenvejen. Sager, seneste vurderinger, dokumenter og vejledning bruger samme søgefunktion og adgangskontrol.

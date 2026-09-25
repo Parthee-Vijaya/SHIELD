@@ -1,11 +1,10 @@
 import React, { useMemo } from 'react';
 import styled from 'styled-components';
-import { pageLayout, pageTitleStyle, sectionTitleStyle, controlStyle } from '../theme/layout';
+import { pageLayout, pageTitleStyle, sectionTitleStyle } from '../theme/layout';
 import { useQuery } from 'react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { filterNoiseWarnings } from '../utils/warnings';
-import DataOverview from '../components/data-overview/DataOverview';
 import AssessmentHistorySection from '../components/assessment/AssessmentHistorySection';
 import {
   ComplianceVerdict,
@@ -15,30 +14,18 @@ import {
 } from '../components/rules';
 
 /**
- * VurderingHistorikPage — Design C historik over /api/v3/audit.
+ * VurderingHistorikPage — grouped assessment history and immutable audit detail.
  *
  * Two modes selected by route:
- *   /historik         → list of recent assessments (table)
+ *   /historik         → grouped metadata from /api/v3/assessment-history
  *   /historik/:id     → detail view of one assessment (mirrors result-mode
  *                       in V3VurderingPage but reading from audit log)
  *
- * The audit log is append-only — no edit, no delete. Filtering by case_id
- * and aggregate_status happens server-side via query params.
+ * The audit log is append-only — no edit, no delete. Grouping and filtering
+ * happen on compact metadata before pagination.
  */
 
 // ---- API ----------------------------------------------------------------
-
-async function fetchAuditList({ queryKey }) {
-  const [, { limit, status, caseId }] = queryKey;
-  const params = new URLSearchParams();
-  if (limit) params.set('limit', String(limit));
-  if (status) params.set('status', status);
-  if (caseId) params.set('case_id', caseId);
-  const qs = params.toString();
-  const url = `/api/v3/audit${qs ? `?${qs}` : ''}`;
-  const res = await axios.get(url);
-  return res.data;
-}
 
 async function fetchAuditDetail(id) {
   const res = await axios.get(`/api/v3/audit/${id}`);
@@ -158,174 +145,16 @@ const Doc = styled.article`
   min-width: 0;
 `;
 
-// ---- List mode: filter + table -----------------------------------------
-
-const FilterRow = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-`;
-
-const FilterChip = styled.button`
-  background: ${(p) =>
-    p.$active ? p.theme.colors.primaryBg : p.theme.colors.card};
-  color: ${(p) => (p.$active ? p.theme.colors.primary : p.theme.colors.inkSoft)};
-  border: 1px solid ${(p) =>
-    p.$active ? p.theme.colors.primary : p.theme.colors.line};
-  padding: 0.5rem 0.8rem;
-  border-radius: 0;
-  ${controlStyle}
-  cursor: pointer;
-  transition: border-color ${(p) => p.theme.animations.transitionFast};
-
-  &:hover {
-    border-color: ${(p) => p.theme.colors.primary};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${(p) => p.theme.colors.primary};
-    outline-offset: 2px;
-  }
-`;
-
-const Table = styled.div`
-  background: ${(p) => p.theme.colors.card};
-  border: 1px solid ${(p) => p.theme.colors.line};
-  border-radius: 0;
-  overflow: hidden;
-`;
-
-const TableHead = styled.div`
-  display: grid;
-  grid-template-columns: minmax(140px, 160px) minmax(260px, 1.4fr) minmax(150px, auto) minmax(160px, 0.8fr);
-  gap: clamp(0.75rem, 2vw, 1.5rem);
-  padding: 0.75rem 1rem;
-  background: ${(p) => p.theme.colors.paperSoft};
-  border-bottom: 1px solid ${(p) => p.theme.colors.line};
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: ${(p) => p.theme.colors.inkFaded};
-  font-weight: 600;
-
-  @media (max-width: 720px) {
-    display: none;
-  }
-`;
-
-const Row = styled(Link)`
-  display: grid;
-  grid-template-columns: minmax(140px, 160px) minmax(260px, 1.4fr) minmax(150px, auto) minmax(160px, 0.8fr);
-  gap: clamp(0.75rem, 2vw, 1.5rem);
-  padding: 0.9rem 1rem;
-  border-bottom: 1px solid ${(p) => p.theme.colors.lineSoft};
-  text-decoration: none;
-  color: ${(p) => p.theme.colors.ink};
-  transition: background ${(p) => p.theme.animations.transitionFast};
-  align-items: center;
-
-  &:last-child { border-bottom: none; }
-
-  &:hover {
-    background: ${(p) => p.theme.colors.paperSoft};
-    color: ${(p) => p.theme.colors.ink};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${(p) => p.theme.colors.primary};
-    outline-offset: -2px;
-  }
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: 0.8rem 0.9rem;
-  }
-`;
-
-const Cell = styled.div`
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.92rem;
-  color: ${(p) => p.theme.colors.ink};
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
-  @media (max-width: 720px) {
-    display: grid;
-    grid-template-columns: 104px minmax(0, 1fr);
-    gap: 0.75rem;
-    align-items: start;
-    padding: 0.42rem 0;
-    overflow: visible;
-    white-space: normal;
-
-    &::before {
-      content: attr(data-label);
-      font-family: ${(p) => p.theme.fonts.mono};
-      font-size: 0.64rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      line-height: 1.45;
-      text-transform: uppercase;
-      color: ${(p) => p.theme.colors.inkFaded};
-    }
-
-    .cell-value {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-  }
-`;
-
-const CellDate = styled(Cell)`
-  font-family: ${(p) => p.theme.fonts.mono};
-  font-size: 0.78rem;
-  color: ${(p) => p.theme.colors.inkSoft};
-  letter-spacing: 0.02em;
-`;
-
-const CellCase = styled(Cell)`
-  font-family: ${(p) => p.theme.fonts.mono};
-  font-size: 0.82rem;
-  color: ${(p) => p.theme.colors.inkSoft};
-  letter-spacing: 0.04em;
-`;
-
-const CellNote = styled(Cell)`
-  font-family: ${(p) => p.theme.fonts.body};
-  color: ${(p) => p.theme.colors.inkSoft};
-  font-style: italic;
-`;
-
 const EmptyState = styled.div`
   background: ${(p) => p.theme.colors.paperSoft};
   border: 1px dashed ${(p) => p.theme.colors.line};
-  border-radius: 0;
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
   padding: 3rem;
   text-align: center;
   color: ${(p) => p.theme.colors.inkSoft};
   font-family: ${(p) => p.theme.fonts.body};
   font-size: 1rem;
   font-style: italic;
-`;
-
-const LoadingRow = styled.div`
-  padding: 1rem 1.2rem;
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.85rem;
-  color: ${(p) => p.theme.colors.inkFaded};
-  border-bottom: 1px solid ${(p) => p.theme.colors.lineSoft};
-`;
-
-const ResultMeta = styled.p`
-  font-family: ${(p) => p.theme.fonts.sans};
-  font-size: 0.85rem;
-  color: ${(p) => p.theme.colors.inkSoft};
-  margin: 0.5rem 0 1.5rem;
 `;
 
 // ---- Detail mode (case-focused, mirrors V3VurderingPage result-mode) ----
@@ -383,7 +212,7 @@ const VerdictBanner = styled.div`
   background: ${({ theme, $status }) => verdictTone(theme, $status).background};
   border: 1px solid ${({ theme, $status }) => verdictTone(theme, $status).border};
   border-left-width: 4px;
-  border-radius: 0;
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
   padding: 1rem 1.2rem;
   margin: 1.5rem 0 2.25rem;
 `;
@@ -538,7 +367,7 @@ const AuditFootnote = styled.div`
   padding: 1.1rem 1.3rem;
   background: ${(p) => p.theme.colors.paperSoft};
   border: 1px solid ${(p) => p.theme.colors.line};
-  border-radius: 0;
+  border-radius: ${(p) => p.theme.borderRadiusLarge};
   font-family: ${(p) => p.theme.fonts.mono};
   font-size: 0.72rem;
   color: ${(p) => p.theme.colors.inkSoft};
@@ -549,110 +378,14 @@ const AuditFootnote = styled.div`
 
 // ---- List mode component ------------------------------------------------
 
-const STATUS_FILTERS = [
-  { id: 'all', label: 'Alle', value: undefined },
-  { id: 'go', label: 'Ingen blokeringer', value: 'GO' },
-  { id: 'betinget', label: 'Kræver handling', value: 'BETINGET-GO' },
-  { id: 'no-go', label: 'Blokeret', value: 'NO-GO' },
-];
-
-const ListMode = () => {
-  const [status, setStatus] = React.useState();
-  const { data, isLoading, isError, error } = useQuery(
-    ['v3-audit-list', { limit: 50, status, caseId: undefined }],
-    fetchAuditList,
-  );
-
-  const items = data?.items || [];
-
-  return (
-    <Page>
-      <Eyebrow>S.H.I.E.L.D. · gemte vurderinger</Eyebrow>
-      <Title>Vurderingshistorik</Title>
-      <Lede>
-        Genfind konsekvensanalyser, risikovurderinger og juridiske screeninger.
-        Hver gemt version bevarer sit oprindelige grundlag og resultat.
-      </Lede>
-
-      <AssessmentHistorySection />
-      <h2>Juridiske screeninger</h2>
-
-      <FilterRow role="group" aria-label="Filtrer vurderinger efter status">
-        {STATUS_FILTERS.map((f) => (
-          <FilterChip
-            key={f.id}
-            type="button"
-            $active={status === f.value || (status === undefined && f.value === undefined)}
-            aria-pressed={status === f.value || (status === undefined && f.value === undefined)}
-            onClick={() => setStatus(f.value)}
-          >
-            {f.label}
-          </FilterChip>
-        ))}
-      </FilterRow>
-
-      {isError && (
-        <EmptyState>
-          Kunne ikke hente audit-log: {String(error?.message || error)}
-        </EmptyState>
-      )}
-
-      {!isError && (
-        <>
-          <ResultMeta>
-            {isLoading ? 'Indlæser…' : `${items.length} vurderinger fundet${status ? ` med status ${statusLabel(status)}` : ''}.`}
-          </ResultMeta>
-
-          <Table>
-            <TableHead>
-              <div>Tidspunkt</div>
-              <div>Sag · note</div>
-              <div>Status</div>
-              <div>Engine</div>
-            </TableHead>
-
-            {isLoading && <LoadingRow>Indlæser audit-log…</LoadingRow>}
-
-            {!isLoading && items.length === 0 && (
-              <LoadingRow>Ingen vurderinger registreret endnu.</LoadingRow>
-            )}
-
-            {items.map((item) => (
-              <Row
-                key={item.id}
-                to={`/historik/${item.id}`}
-                aria-label={`Åbn vurdering ${item.case_id || ''} fra ${formatDanishDateTime(item.created_at)} — ${statusLabel(item.aggregate_status)}`.trim()}
-              >
-                <CellDate data-label="Tidspunkt">
-                  <span className="cell-value">{formatDanishDateTime(item.created_at)}</span>
-                </CellDate>
-                <CellNote data-label="Sag og note">
-                  <span className="cell-value">
-                    <strong style={{ fontStyle: 'normal', fontFamily: 'inherit', fontWeight: 500 }}>
-                      {item.case_id || '—'}
-                    </strong>
-                    {item.note && <> · {item.note}</>}
-                  </span>
-                </CellNote>
-                <Cell data-label="Status">
-                  <span className="cell-value">
-                    <ComplianceVerdict status={item.aggregate_status} size="sm" />
-                  </span>
-                </Cell>
-                <CellCase data-label="Regelmotor">
-                  <span className="cell-value">
-                    v{item.rule_engine_version} · {item.rules_loaded} regler
-                  </span>
-                </CellCase>
-              </Row>
-            ))}
-          </Table>
-        </>
-      )}
-      <DataOverview scope="historik" />
-    </Page>
-  );
-};
+const ListMode = () => (
+  <Page>
+    <Eyebrow>S.H.I.E.L.D. · gemte vurderinger</Eyebrow>
+    <Title>Vurderingshistorik</Title>
+    <Lede>Genfind løsningen, den ansvarlige og det dokumenterede tidspunkt. Konsekvensanalyser, juridiske screeninger, AI Act-vurderinger og grundrettighedsvurderinger vises som særskilte spor med deres versionshistorik.</Lede>
+    <AssessmentHistorySection />
+  </Page>
+);
 
 // ---- Detail mode component ----------------------------------------------
 
